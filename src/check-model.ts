@@ -4,11 +4,14 @@ type Config = {
   requiredProperties: Record<string, boolean>;
 };
 
-// The main function that performs the checking
+/**
+ * Check the given Zod schema and unwrap the properties that are required.
+ * @param schema - The Zod schema to check.
+ * @param config - The configuration object.
+ */
 function checkModel(schema: ZodSchema<any>, config: Config) {
   const { requiredProperties } = config;
 
-  // Function to recursively check properties
   const checkProperties = (object: ZodObject<any>, path: string = '') => {
     const shape = object.shape;
 
@@ -16,7 +19,6 @@ function checkModel(schema: ZodSchema<any>, config: Config) {
       const currentPath = path ? `${path}.${key}` : key;
 
       if (requiredProperties[currentPath]) {
-        // Mark the property as required in the Zod schema
         shape[key] = shape[key].unwrap();
       }
 
@@ -26,7 +28,6 @@ function checkModel(schema: ZodSchema<any>, config: Config) {
 
       // Recursively check nested structures
       if (keyShape instanceof ZodObject) {
-        console.log('inside', { currentPath });
         checkProperties(keyShape as ZodObject<any>, currentPath);
       } else if (keyShape instanceof ZodArray) {
         // Handle list elements if it's an array
