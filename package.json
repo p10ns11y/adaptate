@@ -1,6 +1,13 @@
 {
+  "name": "adaptate",
+  "version": "0.1.0",
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "vite build",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "jest": "^29.7.0",
@@ -8,6 +15,15 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14"
+    "@types/jest": "^29.5.14",
+    "turbo": "^2.2.3",
+    "vite": "^5.4.10"
+  },
+  "packageManager": "npm@10.8.3",
+  "exports": {
+    "./generate": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
   }
 }

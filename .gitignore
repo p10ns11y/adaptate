@@ -1,3 +1,8 @@
+# Tubrorepo
+.turbo
+
+build
+
 # Logs
 logs
 *.log
