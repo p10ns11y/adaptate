@@ -1,6 +1,6 @@
 {
   "name": "adaptate",
-  "version": "0.1.0",
+  "version": "0.0.2",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -18,14 +18,17 @@
     "@apidevtools/swagger-parser": "^10.1.0",
     "jest": "^29.7.0",
     "js-yaml": "^4.1.0",
-    "ts-jest": "^29.2.5",
-    "zod": "^3.23.8"
+    "ts-jest": "^29.2.5"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.9",
     "turbo": "^2.2.3",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.8"
   },
   "packageManager": "npm@10.8.3",
   "files": [
