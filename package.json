@@ -1,29 +1,47 @@
 {
   "name": "adaptate",
   "version": "0.1.0",
+  "author": {
+    "name": "Peramanathan Sathyamoorthy",
+    "url": "https://github.com/p10ns11y/adaptate.git"
+  },
   "license": "MIT",
-  "main": "./build/index.js",
+  "type": "module",
+  "main": "./build/index.es.js",
   "types": "./build/index.d.ts",
   "scripts": {
-    "test": "jest",
+    "test": "node --experimental-vm-modules --no-warnings node_modules/jest/bin/jest.js",
     "build": "vite build",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
     "jest": "^29.7.0",
+    "js-yaml": "^4.1.0",
     "ts-jest": "^29.2.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/js-yaml": "^4.0.9",
     "turbo": "^2.2.3",
     "vite": "^5.4.10"
   },
   "packageManager": "npm@10.8.3",
+  "files": [
+    "build",
+    "src",
+    "package.json",
+    "README.md"
+  ],
   "exports": {
-    "./generate": {
+    ".": {
       "types": "./src/index.ts",
-      "default": "./dist/index.js"
+      "default": "./build/index.es.js"
+    },
+    "./check-model": {
+      "types": "./src/check-model.ts",
+      "default": "./build/check-model.es.js"
     }
   }
 }

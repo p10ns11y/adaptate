@@ -1,5 +1,5 @@
-module.exports = {
-  preset: 'ts-jest',
+export default {
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   roots: ['<rootDir>'],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
@@ -7,7 +7,8 @@ module.exports = {
   transform: {
     '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$': [
       'ts-jest',
-      { tsconfig: 'tsconfig.jest.json' },
+      { tsconfig: 'tsconfig.jest.json', useESM: true },
     ],
   },
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
 };

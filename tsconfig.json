@@ -1,8 +1,18 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "Preserve",
+    "module": "esnext",
+    "moduleResolution": "Bundler",
+    "rootDir": "./" /* Specify the root folder within your source files. */,
+    // "moduleResolution": "Bundler" /* Specify how TypeScript looks up a file from a given module specifier. */,
     "moduleDetection": "force",
+    "baseUrl": "./" /* Specify the base directory to resolve non-relative module names. */,
+    "noEmit": true,
+    "allowImportingTsExtensions": true /* Allow imports to include TypeScript file extensions. Requires '--moduleResolution bundler' and either '--noEmit' or '--emitDeclarationOnly' to be set. */,
+    "resolvePackageJsonExports": true /* Use the package.json 'exports' field when resolving package imports. */,
+    "resolvePackageJsonImports": true /* Use the package.json 'imports' field when resolving imports. */,
+    "resolveJsonModule": true /* Enable importing .json files. */,
+    // "verbatimModuleSyntax": true,
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist"

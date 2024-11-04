@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { makeSchemaRequired } from '../index';
+import { makeSchemaRequired, jsonSchemaToZod } from '../';
+import { loadAndResolveYAML } from '../openapi-spec-parser';
 
 describe('makeSchemaRequired', () => {
-  it('should make properties required based on the config', () => {
+  it('should make properties required based on the config', async () => {
     let baseSchema = z.object({
       category: z
         .object({
@@ -180,5 +181,28 @@ describe('makeSchemaRequired', () => {
     ).not.toThrow();
 
     expect(() => anotherTransformedSchema.parse(anotherInValidData)).toThrow();
+
+    let dataLoadedFromYAML = await loadAndResolveYAML(
+      import.meta.url,
+      '../fixtures/base-schema.yml'
+    );
+    let dataZodSchema = jsonSchemaToZod(
+      // @ts-ignore
+      dataLoadedFromYAML['components']['schemas']['Category']
+    );
+
+    let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
+
+    expect(() =>
+      yetAnotherTransformedSchema.parse(validData['category'])
+    ).not.toThrow();
+
+    expect(() =>
+      yetAnotherTransformedSchema.parse(invalidDataMissingName['category'])
+    ).toThrow();
+
+    expect(() =>
+      yetAnotherTransformedSchema.parse(invalidDataItems['category'])
+    ).toThrow();
   });
 });

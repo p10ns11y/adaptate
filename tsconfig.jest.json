@@ -10,7 +10,16 @@
     "noUnusedParameters": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": false,
+    "target": "ESNext",
+    "module": "esnext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "./",
+    "moduleDetection": "force",
     "baseUrl": "./",
+    "allowImportingTsExtensions": true,
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
+    "resolveJsonModule": true,
     "paths": {
       "*": ["node_modules/*"]
     }
