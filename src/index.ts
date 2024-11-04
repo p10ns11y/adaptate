@@ -33,20 +33,19 @@ export function makeSchemaRequired(
             return [key, unwrappedValue];
           } else if (typeof partialConfig[key] === 'object') {
             // @ts-ignore
-            return [key, extendSchema(unwrappedValue, partialConfig[key])];
+            return [key, extendSchema(value, partialConfig[key])];
           }
-          return [key, unwrappedValue];
+          return [key, value];
         })
       );
 
-      let updatedPartialSchema = z.object(newShape).required();
+      let updatedPartialSchema = z.object(newShape);
 
       // @ts-ignore
-      return unwrappedPartialSchema.merge(updatedPartialSchema).required();
-    } else if (
-      unwrappedPartialSchema instanceof ZodArray &&
-      partialConfig['*']
-    ) {
+      return unwrappedPartialSchema.merge(updatedPartialSchema);
+    }
+
+    if (unwrappedPartialSchema instanceof ZodArray && partialConfig['*']) {
       const elementSchema = unwrappedPartialSchema.element as ZodObject<any>;
 
       let updatedPartialSchema = z.array(
@@ -61,26 +60,23 @@ export function makeSchemaRequired(
 
   let updatedSchema = schema;
 
-  /* if (schema instanceof ZodArray) {
-    console.log('ZodArray', schema.element);
+  if (schema instanceof ZodArray && config['*']) {
     // @ts-ignore
-    updatedSchema = makeSchemaRequired(schema.element, config);
-    console.log('ZodArray: updatedSchema', updatedSchema);
+    updatedSchema = makeSchemaRequired(schema.element, config['*']);
     updatedSchema = z.array(schema.element.merge(updatedSchema));
-  } else */
-  if (schema instanceof ZodObject) {
+  } else if (schema instanceof ZodObject) {
     // @ts-ignore
     updatedSchema = extendSchema(schema, config);
     // @ts-ignore
     updatedSchema = schema.merge(updatedSchema);
   } else {
-    console.error('The given schema must be a Zod object.');
+    throw new Error('The given schema must be a Zod object.');
   }
 
   return updatedSchema;
 }
 
-export function jsonSchemaToZod(schema: any): ZodTypeAny {
+export function openAPISchemaToZod(schema: any): ZodTypeAny {
   if (schema.type === 'string') {
     let zodSchema = z.string();
     if (schema.format === 'email') {
@@ -94,14 +90,16 @@ export function jsonSchemaToZod(schema: any): ZodTypeAny {
   } else if (schema.type === 'boolean') {
     return z.boolean();
   } else if (schema.type === 'array') {
-    const itemsSchema = schema.items ? jsonSchemaToZod(schema.items) : z.any();
+    const itemsSchema = schema.items
+      ? openAPISchemaToZod(schema.items)
+      : z.any();
     return z.array(itemsSchema);
   } else if (schema.type === 'object') {
     const properties = schema.properties || {};
     const shape = Object.fromEntries(
       Object.entries(properties).map(([key, value]) => [
         key,
-        jsonSchemaToZod(value),
+        openAPISchemaToZod(value),
       ])
     );
     return z.object(shape);
