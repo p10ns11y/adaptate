@@ -6,7 +6,12 @@ components:
   schemas:
     Category:
       type: object
+      required:
+        - name
+        - subcategories
       properties:
+        optionalProperty:
+          type: string
         name:
           type: string
         subcategories:
@@ -15,6 +20,9 @@ components:
             $ref: '#/components/schemas/Subcategory'
     Subcategory:
       type: object
+      required:
+        - name
+        - items
       properties:
         name:
           type: string

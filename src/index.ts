@@ -76,37 +76,63 @@ export function makeSchemaRequired(
   return updatedSchema;
 }
 
-export function openAPISchemaToZod(schema: any): ZodTypeAny {
+export function openAPISchemaToZod(
+  schema: any,
+  propertyKey: string = '',
+  required: string[] = []
+): ZodTypeAny {
+  // Handle string type, including specific formats like email
   if (schema.type === 'string') {
     let zodSchema = z.string();
     if (schema.format === 'email') {
       zodSchema = zodSchema.email();
     }
-    return zodSchema;
+
+    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
+    // Handle number type
   } else if (schema.type === 'number') {
-    return z.number();
+    let zodSchema = z.number();
+    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
+    // Handle integer type
   } else if (schema.type === 'integer') {
-    return z.number().int();
+    let zodSchema = z.number().int();
+    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
+    // Handle boolean type
   } else if (schema.type === 'boolean') {
-    return z.boolean();
+    let zodSchema = z.boolean();
+    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
+    // Handle array type
   } else if (schema.type === 'array') {
     const itemsSchema = schema.items
-      ? openAPISchemaToZod(schema.items)
+      ? openAPISchemaToZod(schema.items, propertyKey, required)
       : z.any();
-    return z.array(itemsSchema);
+
+    return required.includes(propertyKey)
+      ? z.array(itemsSchema)
+      : z.array(itemsSchema.optional());
+    // Handle object type by converting properties recursively
   } else if (schema.type === 'object') {
     const properties = schema.properties || {};
+    const requiredProperties = schema.required || [];
     const shape = Object.fromEntries(
-      Object.entries(properties).map(([key, value]) => [
-        key,
-        openAPISchemaToZod(value),
-      ])
+      Object.entries(properties).map((entry) => {
+        let [key, value] = entry;
+        let zodSchema = openAPISchemaToZod(value, key, requiredProperties);
+        // If the property is not in the required list, make it optional
+        if (!requiredProperties.includes(key)) {
+          zodSchema = zodSchema.optional();
+        }
+        return [key, zodSchema];
+      })
     );
     return z.object(shape);
   }
+  // Default case for unsupported types
   return z.any();
 }
 
+// TODO: Make the function either partial or hoc
+// Which returns a function that takes data later
 export function applyConditionalRequirements(
   schema: ZodTypeAny,
   config: any,

@@ -318,35 +318,90 @@ describe('makeSchemaRequired', () => {
 
 describe('openAPISchemaToZod', () => {
   it('should convert OpenAPI string schema to Zod string schema', () => {
-    const openAPISchema = { type: 'string' };
+    let openAPISchema = {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: {
+          type: 'string',
+        },
+        items: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    };
+    // const openAPISchema = { type: 'string' };
     const zodSchema = openAPISchemaToZod(openAPISchema);
-    expect(zodSchema).toBeInstanceOf(z.ZodString);
+    // @ts-ignore
+    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
+    // @ts-ignore
+    expect(zodSchema.shape.items).toBeInstanceOf(z.ZodOptional);
+    // @ts-ignore
+    expect(zodSchema.shape.items.unwrap()).toBeInstanceOf(z.ZodArray);
+    expect(
+      // @ts-ignore
+      zodSchema.shape.items.unwrap().element.unwrap().unwrap()
+    ).toBeInstanceOf(z.ZodString);
   });
 
   it('should convert OpenAPI number schema to Zod number schema', () => {
-    const openAPISchema = { type: 'number' };
+    const openAPISchema = {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: {
+          type: 'number',
+        },
+      },
+    };
     const zodSchema = openAPISchemaToZod(openAPISchema);
-    expect(zodSchema).toBeInstanceOf(z.ZodNumber);
+    // @ts-ignore
+    expect(zodSchema.shape.id).toBeInstanceOf(z.ZodNumber);
   });
 
   it('should convert OpenAPI boolean schema to Zod boolean schema', () => {
-    const openAPISchema = { type: 'boolean' };
+    const openAPISchema = {
+      type: 'object',
+      required: ['enabled'],
+      properties: {
+        enabled: {
+          type: 'boolean',
+        },
+      },
+    };
+
     const zodSchema = openAPISchemaToZod(openAPISchema);
-    expect(zodSchema).toBeInstanceOf(z.ZodBoolean);
+    // @ts-ignore
+    expect(zodSchema.shape.enabled).toBeInstanceOf(z.ZodBoolean);
   });
 
   it('should convert OpenAPI array schema to Zod array schema', () => {
-    const openAPISchema = { type: 'array', items: { type: 'string' } };
+    const openAPISchema = {
+      type: 'object',
+      required: ['products'],
+      properties: {
+        products: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    };
+
     const zodSchema = openAPISchemaToZod(
       openAPISchema
     ) as z.ZodArray<z.ZodString>;
-    expect(zodSchema).toBeInstanceOf(z.ZodArray);
-    expect(zodSchema.element).toBeInstanceOf(z.ZodString);
+
+    // @ts-ignore
+    expect(zodSchema.shape.products).toBeInstanceOf(z.ZodArray);
   });
 
   it('should convert OpenAPI object schema to Zod object schema', () => {
     const openAPISchema = {
       type: 'object',
+      required: ['name', 'age', 'email', 'count'],
       properties: {
         name: { type: 'string' },
         age: { type: 'number' },
@@ -358,10 +413,17 @@ describe('openAPISchemaToZod', () => {
     const zodSchema = openAPISchemaToZod(openAPISchema) as z.ZodObject<{
       name: z.ZodString;
       age: z.ZodNumber;
+      email: z.ZodString;
+      count: z.ZodNumber;
+      unknownType: z.ZodAny;
     }>;
     expect(zodSchema).toBeInstanceOf(z.ZodObject);
     expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
     expect(zodSchema.shape.age).toBeInstanceOf(z.ZodNumber);
+    expect(zodSchema.shape.email).toBeInstanceOf(z.ZodString);
+    expect(zodSchema.shape.count).toBeInstanceOf(z.ZodNumber);
+    // @ts-ignore
+    expect(zodSchema.shape.unknownType.unwrap()).toBeInstanceOf(z.ZodAny);
   });
 
   it('should convert OpenAPI schema with $ref to another component using openapi-spec-parser', async () => {
@@ -391,24 +453,38 @@ describe('openAPISchemaToZod', () => {
   });
 });
 
+// Rethink
 describe('applyConditionalRequirements', () => {
   it('should apply conditional requirements based on the config', () => {
     const schema = z.object({
-      name: z.string().optional(),
+      firstName: z.string().optional(),
+      secondName: z.string().optional(),
       age: z.number().optional(),
+      address: z
+        .object({
+          street: z.string().optional(),
+          city: z.string().optional(),
+        })
+        .optional(),
+      title: z.string().optional(),
     });
 
     const config = {
-      name: {
+      firstName: {
         requiredIf: (data: any) => data.age > 18,
       },
+      secondName: (data: any) => !!data.firstName,
     };
 
     const data = { age: 20 };
     const updatedSchema = applyConditionalRequirements(schema, config, data);
 
-    expect(() => updatedSchema.parse({ name: 'John', age: 20 })).not.toThrow();
-    expect(() => updatedSchema.parse({ age: 20 })).toThrow();
+    expect(() =>
+      updatedSchema.parse({ firstName: 'John', age: 20 })
+    ).not.toThrow();
+    expect(() =>
+      updatedSchema.parse({ secondName: 'Wick', age: 20 })
+    ).toThrow();
   });
 
   it('should handle non-object schema', () => {
