@@ -1,6 +1,6 @@
 {
   "name": "adaptate",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -46,5 +46,23 @@
       "types": "./src/check-model.ts",
       "default": "./build/check-model.es.js"
     }
-  }
+  },
+  "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",
+  "keywords": [
+    "Zod",
+    "OpenAPI",
+    "Schema Validation",
+    "JSON Schema",
+    "TypeScript",
+    "Dynamic Validation",
+    "Conditional Requirements",
+    "React Hooks",
+    "Data Validation",
+    "API Integration",
+    "Model Validator",
+    "Schema Transformation",
+    "Runtime Validation",
+    "Component Props Validation",
+    "Business Data Abstraction"
+  ]
 }
