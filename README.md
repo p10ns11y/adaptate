@@ -18,9 +18,9 @@ Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI
 To install the library, use npm or yarn:
 
 ```sh
-npm install adaptate
+npm install @adaptate/core
 # or
-yarn add adaptate
+yarn add @adaptate/core
 ```
 
 ## Usage
@@ -89,7 +89,7 @@ You can make a Zod schema required based on a configuration (components need) us
 
 ```ts
 import { z } from 'zod';
-import { makeSchemaRequired } from 'adaptate';
+import { makeSchemaRequired } from '@adaptate/core';
 
 const schema = z.object({
   name: z.string().optional(),
@@ -138,7 +138,7 @@ You can apply conditional requirements to a Zod schema using the applyConditiona
 
 ```ts
 import { z } from 'zod';
-import { applyConditionalRequirements } from 'adaptate';
+import { applyConditionalRequirements } from '@adaptate/core';
 
 const schema = z.object({
   firstName: z.string().optional(),
@@ -176,7 +176,7 @@ const updatedSchema = applyConditionalRequirements(schema, config, data);
 The utility is in the early stage and not one to one. For complete and advanced use cases check [json-schema-to-zod](https://snyk.io/advisor/npm-package/json-schema-to-zod)
 
 ```ts
-import { openAPISchemaToZod } from 'adaptate';
+import { openAPISchemaToZod } from '@adaptate/core';
 
 const openAPISchema = {
   type: 'object',
@@ -199,7 +199,7 @@ The utility is in the early stage and not one to one. For complete and advanced 
 
 ```ts
 import { z } from 'zod';
-import { zodToOpenAPISchema } from 'adaptate';
+import { zodToOpenAPISchema } from '@adaptate/core';
 
 const zodSchema = z.object({
   name: z.string(),
