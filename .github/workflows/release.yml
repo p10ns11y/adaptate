@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'package.json'
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -26,7 +27,7 @@ jobs:
 
       - name: Build project
 
-        run: npx trubo run build
+        run: npx turbo run build
 
       - name: Publish to GitHub Packages
         working-directory: packages/core
