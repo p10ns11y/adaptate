@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'package.json'
+      - 'packages/**/package.json'
+
   workflow_dispatch:
 
 jobs:
@@ -24,13 +26,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com/'
+          scope: '@adaptate'
+
+      # - name: Configure .npmrc for GitHub Packages
+      #   run: |
+      #     echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
+      #     echo "@adaptate:registry=https://npm.pkg.github.com" >> ~/.npmrc
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build project
-
         run: npx turbo run build
 
       - name: Publish to GitHub Packages
