@@ -26,8 +26,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com/'
-          scope: '@adaptate'
+          # registry-url: 'https://npm.pkg.github.com/'
+          registry-url: 'https://registry.npmjs.org/'
+          # scope: '@adaptate'
 
       # - name: Configure .npmrc for GitHub Packages
       #   run: |
@@ -40,11 +41,11 @@ jobs:
       - name: Build project
         run: npx turbo run build
 
-      - name: Publish to GitHub Packages
-        working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish --registry=https://npm.pkg.github.com/
+      # - name: Publish to GitHub Packages
+      #   working-directory: packages/core
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: npm publish --registry=https://npm.pkg.github.com/
 
       - name: Publish to npm
         working-directory: packages/core
