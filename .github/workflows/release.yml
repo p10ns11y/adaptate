@@ -25,14 +25,17 @@ jobs:
         run: npm ci
 
       - name: Build project
+
         run: npx trubo run build
 
       - name: Publish to GitHub Packages
+        working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm publish --registry=https://npm.pkg.github.com/
 
       - name: Publish to npm
+        working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --registry=https://registry.npmjs.org/ --access public
