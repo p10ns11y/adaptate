@@ -17,6 +17,6 @@
     "esModuleInterop": true,
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "include": ["packages/core/src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules"]
 }
