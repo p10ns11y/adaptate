@@ -43,7 +43,7 @@ jobs:
 
       - name: Publish adaptate to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_USER_TOKEN }}
         run: npm publish --access public
 
       - name: Publish @adaptate/core to npm
