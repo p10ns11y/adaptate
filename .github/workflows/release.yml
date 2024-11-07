@@ -41,14 +41,19 @@ jobs:
       - name: Build project
         run: npx turbo run build
 
-      # - name: Publish to GitHub Packages
-      #   working-directory: packages/core
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: npm publish --registry=https://npm.pkg.github.com/
+      - name: Publish adaptate to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
-      - name: Publish to npm
+      - name: Publish @adaptate/core to npm
         working-directory: packages/core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
+
+      - name: Publish @adaptate/core to GitHub Packages
+        working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish --registry=https://npm.pkg.github.com/

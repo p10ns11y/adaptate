@@ -18,9 +18,9 @@ Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI
 To install the library, use npm or yarn:
 
 ```sh
-npm install @adaptate/core
+npm install adaptate
 # or
-yarn add @adaptate/core
+yarn add adaptate
 ```
 
 ## Usage
@@ -89,7 +89,7 @@ You can make a Zod schema required based on a configuration (components need) us
 
 ```ts
 import { z } from 'zod';
-import { makeSchemaRequired } from '@adaptate/core';
+import { makeSchemaRequired } from 'adaptate';
 
 const schema = z.object({
   name: z.string().optional(),
@@ -138,7 +138,7 @@ You can apply conditional requirements to a Zod schema using the applyConditiona
 
 ```ts
 import { z } from 'zod';
-import { applyConditionalRequirements } from '@adaptate/core';
+import { applyConditionalRequirements } from 'adaptate';
 
 const schema = z.object({
   firstName: z.string().optional(),
@@ -176,7 +176,7 @@ const updatedSchema = applyConditionalRequirements(schema, config, data);
 The utility is in the early stage and not one to one. For complete and advanced use cases check [json-schema-to-zod](https://snyk.io/advisor/npm-package/json-schema-to-zod)
 
 ```ts
-import { openAPISchemaToZod } from '@adaptate/core';
+import { openAPISchemaToZod } from 'adaptate';
 
 const openAPISchema = {
   type: 'object',
@@ -199,7 +199,7 @@ The utility is in the early stage and not one to one. For complete and advanced 
 
 ```ts
 import { z } from 'zod';
-import { zodToOpenAPISchema } from '@adaptate/core';
+import { zodToOpenAPISchema } from 'adaptate';
 
 const zodSchema = z.object({
   name: z.string(),
@@ -376,6 +376,9 @@ I have attempted to recreate what I have done at work with the help of ChatGPT C
 
 ### So why?
 
-#### The Background
+<details>
+  <summary>The Background</summary>
 
 At [Oneflow AB](https://oneflow.com), we faced a situation where a component was used on two different pages, each receiving data from different endpoints. This led to discrepancies in the properties of the same model for valid reasons. To avoid breaking the app, I have built a run-time validation library that abstracted business data extensively. Although it wasn't completely dynamic, it supported specifying business entities, types such as `collection` or `entity`, and reusable specifications like `relations`. It also included React-specific hooks that worked seamlessly with error boundaries. This effort aims to create a more generic solution that can be extended to various use cases.
+
+</details>

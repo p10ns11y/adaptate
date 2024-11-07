@@ -3,7 +3,7 @@
   "workspaces": [
     "packages/*"
   ],
-  "version": "0.0.8",
+  "version": "0.0.9",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -17,6 +17,15 @@
   },
   "homepage": "https://github.com/p10ns11y/adaptate#readme",
   "license": "MIT",
+  "type": "module",
+  "source": "./packages/core/src/index.ts",
+  "main": "./packages/core/build/index.es.js",
+  "types": "./packages/core/build/index.d.ts",
+  "files": [
+    "./packages/core/build",
+    "package.json",
+    "README.md"
+  ],
   "scripts": {
     "build": "turbo run build"
   },
