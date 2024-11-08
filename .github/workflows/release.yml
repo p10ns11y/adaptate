@@ -26,33 +26,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # registry-url: 'https://npm.pkg.github.com/'
           registry-url: 'https://registry.npmjs.org/'
-          # scope: '@adaptate'
-
-      # - name: Configure .npmrc for GitHub Packages
-      #   run: |
-      #     echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
-      #     echo "@adaptate:registry=https://npm.pkg.github.com" >> ~/.npmrc
 
       - name: Install dependencies
-        run: pnpm ci
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+          pnpm install
 
       - name: Build project
         run: npx turbo run build
 
       # pnpm will publish all packages in the monorepo
-      # --provenance for comprehensive metadata about their build process, enhancing their security and traceability
+      # --provenance for comprehensive metadata about the build process,
+      # enhancing the security and traceability of artifacts
       - name: Publish adaptate to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_USER_TOKEN }}
         run: pnpm publish --recursive --provenance --access public
-
-      # - name: Publish @adaptate/core to npm
-      #   working-directory: packages/core
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #   run: npm publish  --provenance --access public
 
       # - name: Publish @adaptate/core to GitHub Packages
       #   working-directory: packages/core
