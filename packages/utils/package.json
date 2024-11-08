@@ -1,5 +1,5 @@
 {
-  "name": "@adaptate/core",
+  "name": "@adaptate/utils",
   "version": "0.0.9-rc",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
@@ -19,6 +19,7 @@
   "main": "./build/index.es.js",
   "types": "./build/index.d.ts",
   "scripts": {
+    "test": "node --experimental-vm-modules --no-warnings node_modules/jest/bin/jest.js --coverage",
     "build": "vite build",
     "check-types": "tsc --noEmit"
   },
@@ -26,7 +27,9 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@adaptate/utils": "workspace:*",
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0",
     "vite": "^5.4.10"
   },
   "peerDependencies": {
@@ -41,6 +44,18 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./build/index.es.js"
+    },
+    "./openapi": {
+      "import": {
+        "types": "./src/openapi.ts",
+        "default": "./src/openapi.ts"
+      },
+      "require": {
+        "types": "./src/openapi.ts",
+        "default": "./build/openapi.es.js"
+      },
+      "types": "./src/openapi.ts",
+      "default": "./build/openapi.es.js"
     }
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",

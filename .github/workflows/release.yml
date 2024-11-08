@@ -41,16 +41,18 @@ jobs:
       - name: Build project
         run: npx turbo run build
 
+      # pnpm will publish all packages in the monorepo
+      # --provenance for comprehensive metadata about their build process, enhancing their security and traceability
       - name: Publish adaptate to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_USER_TOKEN }}
-        run: npm publish --access public
+        run: pnpm publish --provenance --access public
 
-      - name: Publish @adaptate/core to npm
-        working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+      # - name: Publish @adaptate/core to npm
+      #   working-directory: packages/core
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      #   run: npm publish  --provenance --access public
 
       # - name: Publish @adaptate/core to GitHub Packages
       #   working-directory: packages/core
