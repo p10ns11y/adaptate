@@ -1,0 +1,43 @@
+openapi: '3.0.0'
+info:
+  title: 'Sample API'
+  version: '1.0.0'
+components:
+  schemas:
+    Category:
+      type: object
+      required:
+        - name
+        - subcategories
+      properties:
+        optionalProperty:
+          type: string
+        name:
+          type: string
+        subcategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subcategory'
+    Subcategory:
+      type: object
+      required:
+        - name
+        - items
+      properties:
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            type: string
+paths:
+  /category:
+    get:
+      summary: 'Get category'
+      responses:
+        '200':
+          description: 'A category object'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'

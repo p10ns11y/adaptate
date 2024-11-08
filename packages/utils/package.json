@@ -19,7 +19,6 @@
   "main": "./build/index.es.js",
   "types": "./build/index.d.ts",
   "scripts": {
-    "test": "node --experimental-vm-modules --no-warnings node_modules/jest/bin/jest.js --coverage",
     "build": "vite build",
     "check-types": "tsc --noEmit"
   },

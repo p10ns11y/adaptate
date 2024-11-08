@@ -11,4 +11,5 @@ export default {
     ],
   },
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  coverageReporters: ['json-summary'],
 };

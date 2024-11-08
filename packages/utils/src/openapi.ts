@@ -99,6 +99,8 @@ export async function getDereferencedOpenAPIDocument(
 
     return dereferenced;
   } catch (error) {
-    console.error('Error:', error);
+    throw new Error(
+      `Error reading OpenAPI document: ${(error as any)?.message || ''}`
+    );
   }
 }

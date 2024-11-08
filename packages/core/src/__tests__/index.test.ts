@@ -1,11 +1,9 @@
 import { z } from 'zod';
-import { getDereferencedOpenAPIDocument } from '@adaptate/utils/openapi';
 import {
-  makeSchemaRequired,
+  getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
-  applyConditionalRequirements,
-  zodToOpenAPISchema,
-} from '../';
+} from '@adaptate/utils/openapi';
+import { makeSchemaRequired, applyConditionalRequirements } from '../';
 
 describe('makeSchemaRequired', () => {
   it('should make properties required based on the config', async () => {
@@ -63,7 +61,6 @@ describe('makeSchemaRequired', () => {
         subcategories: [{ items: ['iPhone', 'Samsung Galaxy'] }],
       },
       type: 'electronics',
-      warrantyPeriod: '2 years',
     };
 
     let invalidDataItems = {
@@ -80,6 +77,9 @@ describe('makeSchemaRequired', () => {
     };
 
     expect(() => transformedSchema.parse(validData)).not.toThrow();
+
+    expect(() => baseSchema.parse(invalidDataMissingName)).not.toThrow();
+
     expect(() => transformedSchema.parse(invalidDataMissingName))
       .toThrowErrorMatchingInlineSnapshot(`
         "[
@@ -108,6 +108,25 @@ describe('makeSchemaRequired', () => {
         ]"
       `);
 
+    // Re transforming the schema with different config
+    // Here making warrantyPeriod required
+    expect(() =>
+      makeSchemaRequired(transformedSchema, {
+        category: {
+          warrantyPeriod: true,
+        },
+      }).parse(invalidDataMissingName)
+    ).toThrow();
+
+    expect(() => baseSchema.parse({})).not.toThrow();
+    expect(() =>
+      baseSchema.parse({
+        category: {
+          subcategories: [{ items: [] }],
+        },
+      })
+    ).not.toThrow();
+    expect(() => baseSchema.parse(invalidDataItems)).toThrow();
     expect(() => transformedSchema.parse(invalidDataItems))
       .toThrowErrorMatchingInlineSnapshot(`
         "[
@@ -187,28 +206,28 @@ describe('makeSchemaRequired', () => {
 
     expect(() => anotherTransformedSchema.parse(anotherInValidData)).toThrow();
 
-    // let dataLoadedFromYAML = await getDereferencedOpenAPIDocument(
-    //   import.meta.url,
-    //   '../fixtures/base-schema.yml'
-    // );
-    // let dataZodSchema = openAPISchemaToZod(
-    //   // @ts-ignore
-    //   dataLoadedFromYAML['components']['schemas']['Category']
-    // );
+    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument(
+      import.meta.url,
+      '../fixtures/base-schema.yml'
+    );
+    let dataZodSchema = openAPISchemaToZod(
+      // @ts-ignore
+      dereferencedOpenAPIDocument['components']['schemas']['Category']
+    );
 
-    // let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
+    let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
 
-    // expect(() =>
-    //   yetAnotherTransformedSchema.parse(validData['category'])
-    // ).not.toThrow();
+    expect(() =>
+      yetAnotherTransformedSchema.parse(validData['category'])
+    ).not.toThrow();
 
-    // expect(() =>
-    //   yetAnotherTransformedSchema.parse(invalidDataMissingName['category'])
-    // ).toThrow();
+    expect(() =>
+      yetAnotherTransformedSchema.parse(invalidDataMissingName['category'])
+    ).toThrow();
 
-    // expect(() =>
-    //   yetAnotherTransformedSchema.parse(invalidDataItems['category'])
-    // ).toThrow();
+    expect(() =>
+      yetAnotherTransformedSchema.parse(invalidDataItems['category'])
+    ).toThrow();
   });
 
   it('should handle array of objects at top level', () => {
@@ -316,143 +335,6 @@ describe('makeSchemaRequired', () => {
   });
 });
 
-describe('openAPISchemaToZod', () => {
-  it('should convert OpenAPI string schema to Zod string schema', () => {
-    let openAPISchema = {
-      type: 'object',
-      required: ['name'],
-      properties: {
-        name: {
-          type: 'string',
-        },
-        items: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-      },
-    };
-    // const openAPISchema = { type: 'string' };
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    // @ts-ignore
-    expect(zodSchema.shape.items).toBeInstanceOf(z.ZodOptional);
-    // @ts-ignore
-    expect(zodSchema.shape.items.unwrap()).toBeInstanceOf(z.ZodArray);
-    expect(
-      // @ts-ignore
-      zodSchema.shape.items.unwrap().element.unwrap().unwrap()
-    ).toBeInstanceOf(z.ZodString);
-  });
-
-  it('should convert OpenAPI number schema to Zod number schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['id'],
-      properties: {
-        id: {
-          type: 'number',
-        },
-      },
-    };
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.id).toBeInstanceOf(z.ZodNumber);
-  });
-
-  it('should convert OpenAPI boolean schema to Zod boolean schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['enabled'],
-      properties: {
-        enabled: {
-          type: 'boolean',
-        },
-      },
-    };
-
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.enabled).toBeInstanceOf(z.ZodBoolean);
-  });
-
-  it('should convert OpenAPI array schema to Zod array schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['products'],
-      properties: {
-        products: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    };
-
-    const zodSchema = openAPISchemaToZod(
-      openAPISchema
-    ) as z.ZodArray<z.ZodString>;
-
-    // @ts-ignore
-    expect(zodSchema.shape.products).toBeInstanceOf(z.ZodArray);
-  });
-
-  it('should convert OpenAPI object schema to Zod object schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['name', 'age', 'email', 'count'],
-      properties: {
-        name: { type: 'string' },
-        age: { type: 'number' },
-        email: { type: 'string', format: 'email' },
-        count: { type: 'integer' },
-        unknownType: { type: 'unknown' },
-      },
-    };
-    const zodSchema = openAPISchemaToZod(openAPISchema) as z.ZodObject<{
-      name: z.ZodString;
-      age: z.ZodNumber;
-      email: z.ZodString;
-      count: z.ZodNumber;
-      unknownType: z.ZodAny;
-    }>;
-    expect(zodSchema).toBeInstanceOf(z.ZodObject);
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.age).toBeInstanceOf(z.ZodNumber);
-    expect(zodSchema.shape.email).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.count).toBeInstanceOf(z.ZodNumber);
-    // @ts-ignore
-    expect(zodSchema.shape.unknownType.unwrap()).toBeInstanceOf(z.ZodAny);
-  });
-
-  it('should convert OpenAPI schema with $ref to another component using openapi-spec-parser', async () => {
-    let dataLoadedFromYAML = await getDereferencedOpenAPIDocument(
-      import.meta.url,
-      '../fixtures/base-schema.yml'
-    );
-    let zodSchema = openAPISchemaToZod(
-      // @ts-ignore
-      dataLoadedFromYAML.components.schemas.Category
-    ) as z.ZodObject<{
-      name: z.ZodString;
-      subcategories: z.ZodArray<
-        z.ZodObject<{ name: z.ZodString; items: z.ZodArray<z.ZodString> }>
-      >;
-    }>;
-
-    expect(zodSchema).toBeInstanceOf(z.ZodObject);
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.subcategories).toBeInstanceOf(z.ZodArray);
-    expect(zodSchema.shape.subcategories.element.shape.name).toBeInstanceOf(
-      z.ZodString
-    );
-    expect(zodSchema.shape.subcategories.element.shape.items).toBeInstanceOf(
-      z.ZodArray
-    );
-  });
-});
-
 // Rethink
 describe('applyConditionalRequirements', () => {
   it('should apply conditional requirements based on the config', () => {
@@ -510,52 +392,5 @@ describe('applyConditionalRequirements', () => {
     const result = applyConditionalRequirements(schema, config, data);
 
     expect(result).toBe(schema);
-  });
-});
-
-describe('zodToOpenAPISchema', () => {
-  it('should convert Zod string schema to OpenAPI string schema', () => {
-    const zodSchema = z.string();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'string' });
-  });
-
-  it('should convert Zod number schema to OpenAPI number schema', () => {
-    const zodSchema = z.number();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'number' });
-  });
-
-  it('should convert Zod boolean schema to OpenAPI boolean schema', () => {
-    const zodSchema = z.boolean();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'boolean' });
-  });
-
-  it('should convert Zod array schema to OpenAPI array schema', () => {
-    const zodSchema = z.array(z.string());
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'array', items: { type: 'string' } });
-  });
-
-  it('should convert Zod object schema to OpenAPI object schema', () => {
-    const zodSchema = z.object({
-      name: z.string(),
-      age: z.number(),
-    });
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        age: { type: 'number' },
-      },
-    });
-  });
-
-  it('should handle unsupported Zod schema type', () => {
-    const zodSchema = z.date();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({});
   });
 });

@@ -16,7 +16,7 @@
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "types": ["node"],
+    "types": ["node", "jest"],
     "paths": {
       "@adaptate/core": ["./packages/core/src"],
       "@adaptate/utils": ["./packages/utils/src"],

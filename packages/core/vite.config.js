@@ -6,7 +6,7 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'build',
     lib: {
-      entry: ['src/index.ts', 'src/check-model.ts'],
+      entry: ['src/index.ts', 'src/mutate-model.ts'],
       formats: ['es'],
       fileName: (format, entryName) => `${entryName}.${format}.js`,
       types: 'src/index.d.ts',

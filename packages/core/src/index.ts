@@ -2,6 +2,48 @@ import { z, ZodObject, ZodArray, ZodTypeAny } from 'zod';
 
 export type Config = Record<string, any>;
 
+/**
+ * Make the given Zod schema required as per the configuration.
+ * @param schema - The Zod schema to make required.
+ * @param config - The configuration object.
+ * @returns The updated Zod schema with required properties.
+ * @throws If the given schema is not a Zod object.
+ * @example
+ * const schema = z.object({
+ *   name: z.string().optional(),
+ *   age: z.number().optional(),
+ *     address: z.object({
+ *       street: z.string().optional(),
+ *       city: z.string().optional(),
+ *     }).optional(),
+ * });
+ *
+ * // Specify which properties are required, false will not make required
+ * // In original schema optional properties yet
+ * const config = {
+ *   name: true,
+ *    address: {
+ *      city: true
+ *   }
+ * };
+ * const updatedSchema = makeSchemaRequired(schema, config);
+ * const validData = {
+ *   name: 'John Doe',
+ *   address: { city: 'New York' },
+ * };
+ * const invalidDataMissingName = {
+ *   address: { city: 'New York' },
+ * };
+ * const invalidDataMissingCity = {
+ *   name: 'John Doe',
+ *   address: {},
+ * };
+ * schema.parse(validData); // Should pass
+ * schema.parse(invalidDataMissingName); // Should fail due to missing 'name'
+ * schema.parse(invalidDataMissingCity); // Should fail due to missing 'address.city'
+ * @category Helper
+ * @module makeSchemaRequired
+ * */
 // @ts-ignore
 export function makeSchemaRequired(
   schema: ZodTypeAny,
@@ -76,61 +118,6 @@ export function makeSchemaRequired(
   return updatedSchema;
 }
 
-export function openAPISchemaToZod(
-  schema: any,
-  propertyKey: string = '',
-  required: string[] = []
-): ZodTypeAny {
-  // Handle string type, including specific formats like email
-  if (schema.type === 'string') {
-    let zodSchema = z.string();
-    if (schema.format === 'email') {
-      zodSchema = zodSchema.email();
-    }
-
-    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
-    // Handle number type
-  } else if (schema.type === 'number') {
-    let zodSchema = z.number();
-    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
-    // Handle integer type
-  } else if (schema.type === 'integer') {
-    let zodSchema = z.number().int();
-    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
-    // Handle boolean type
-  } else if (schema.type === 'boolean') {
-    let zodSchema = z.boolean();
-    return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
-    // Handle array type
-  } else if (schema.type === 'array') {
-    const itemsSchema = schema.items
-      ? openAPISchemaToZod(schema.items, propertyKey, required)
-      : z.any();
-
-    return required.includes(propertyKey)
-      ? z.array(itemsSchema)
-      : z.array(itemsSchema.optional());
-    // Handle object type by converting properties recursively
-  } else if (schema.type === 'object') {
-    const properties = schema.properties || {};
-    const requiredProperties = schema.required || [];
-    const shape = Object.fromEntries(
-      Object.entries(properties).map((entry) => {
-        let [key, value] = entry;
-        let zodSchema = openAPISchemaToZod(value, key, requiredProperties);
-        // If the property is not in the required list, make it optional
-        if (!requiredProperties.includes(key)) {
-          zodSchema = zodSchema.optional();
-        }
-        return [key, zodSchema];
-      })
-    );
-    return z.object(shape);
-  }
-  // Default case for unsupported types
-  return z.any();
-}
-
 // TODO: Make the function either partial or hoc
 // Which returns a function that takes data later
 export function applyConditionalRequirements(
@@ -162,25 +149,4 @@ export function applyConditionalRequirements(
     return z.object(newShape);
   }
   return schema;
-}
-
-export function zodToOpenAPISchema(schema: ZodTypeAny): any {
-  if (schema instanceof z.ZodString) {
-    return { type: 'string' };
-  } else if (schema instanceof z.ZodNumber) {
-    return { type: 'number' };
-  } else if (schema instanceof z.ZodBoolean) {
-    return { type: 'boolean' };
-  } else if (schema instanceof ZodArray) {
-    return { type: 'array', items: zodToOpenAPISchema(schema.element) };
-  } else if (schema instanceof ZodObject) {
-    const properties = Object.fromEntries(
-      Object.entries(schema.shape).map(([key, value]) => {
-        // @ts-ignore
-        return [key, zodToOpenAPISchema(value)];
-      })
-    );
-    return { type: 'object', properties };
-  }
-  return {};
 }
