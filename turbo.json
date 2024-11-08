@@ -2,7 +2,12 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
+      "dependsOn": ["^test"],
       "outputs": ["build/**"]
+    },
+    "test": {
+      "dependsOn": ["check-types"],
+      "outputs": ["coverage/**"]
     },
     "check-types": {
       "dependsOn": ["^check-types"]

@@ -15,8 +15,14 @@
     // "verbatimModuleSyntax": true,
     "strict": true,
     "esModuleInterop": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["node", "jest"],
+    "paths": {
+      "@adaptate/core": ["./packages/core/src"],
+      "@adaptate/utils": ["./packages/utils/src"],
+      "@adaptate/utils/*": ["./packages/utils/src/*"]
+    }
   },
-  "include": ["packages/core/src/**/*.ts", "tests/**/*.ts"],
+  "include": ["packages", "packages/core/src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules"]
 }

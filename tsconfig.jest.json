@@ -20,9 +20,12 @@
     "resolvePackageJsonExports": true,
     "resolvePackageJsonImports": true,
     "resolveJsonModule": true,
+    "types": ["node", "jest"],
     "paths": {
-      "*": ["node_modules/*"]
+      "@adaptate/core": ["./packages/core/src"],
+      "@adaptate/utils": ["./packages/utils/src"],
+      "@adaptate/utils/*": ["./packages/utils/src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+  "include": ["packages", "packages/core/src/**/*.ts"]
 }
