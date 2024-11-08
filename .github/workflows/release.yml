@@ -36,7 +36,7 @@ jobs:
       #     echo "@adaptate:registry=https://npm.pkg.github.com" >> ~/.npmrc
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm ci
 
       - name: Build project
         run: npx turbo run build
