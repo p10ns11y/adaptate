@@ -1,3 +1,5 @@
+import { describe, it, expect } from 'vitest';
+
 import { z } from 'zod';
 
 import {
@@ -316,11 +318,11 @@ describe('getDereferencedOpenAPIDocument', () => {
         },
       }
     `);
-  });
 
-  expect(() =>
-    getDereferencedOpenAPIDocument(import.meta.url, '../fixtures/unknown.yml')
-  ).rejects.toThrowErrorMatchingInlineSnapshot(
-    `"Error reading OpenAPI document: ENOENT: no such file or directory, open '/Users/peram/code/adaptate/packages/utils/src/fixtures/unknown.yml'"`
-  );
+    await expect(() =>
+      getDereferencedOpenAPIDocument(import.meta.url, '../fixtures/unknown.yml')
+    ).rejects.toThrowErrorMatchingInlineSnapshot(
+      `[Error: Error reading OpenAPI document: ENOENT: no such file or directory, open '/Users/peram/code/adaptate/packages/utils/src/fixtures/unknown.yml']`
+    );
+  });
 });

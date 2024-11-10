@@ -1,4 +1,3 @@
-import SwaggerParser from '@apidevtools/swagger-parser';
 import yaml from 'js-yaml';
 
 import { z, ZodTypeAny, ZodArray, ZodObject } from 'zod';
@@ -79,23 +78,46 @@ export function zodToOpenAPISchema(schema: ZodTypeAny): any {
   return {};
 }
 
+async function fetchYamlContent(fileURL: string, relativePath: string) {
+  let fileURLPath = fileURL + relativePath;
+  let response = await globalThis.fetch(fileURLPath, {
+    headers: {
+      'Content-Type': 'text/yaml',
+    },
+  });
+  let openapiDocument = yaml.load(await response.text());
+
+  return openapiDocument;
+}
+
 export async function getDereferencedOpenAPIDocument(
   fileURL: string,
-  relativePath: string
+  relativePath: string = '',
+  environment: 'server' | 'browser' = 'server'
 ) {
-  try {
-    let fs = await import('node:fs');
-    let path = await import('node:path');
-    let { fileURLToPath } = await import('node:url');
-    let { dirname } = path;
-    let fileURLPath = fileURLToPath(fileURL);
-    let callerDirectoryName = dirname(fileURLPath);
-    let yamlFilePath = path.resolve(callerDirectoryName, relativePath);
-    const openapiDocument = yaml.load(
-      fs.readFileSync(yamlFilePath, 'utf8')
-    ) as string;
+  let openapiDocument = JSON.stringify({});
 
-    const dereferenced = await SwaggerParser.dereference(openapiDocument);
+  let isNode = globalThis.process?.versions?.node || environment === 'server';
+  let isBrowser = globalThis?.window?.document || environment === 'browser';
+
+  try {
+    if (isBrowser) {
+      openapiDocument = (await fetchYamlContent(
+        fileURL,
+        relativePath
+      )) as string;
+    } else if (isNode) {
+      let { getYamlContent } = await import('./load-yaml.ts');
+
+      openapiDocument = await getYamlContent(fileURL, relativePath);
+    }
+    // https://github.com/APIDevTools/json-schema-reader/blob/main/src/index.ts#L21
+    // let SwaggerParser = await import('@apidevtools/swagger-parser');
+    let SwaggerParser = await import('@apidevtools/json-schema-ref-parser');
+
+    const dereferenced = await SwaggerParser.default.dereference(
+      openapiDocument
+    );
 
     return dereferenced;
   } catch (error) {

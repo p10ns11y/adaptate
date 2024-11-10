@@ -12,4 +12,7 @@ export default {
   },
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   coverageReporters: ['json-summary'],
+  // moduleNameMapper: {
+  //   '^@adaptate/utils/(.*)$': '<rootDir>/packages/utils/src/$1',
+  // },
 };

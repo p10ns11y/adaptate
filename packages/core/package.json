@@ -38,9 +38,9 @@
     "README.md"
   ],
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./build/index.es.js"
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.es.js"
     }
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",

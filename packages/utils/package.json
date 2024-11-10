@@ -23,12 +23,13 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^11.7.2",
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "js-yaml": "^4.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@apidevtools/swagger-parser": "^10.1.0",
     "@types/js-yaml": "^4.0.9",
-    "js-yaml": "^4.1.0",
     "vite": "^5.4.10"
   },
   "peerDependencies": {
@@ -41,20 +42,14 @@
   ],
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./src/index",
+      "import": "./build/index.js",
       "default": "./build/index.es.js"
     },
-    "./openapi": {
-      "import": {
-        "types": "./src/openapi.ts",
-        "default": "./src/openapi.ts"
-      },
-      "require": {
-        "types": "./src/openapi.ts",
-        "default": "./build/openapi.es.js"
-      },
-      "types": "./src/openapi.ts",
-      "default": "./build/openapi.es.js"
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./build/*.js",
+      "default": "./build/*.es.js"
     }
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",
