@@ -17,9 +17,14 @@
   "type": "module",
   "source": "./src/index.ts",
   "main": "./build/index.es.js",
+  "browser": "./build/index.es.js",
+  "module": "./build/index.es.js",
+  "jsnext:main": "./build/index.es.js",
+  "jsnext": "./build/index.es.js",
   "types": "./build/index.d.ts",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build --ssr",
+    "build:ssr": "vite build --ssr",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
@@ -43,13 +48,28 @@
   "exports": {
     ".": {
       "types": "./src/index",
-      "import": "./build/index.js",
+      "import": "./build/index.es.js",
       "default": "./build/index.es.js"
+    },
+    "./openapi": {
+      "types": "./src/openapi.ts",
+      "import": "./ssr-build/openapi.js",
+      "default": "./ssr-build/openapi.js"
     },
     "./*": {
       "types": "./src/*.ts",
-      "import": "./build/*.js",
+      "import": "./build/*.es.js",
       "default": "./build/*.es.js"
+    },
+    "./ssr": {
+      "types": "./src/index",
+      "import": "./ssr-build/index.js",
+      "default": "./ssr-build/index.js"
+    },
+    "./ssr/*": {
+      "types": "./src/index",
+      "import": "./ssr-build/*.js",
+      "default": "./ssr-build/*.js"
     }
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",

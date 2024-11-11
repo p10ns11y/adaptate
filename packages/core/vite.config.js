@@ -5,6 +5,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'build',
+    sourcemap: true,
     lib: {
       entry: ['src/index.ts', 'src/mutate-model.ts'],
       formats: ['es'],

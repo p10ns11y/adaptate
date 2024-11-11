@@ -29,9 +29,11 @@ export function openAPISchemaToZod(
     return required.includes(propertyKey) ? zodSchema : zodSchema.optional();
     // Handle array type
   } else if (schema.type === 'array') {
-    const itemsSchema = schema.items
-      ? openAPISchemaToZod(schema.items, propertyKey, required)
-      : z.any();
+    let itemsSchema = z.any();
+    if (schema.items) {
+      // @ts-ignore
+      itemsSchema = openAPISchemaToZod(schema.items, propertyKey, required);
+    }
 
     return required.includes(propertyKey)
       ? z.array(itemsSchema)

@@ -24,13 +24,14 @@
     "README.md"
   ],
   "scripts": {
-    "test": "vitest",
+    "test": "vitest --coverage",
     "build": "turbo run build",
     "coveragebadge": "npx make-coverage-badge --output-path ./coverage-badge.svg"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.9.0",
+    "@vitest/coverage-v8": "^2.1.4",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "turbo": "^2.2.3",

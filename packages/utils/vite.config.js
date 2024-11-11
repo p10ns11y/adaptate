@@ -1,53 +1,37 @@
 // vite.config.js
-// import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 import { builtinModules } from 'module';
 
-// let yamlLoader = fileURLToPath(new URL('src/load-yaml.ts', import.meta.url));
+export default defineConfig(({ isSsrBuild }) => {
+  if (isSsrBuild) {
+    console.log('Building for SSR');
 
-// import { nodeResolve } from '@rollup/plugin-node-resolve';
-// import commonjs from '@rollup/plugin-commonjs';
+    return {
+      build: {
+        target: 'esnext',
+        ssr: 'src/index.ts',
+        ssrManifest: true,
+        outDir: 'ssr-build',
+        sourcemap: true,
+        rollupOptions: {
+          input: ['src/index.ts', 'src/openapi.ts'],
+          external: ['zod', ...builtinModules],
+        },
+      },
+    };
+  }
 
-export default defineConfig({
-  // plugins: [
-  //   nodeResolve({
-  //     // browser: true,
-  //     preferBuiltins: true,
-  //   }),
-  //   commonjs({
-  //     preferBuiltins: true,
-  //     // browser: true,
-  //   }),
-  // ],
-  // plugins: [
-  //   nodeResolve({
-  //     preferBuiltins: true,
-  //     browser: false,
-  //   }),
-  //   commonjs(),
-  // ],
-  // resolve: {
-  //   preferBuiltins: true,
-  //   browser: false,
-  // },
-  build: {
-    target: 'esnext',
-    ssr: true,
-    outDir: 'build',
-    // minify: false,
-    lib: {
-      entry: ['src/index.ts', 'src/openapi.ts'],
-      formats: ['es'],
-      fileName: (format, entryName) => `${entryName}.${format}.js`,
-      types: 'src/index.d.ts',
+  return {
+    build: {
+      target: 'esnext',
+      outDir: 'build',
+      lib: {
+        entry: ['src/index.ts', 'src/openapi.ts'],
+        formats: ['es'],
+        fileName: (format, entryName) => `${entryName}.${format}.js`,
+        types: 'src/index.d.ts',
+      },
     },
-    rollupOptions: {
-      external: ['zod', ...builtinModules],
-    },
-  },
-  // external: [/load\-yaml/],
-  // optimizeDeps: {
-  //   include: ['@apidevtools/swagger-parser', 'js-yaml'],
-  // },
+  };
 });
