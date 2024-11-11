@@ -15,10 +15,19 @@ Spec parser that takes care of the usage of `$ref`.
 ```ts
 import { getDereferencedOpenAPIDocument } from '@adaptate/utils';
 
-let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument(
-  import.meta.url,
-  '../fixtures/base-schema.yml'
-);
+// from local disk
+let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+  environment: 'server',
+  callSiteURL: import.meta.url,
+  relativePathToSpecFile: '../fixtures/base-schema.yml',
+});
+
+// or from web
+
+let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+  environment: 'browser',
+  webURL: 'https://api.apis.guru/v2/specs/googleapis.com/books/v1/openapi.yaml',
+});
 
 for (let [name, schema] of Object.entries(
   dereferencedOpenAPIDocument.components.schemas
