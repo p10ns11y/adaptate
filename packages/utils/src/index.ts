@@ -1,10 +1,12 @@
 export {
   getDereferencedOpenAPIDocument,
   // Features such as max, min, minLength, maxLength, pattern are missing
-  openAPISchemaToZod as simple_OpenAPISchemaToZod,
-  zodToOpenAPISchema as simple_ZodToOpenAPISchema,
-  openAPISchemaToZod as partial_OpenAPISchemaToZod,
-  zodToOpenAPISchema as partial_ZodToOpenAPISchema,
-  openAPISchemaToZod as incomplete_OpenAPISchemaToZod,
-  zodToOpenAPISchema as incomplete_ZodToOpenAPISchema,
+  // Check: https://github.com/StefanTerdell/json-schema-to-zod
+  // And zod-to-json-schema
+  openAPISchemaToZod as simple_openAPISchemaToZod,
+  openAPISchemaToZod as incomplete_openAPISchemaToZod,
+  openAPISchemaToZod as partial_openAPISchemaToZod,
+  zodToOpenAPISchema as simple_zodToOpenAPISchema,
+  zodToOpenAPISchema as incomplete_zodToOpenAPISchema,
+  zodToOpenAPISchema as partial_zodToOpenAPISchema,
 } from './openapi';

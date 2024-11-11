@@ -1,4 +1,7 @@
+import { describe, it, expect } from 'vitest';
+
 import { z } from 'zod';
+
 import {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
@@ -82,7 +85,7 @@ describe('makeSchemaRequired', () => {
 
     expect(() => transformedSchema.parse(invalidDataMissingName))
       .toThrowErrorMatchingInlineSnapshot(`
-        "[
+        [ZodError: [
           {
             "code": "invalid_type",
             "expected": "string",
@@ -105,7 +108,7 @@ describe('makeSchemaRequired', () => {
             ],
             "message": "Required"
           }
-        ]"
+        ]]
       `);
 
     // Re transforming the schema with different config
@@ -129,7 +132,7 @@ describe('makeSchemaRequired', () => {
     expect(() => baseSchema.parse(invalidDataItems)).toThrow();
     expect(() => transformedSchema.parse(invalidDataItems))
       .toThrowErrorMatchingInlineSnapshot(`
-        "[
+        [ZodError: [
           {
             "code": "invalid_type",
             "expected": "string",
@@ -152,7 +155,7 @@ describe('makeSchemaRequired', () => {
             ],
             "message": "Expected array, received string"
           }
-        ]"
+        ]]
       `);
 
     // TODO: Update code after evaluating the case of list of objects at top level
@@ -214,6 +217,22 @@ describe('makeSchemaRequired', () => {
       // @ts-ignore
       dereferencedOpenAPIDocument['components']['schemas']['Category']
     );
+
+    try {
+      // Intentionally not mocking the fetch call
+      let dereferencedOpenAPIDocumentFromWeb =
+        await getDereferencedOpenAPIDocument(
+          'https://raw.githubusercontent.com/p10ns11y/adaptate/refs/heads/main/packages/core/src/fixtures/base-schema.yml',
+          '',
+          'browser'
+        );
+
+      expect(dereferencedOpenAPIDocumentFromWeb).toEqual(
+        dereferencedOpenAPIDocument
+      );
+    } catch (e) {
+      console.log('Network failure or', (e as any)?.message);
+    }
 
     let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
 
@@ -315,7 +334,7 @@ describe('makeSchemaRequired', () => {
     expect(() =>
       makeSchemaRequired(invalidSchema, config)
     ).toThrowErrorMatchingInlineSnapshot(
-      `"The given schema must be a Zod object."`
+      `[Error: The given schema must be a Zod object.]`
     );
   });
 

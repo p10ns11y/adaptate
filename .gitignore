@@ -3,6 +3,8 @@
 
 build
 
+ssr-build
+
 # Logs
 logs
 *.log

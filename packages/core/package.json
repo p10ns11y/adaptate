@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/core",
-  "version": "0.0.10-rc",
+  "version": "0.1.0",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -38,9 +38,9 @@
     "README.md"
   ],
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./build/index.es.js"
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.es.js"
     }
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",
