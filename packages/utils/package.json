@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/utils",
-  "version": "0.1.0-alpha",
+  "version": "0.1.0-alpha.1",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -41,6 +41,7 @@
   },
   "files": [
     "build",
+    "ssr-build",
     "package.json",
     "README.md"
   ],
