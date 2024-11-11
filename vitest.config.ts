@@ -12,7 +12,6 @@ export default defineConfig({
         'build',
         'test',
         'packages/**/*.test.ts',
-        'packages/core/src/mutate-model.ts',
         // export only no source code
         'packages/utils/src/index.ts',
       ],

@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'build',
     sourcemap: true,
     lib: {
-      entry: ['src/index.ts', 'src/mutate-model.ts'],
+      entry: ['src/index.ts'],
       formats: ['es'],
       fileName: (format, entryName) => `${entryName}.${format}.js`,
       types: 'src/index.d.ts',
