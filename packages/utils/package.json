@@ -29,12 +29,12 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "js-yaml": "^4.1.0",
-    "zod": "^3.23.8"
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "zod": "^3.23.8"
   },
   "peerDependencies": {
     "zod": "^3.23.8"

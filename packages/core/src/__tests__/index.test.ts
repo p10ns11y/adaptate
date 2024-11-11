@@ -209,10 +209,11 @@ describe('makeSchemaRequired', () => {
 
     expect(() => anotherTransformedSchema.parse(anotherInValidData)).toThrow();
 
-    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument(
-      import.meta.url,
-      '../fixtures/base-schema.yml'
-    );
+    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+      environment: 'server',
+      callSiteURL: import.meta.url,
+      relativePathToSpecFile: '../fixtures/base-schema.yml',
+    });
     let dataZodSchema = openAPISchemaToZod(
       // @ts-ignore
       dereferencedOpenAPIDocument['components']['schemas']['Category']
@@ -221,11 +222,11 @@ describe('makeSchemaRequired', () => {
     try {
       // Intentionally not mocking the fetch call
       let dereferencedOpenAPIDocumentFromWeb =
-        await getDereferencedOpenAPIDocument(
-          'https://raw.githubusercontent.com/p10ns11y/adaptate/refs/heads/main/packages/core/src/fixtures/base-schema.yml',
-          '',
-          'browser'
-        );
+        await getDereferencedOpenAPIDocument({
+          environment: 'browser',
+          webURL:
+            'https://raw.githubusercontent.com/p10ns11y/adaptate/refs/heads/main/packages/core/src/fixtures/base-schema.yml',
+        });
 
       expect(dereferencedOpenAPIDocumentFromWeb).toEqual(
         dereferencedOpenAPIDocument

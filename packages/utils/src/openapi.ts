@@ -80,9 +80,8 @@ export function zodToOpenAPISchema(schema: ZodTypeAny): any {
   return {};
 }
 
-async function fetchYamlContent(fileURL: string, relativePath: string) {
-  let fileURLPath = fileURL + relativePath;
-  let response = await globalThis.fetch(fileURLPath, {
+export async function fetchYamlContent(webURL: string) {
+  let response = await globalThis.fetch(webURL, {
     headers: {
       'Content-Type': 'text/yaml',
     },
@@ -92,26 +91,40 @@ async function fetchYamlContent(fileURL: string, relativePath: string) {
   return openapiDocument;
 }
 
+export type ServerOpenAPISpecParams = {
+  environment: 'server';
+  callSiteURL: string;
+  relativePathToSpecFile: string;
+};
+
+export type BrowserOpenAPISpecParams = {
+  environment: 'browser';
+  webURL: string;
+};
+
+export type OpenAPISpecParams =
+  | ServerOpenAPISpecParams
+  | BrowserOpenAPISpecParams;
 export async function getDereferencedOpenAPIDocument(
-  fileURL: string,
-  relativePath: string = '',
-  environment: 'server' | 'browser' = 'server'
+  params: OpenAPISpecParams
 ) {
   let openapiDocument = JSON.stringify({});
 
-  let isNode = globalThis.process?.versions?.node || environment === 'server';
-  let isBrowser = globalThis?.window?.document || environment === 'browser';
+  let isNodeEnvDetected = globalThis.process?.versions?.node;
+
+  // let isBrowserIntended = params.environment === 'browser';
+  let isBrowserDetected = globalThis?.window?.document;
 
   try {
-    if (isBrowser) {
-      openapiDocument = (await fetchYamlContent(
-        fileURL,
-        relativePath
-      )) as string;
-    } else if (isNode) {
+    if (params.environment === 'browser' && isBrowserDetected) {
+      openapiDocument = (await fetchYamlContent(params.webURL)) as string;
+    } else if (params.environment === 'server' && isNodeEnvDetected) {
       let { getYamlContent } = await import('./load-yaml.ts');
 
-      openapiDocument = await getYamlContent(fileURL, relativePath);
+      openapiDocument = await getYamlContent(
+        params.callSiteURL,
+        params.relativePathToSpecFile
+      );
     }
     // https://github.com/APIDevTools/json-schema-reader/blob/main/src/index.ts#L21
     // let SwaggerParser = await import('@apidevtools/swagger-parser');

@@ -26,11 +26,18 @@ export default defineConfig(({ isSsrBuild }) => {
     build: {
       target: 'esnext',
       outDir: 'build',
+      minify: 'terser',
+      terserOptions: {
+        keep_classnames: true,
+      },
       lib: {
-        entry: ['src/index.ts', 'src/openapi.ts'],
+        entry: ['src/index.ts'],
         formats: ['es'],
         fileName: (format, entryName) => `${entryName}.${format}.js`,
         types: 'src/index.d.ts',
+      },
+      rollupOptions: {
+        external: ['zod', ...builtinModules],
       },
     },
   };

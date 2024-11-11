@@ -119,10 +119,11 @@ describe('openAPISchemaToZod', () => {
   });
 
   it('should convert OpenAPI schema with $ref to another component using openapi-spec-parser', async () => {
-    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument(
-      import.meta.url,
-      '../fixtures/base-schema.yml'
-    );
+    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+      environment: 'server',
+      callSiteURL: import.meta.url,
+      relativePathToSpecFile: '../fixtures/base-schema.yml',
+    });
     let zodSchema = openAPISchemaToZod(
       // @ts-ignore
       dereferencedOpenAPIDocument.components.schemas.Category
@@ -194,10 +195,11 @@ describe('zodToOpenAPISchema', () => {
 
 describe('getDereferencedOpenAPIDocument', () => {
   it('should return dereferencedOpenAPIDocument from OpenAPI yml spec file', async () => {
-    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument(
-      import.meta.url,
-      '../fixtures/base-schema.yml'
-    );
+    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+      environment: 'server',
+      callSiteURL: import.meta.url,
+      relativePathToSpecFile: '../fixtures/base-schema.yml',
+    });
 
     expect(dereferencedOpenAPIDocument).toMatchInlineSnapshot(`
       {
@@ -320,7 +322,11 @@ describe('getDereferencedOpenAPIDocument', () => {
     `);
 
     await expect(() =>
-      getDereferencedOpenAPIDocument(import.meta.url, '../fixtures/unknown.yml')
+      getDereferencedOpenAPIDocument({
+        environment: 'server',
+        callSiteURL: import.meta.url,
+        relativePathToSpecFile: '../fixtures/unknown.yml',
+      })
     ).rejects.toThrowErrorMatchingInlineSnapshot(
       `[Error: Error reading OpenAPI document: ENOENT: no such file or directory, open '/Users/peram/code/adaptate/packages/utils/src/fixtures/unknown.yml']`
     );
