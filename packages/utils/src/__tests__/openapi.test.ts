@@ -120,7 +120,7 @@ describe('openAPISchemaToZod', () => {
 
   it('should convert OpenAPI schema with $ref to another component using openapi-spec-parser', async () => {
     let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-      environment: 'server',
+      location: 'filesystem',
       callSiteURL: import.meta.url,
       relativePathToSpecFile: '../fixtures/base-schema.yml',
     });
@@ -194,9 +194,9 @@ describe('zodToOpenAPISchema', () => {
 });
 
 describe('getDereferencedOpenAPIDocument', () => {
-  it('should return dereferencedOpenAPIDocument from OpenAPI yml spec file', async () => {
+  it('should return dereferencedOpenAPIDocument from OpenAPI yml spec file from filesystem', async () => {
     let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-      environment: 'server',
+      location: 'filesystem',
       callSiteURL: import.meta.url,
       relativePathToSpecFile: '../fixtures/base-schema.yml',
     });
@@ -323,12 +323,62 @@ describe('getDereferencedOpenAPIDocument', () => {
 
     await expect(() =>
       getDereferencedOpenAPIDocument({
-        environment: 'server',
+        location: 'filesystem',
         callSiteURL: import.meta.url,
         relativePathToSpecFile: '../fixtures/unknown.yml',
       })
-    ).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Error reading OpenAPI document: ENOENT: no such file or directory, open '/Users/peram/code/adaptate/packages/utils/src/fixtures/unknown.yml']`
-    );
+    ).rejects.toThrow(/no such file or directory/i);
+  });
+
+  it('should fetch and parse spec file form web', async () => {
+    try {
+      // Intentionally not mocking the fetch call
+      let dereferencedOpenAPIDocumentFromWeb =
+        await getDereferencedOpenAPIDocument({
+          location: 'web',
+          webURL:
+            'https://api.apis.guru/v2/specs/googleapis.com/books/v1/openapi.yaml',
+        });
+
+      // @ts-ignore
+      expect(dereferencedOpenAPIDocumentFromWeb.info).toMatchInlineSnapshot(`
+        {
+          "contact": {
+            "name": "Google",
+            "url": "https://google.com",
+            "x-twitter": "youtube",
+          },
+          "description": "The Google Books API allows clients to access the Google Books repository.",
+          "license": {
+            "name": "Creative Commons Attribution 3.0",
+            "url": "http://creativecommons.org/licenses/by/3.0/",
+          },
+          "termsOfService": "https://developers.google.com/terms/",
+          "title": "Books API",
+          "version": "v1",
+          "x-apiClientRegistration": {
+            "url": "https://console.developers.google.com",
+          },
+          "x-apisguru-categories": [
+            "analytics",
+            "media",
+          ],
+          "x-logo": {
+            "url": "https://api.apis.guru/v2/cache/logo/https_www.google.com_images_branding_googlelogo_2x_googlelogo_color_272x92dp.png",
+          },
+          "x-origin": [
+            {
+              "format": "google",
+              "url": "https://books.googleapis.com/$discovery/rest?version=v1",
+              "version": "v1",
+            },
+          ],
+          "x-providerName": "googleapis.com",
+          "x-serviceName": "books",
+        }
+      `);
+    } catch (e) {
+      console.log('Network failure or', (e as any)?.message);
+    }
   });
 });

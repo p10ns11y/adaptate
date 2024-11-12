@@ -17,7 +17,7 @@ import { getDereferencedOpenAPIDocument } from '@adaptate/utils';
 
 // from local disk
 let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-  environment: 'server',
+  location: 'filesystem',
   callSiteURL: import.meta.url,
   relativePathToSpecFile: '../fixtures/base-schema.yml',
 });
@@ -25,7 +25,7 @@ let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
 // or from web
 
 let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-  environment: 'browser',
+  location: 'web',
   webURL: 'https://api.apis.guru/v2/specs/googleapis.com/books/v1/openapi.yaml',
 });
 

@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 
 import { z } from 'zod';
 
+// NOTE to Self: In test it better import directly from source
+// It is easy to forget building the dependencies
+// Introduce special import map `#adaptate/utils/openapi`
 import {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
@@ -56,7 +59,6 @@ describe('makeSchemaRequired', () => {
         ],
       },
       type: 'electronics',
-      warrantyPeriod: '2 years',
     };
 
     let invalidDataMissingName = {
@@ -113,13 +115,24 @@ describe('makeSchemaRequired', () => {
 
     // Re transforming the schema with different config
     // Here making warrantyPeriod required
-    expect(() =>
-      makeSchemaRequired(transformedSchema, {
-        category: {
-          warrantyPeriod: true,
-        },
-      }).parse(invalidDataMissingName)
-    ).toThrow();
+    let reTransformedSchema = makeSchemaRequired(transformedSchema, {
+      warrantyPeriod: true,
+    });
+
+    expect(() => reTransformedSchema.parse(validData))
+      .toThrowErrorMatchingInlineSnapshot(`
+      [ZodError: [
+        {
+          "code": "invalid_type",
+          "expected": "string",
+          "received": "undefined",
+          "path": [
+            "warrantyPeriod"
+          ],
+          "message": "Required"
+        }
+      ]]
+    `);
 
     expect(() => baseSchema.parse({})).not.toThrow();
     expect(() =>
@@ -158,7 +171,6 @@ describe('makeSchemaRequired', () => {
         ]]
       `);
 
-    // TODO: Update code after evaluating the case of list of objects at top level
     let anotherValidData = [
       {
         category: {
@@ -210,30 +222,15 @@ describe('makeSchemaRequired', () => {
     expect(() => anotherTransformedSchema.parse(anotherInValidData)).toThrow();
 
     let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-      environment: 'server',
+      location: 'filesystem',
       callSiteURL: import.meta.url,
       relativePathToSpecFile: '../fixtures/base-schema.yml',
     });
+
     let dataZodSchema = openAPISchemaToZod(
       // @ts-ignore
       dereferencedOpenAPIDocument['components']['schemas']['Category']
     );
-
-    try {
-      // Intentionally not mocking the fetch call
-      let dereferencedOpenAPIDocumentFromWeb =
-        await getDereferencedOpenAPIDocument({
-          environment: 'browser',
-          webURL:
-            'https://raw.githubusercontent.com/p10ns11y/adaptate/refs/heads/main/packages/core/src/fixtures/base-schema.yml',
-        });
-
-      expect(dereferencedOpenAPIDocumentFromWeb).toEqual(
-        dereferencedOpenAPIDocument
-      );
-    } catch (e) {
-      console.log('Network failure or', (e as any)?.message);
-    }
 
     let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
 

@@ -85,6 +85,11 @@ export async function fetchYamlContent(webURL: string) {
     headers: {
       'Content-Type': 'text/yaml',
     },
+    // Mostly works in server runtime without CORS
+    // When calling from another domain in client
+    // Make sure to configure for CORS and the resource
+    // Also need to allow access
+    mode: 'cors',
   });
   let openapiDocument = yaml.load(await response.text());
 
@@ -92,13 +97,13 @@ export async function fetchYamlContent(webURL: string) {
 }
 
 export type ServerOpenAPISpecParams = {
-  environment: 'server';
+  location: 'filesystem';
   callSiteURL: string;
   relativePathToSpecFile: string;
 };
 
 export type BrowserOpenAPISpecParams = {
-  environment: 'browser';
+  location: 'web';
   webURL: string;
 };
 
@@ -112,13 +117,10 @@ export async function getDereferencedOpenAPIDocument(
 
   let isNodeEnvDetected = globalThis.process?.versions?.node;
 
-  // let isBrowserIntended = params.environment === 'browser';
-  let isBrowserDetected = globalThis?.window?.document;
-
   try {
-    if (params.environment === 'browser' && isBrowserDetected) {
+    if (params.location === 'web') {
       openapiDocument = (await fetchYamlContent(params.webURL)) as string;
-    } else if (params.environment === 'server' && isNodeEnvDetected) {
+    } else if (params.location === 'filesystem' || isNodeEnvDetected) {
       let { getYamlContent } = await import('./load-yaml.ts');
 
       openapiDocument = await getYamlContent(
