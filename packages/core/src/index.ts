@@ -73,6 +73,9 @@ export function transformSchema(
           if (partialConfig[key] === true) {
             // @ts-ignore
             return [key, unwrappedValue];
+          } else if (partialConfig[key] === false) {
+            // @ts-ignore
+            return [key, unwrappedValue.optional()];
           } else if (typeof partialConfig[key] === 'object') {
             // @ts-ignore
             return [key, extendSchema(value, partialConfig[key])];

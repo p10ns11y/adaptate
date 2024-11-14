@@ -61,7 +61,19 @@ describe('transformSchema', () => {
       type: 'electronics',
     };
 
-    let invalidDataMissingName = {
+    let invalidDataMissingCategoryName = {
+      category: {
+        subcategories: [
+          {
+            name: 'Phones',
+            items: ['iPhone', 'Samsung Galaxy', 'Google Pixel'],
+          },
+        ],
+      },
+      type: 'electronics',
+    };
+
+    let invalidDataMissingSubCategoryName = {
       category: {
         subcategories: [{ items: ['iPhone', 'Samsung Galaxy'] }],
       },
@@ -83,9 +95,11 @@ describe('transformSchema', () => {
 
     expect(() => transformedSchema.parse(validData)).not.toThrow();
 
-    expect(() => baseSchema.parse(invalidDataMissingName)).not.toThrow();
+    expect(() =>
+      baseSchema.parse(invalidDataMissingSubCategoryName)
+    ).not.toThrow();
 
-    expect(() => transformedSchema.parse(invalidDataMissingName))
+    expect(() => transformedSchema.parse(invalidDataMissingSubCategoryName))
       .toThrowErrorMatchingInlineSnapshot(`
         [ZodError: [
           {
@@ -133,6 +147,19 @@ describe('transformSchema', () => {
         }
       ]]
     `);
+
+    let reReTransformedSchema = transformSchema(reTransformedSchema, {
+      category: {
+        name: false,
+      },
+    });
+
+    expect(() =>
+      reReTransformedSchema.parse({
+        ...invalidDataMissingCategoryName,
+        warrantyPeriod: '2 years',
+      })
+    ).not.toThrow();
 
     expect(() => baseSchema.parse({})).not.toThrow();
     expect(() =>
@@ -239,7 +266,9 @@ describe('transformSchema', () => {
     ).not.toThrow();
 
     expect(() =>
-      yetAnotherTransformedSchema.parse(invalidDataMissingName['category'])
+      yetAnotherTransformedSchema.parse(
+        invalidDataMissingSubCategoryName['category']
+      )
     ).toThrow();
 
     expect(() =>
