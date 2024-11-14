@@ -26,7 +26,7 @@ export type Config = Record<string, any>;
  *      city: true
  *   }
  * };
- * const updatedSchema = makeSchemaRequired(schema, config);
+ * const updatedSchema = transformSchema(schema, config);
  * const validData = {
  *   name: 'John Doe',
  *   address: { city: 'New York' },
@@ -42,10 +42,10 @@ export type Config = Record<string, any>;
  * schema.parse(invalidDataMissingName); // Should fail due to missing 'name'
  * schema.parse(invalidDataMissingCity); // Should fail due to missing 'address.city'
  * @category Helper
- * @module makeSchemaRequired
+ * @module transformSchema
  * */
 // @ts-ignore
-export function makeSchemaRequired(
+export function transformSchema(
   schema: ZodTypeAny,
   config: Config
 ): ZodTypeAny {
@@ -104,7 +104,7 @@ export function makeSchemaRequired(
 
   if (schema instanceof ZodArray && config['*']) {
     // @ts-ignore
-    updatedSchema = makeSchemaRequired(schema.element, config['*']);
+    updatedSchema = transformSchema(schema.element, config['*']);
     updatedSchema = z.array(schema.element.merge(updatedSchema));
   } else if (schema instanceof ZodObject) {
     // @ts-ignore

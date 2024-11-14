@@ -70,11 +70,11 @@ Imagine a hypothetical page component
 
 ## Make Required Schema Based on Configuration
 
-You can make a Zod schema required based on a configuration (components need) using the makeSchemaRequired function.
+You can make a Zod schema required based on a configuration (components need) using the transformSchema function.
 
 ```ts
 import { z } from 'zod';
-import { makeSchemaRequired } from '@adaptate/core';
+import { transformSchema } from '@adaptate/core';
 
 const schema = z.object({
   name: z.string().optional(),
@@ -95,7 +95,7 @@ const config = {
   },
 };
 
-const updatedSchema = makeSchemaRequired(schema, config);
+const updatedSchema = transformSchema(schema, config);
 
 updatedSchema.parse({
   name: 'Davin',

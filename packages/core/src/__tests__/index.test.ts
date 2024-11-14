@@ -9,9 +9,9 @@ import {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
 } from '@adaptate/utils/openapi';
-import { makeSchemaRequired, applyConditionalRequirements } from '../';
+import { transformSchema, applyConditionalRequirements } from '../';
 
-describe('makeSchemaRequired', () => {
+describe('transformSchema', () => {
   it('should make properties required based on the config', async () => {
     let baseSchema = z.object({
       category: z
@@ -46,7 +46,7 @@ describe('makeSchemaRequired', () => {
       type: true,
     };
 
-    let transformedSchema = makeSchemaRequired(baseSchema, config);
+    let transformedSchema = transformSchema(baseSchema, config);
 
     let validData = {
       category: {
@@ -115,7 +115,7 @@ describe('makeSchemaRequired', () => {
 
     // Re transforming the schema with different config
     // Here making warrantyPeriod required
-    let reTransformedSchema = makeSchemaRequired(transformedSchema, {
+    let reTransformedSchema = transformSchema(transformedSchema, {
       warrantyPeriod: true,
     });
 
@@ -210,7 +210,7 @@ describe('makeSchemaRequired', () => {
       },
     };
 
-    let anotherTransformedSchema = makeSchemaRequired(
+    let anotherTransformedSchema = transformSchema(
       z.array(baseSchema),
       anotherConfig
     );
@@ -232,7 +232,7 @@ describe('makeSchemaRequired', () => {
       dereferencedOpenAPIDocument['components']['schemas']['Category']
     );
 
-    let yetAnotherTransformedSchema = makeSchemaRequired(dataZodSchema, config);
+    let yetAnotherTransformedSchema = transformSchema(dataZodSchema, config);
 
     expect(() =>
       yetAnotherTransformedSchema.parse(validData['category'])
@@ -261,7 +261,7 @@ describe('makeSchemaRequired', () => {
       },
     };
 
-    const transformedSchema = makeSchemaRequired(baseSchema, config);
+    const transformedSchema = transformSchema(baseSchema, config);
 
     const validData = [{ name: 'John', age: 30 }];
     const invalidData = [{ age: 30 }];
@@ -299,7 +299,7 @@ describe('makeSchemaRequired', () => {
       },
     };
 
-    const transformedSchema = makeSchemaRequired(baseSchema, config);
+    const transformedSchema = transformSchema(baseSchema, config);
 
     const validData = {
       category: {
@@ -330,7 +330,7 @@ describe('makeSchemaRequired', () => {
     const config = {};
 
     expect(() =>
-      makeSchemaRequired(invalidSchema, config)
+      transformSchema(invalidSchema, config)
     ).toThrowErrorMatchingInlineSnapshot(
       `[Error: The given schema must be a Zod object.]`
     );
@@ -344,7 +344,7 @@ describe('makeSchemaRequired', () => {
     // @ts-ignore
     const config = [];
     // @ts-ignore
-    const transformedSchema = makeSchemaRequired(baseSchema, config);
+    const transformedSchema = transformSchema(baseSchema, config);
 
     expect(transformedSchema).toBeInstanceOf(z.ZodObject);
     // @ts-ignore
