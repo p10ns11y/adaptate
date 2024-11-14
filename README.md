@@ -87,11 +87,11 @@ Imagine a hypothetical page component
 
 ## Make Required Schema Based on Configuration
 
-You can make a Zod schema required based on a configuration (components need) using the makeSchemaRequired function.
+You can make a Zod schema required based on a configuration (components need) using the transformSchema function.
 
 ```ts
 import { z } from 'zod';
-import { makeSchemaRequired } from 'adaptate';
+import { transformSchema } from 'adaptate';
 
 const schema = z.object({
   name: z.string().optional(),
@@ -112,7 +112,7 @@ const config = {
   },
 };
 
-const updatedSchema = makeSchemaRequired(schema, config);
+const updatedSchema = transformSchema(schema, config);
 
 updatedSchema.parse({
   name: 'Davin',
@@ -194,7 +194,7 @@ I have attempted to recreate what I have done at work with the help of **ChatGPT
 ```diff
  import { z, ZodObject, ZodArray, ZodTypeAny } from 'zod';
 
--export function makeSchemaRequired(schema: ZodTypeAny, config: any, parentData: any = {}) {
+-export function transformSchema(schema: ZodTypeAny, config: any, parentData: any = {}) {
 -  const schemaWithConditionalRequirements = applyConditionalRequirements(schema, config, parentData);
 -
 -  if (schemaWithConditionalRequirements instanceof ZodObject && typeof config === 'object' && !Array.isArray(config)) {
@@ -204,7 +204,7 @@ I have attempted to recreate what I have done at work with the help of **ChatGPT
 -        if (config[key] === true) {
 -          return [key, value.required()];
 -        } else if (typeof config[key] === 'object') {
--          return [key, makeSchemaRequired(value, config[key], parentData)];
+-          return [key, transformSchema(value, config[key], parentData)];
 -        }
 -        return [key, value];
 -      })
@@ -212,10 +212,10 @@ I have attempted to recreate what I have done at work with the help of **ChatGPT
 -    return z.object(newShape).required();
 -  } else if (schemaWithConditionalRequirements instanceof ZodArray && config['*']) {
 -    const elementSchema = schemaWithConditionalRequirements.element;
--    return z.array(makeSchemaRequired(elementSchema, config['*'], parentData));
+-    return z.array(transformSchema(elementSchema, config['*'], parentData));
 -  }
 -  return schemaWithConditionalRequirements;
-+export function makeSchemaRequired(
++export function transformSchema(
 +  schema: ZodTypeAny,
 +  config: Config
 +): ZodTypeAny {
@@ -274,7 +274,7 @@ I have attempted to recreate what I have done at work with the help of **ChatGPT
 +
 +  if (schema instanceof ZodArray && config['*']) {
 +    // @ts-ignore
-+    updatedSchema = makeSchemaRequired(schema.element, config['*']);
++    updatedSchema = transformSchema(schema.element, config['*']);
 +    updatedSchema = z.array(schema.element.merge(updatedSchema));
 +  } else if (schema instanceof ZodObject) {
 +    // @ts-ignore
