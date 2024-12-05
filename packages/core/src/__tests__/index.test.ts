@@ -7,7 +7,7 @@ import {
   openAPISchemaToZod,
 } from '#utils/openapi';
 
-import { transformSchema, applyConditionalRequirements } from '../';
+import { transformSchema, makeConditionalSchemaTransformer } from '../';
 
 describe('transformSchema', () => {
   it('should make properties required based on the config', async () => {
@@ -379,8 +379,7 @@ describe('transformSchema', () => {
   });
 });
 
-// Rethink
-describe('applyConditionalRequirements', () => {
+describe('makeConditionalSchemaTransformer', () => {
   it('should apply conditional requirements based on the config', () => {
     const schema = z.object({
       firstName: z.string().optional(),
@@ -402,15 +401,33 @@ describe('applyConditionalRequirements', () => {
       secondName: (data: any) => !!data.firstName,
     };
 
-    const data = { age: 20 };
-    const updatedSchema = applyConditionalRequirements(schema, config, data);
+    let firstNameRequiredData = {
+      firstName: 'John',
+      age: 20,
+    };
+    let secondNameRequiredData = {
+      firstName: 'Peram',
+    };
 
     expect(() =>
-      updatedSchema.parse({ firstName: 'John', age: 20 })
-    ).not.toThrow();
-    expect(() =>
-      updatedSchema.parse({ secondName: 'Wick', age: 20 })
+      makeConditionalSchemaTransformer({
+        ...firstNameRequiredData,
+        age: 10,
+      })(schema, config).run()
     ).toThrow();
+
+    expect(() =>
+      makeConditionalSchemaTransformer(secondNameRequiredData)(
+        schema,
+        config
+      ).run()
+    ).toThrow();
+    expect(() =>
+      makeConditionalSchemaTransformer({
+        ...secondNameRequiredData,
+        secondName: 'Sathyam',
+      })(schema, config).run()
+    ).not.toThrow();
   });
 
   it('should handle non-object schema', () => {
@@ -418,9 +435,9 @@ describe('applyConditionalRequirements', () => {
     const config = {};
     const data = {};
 
-    const result = applyConditionalRequirements(schema, config, data);
+    const result = makeConditionalSchemaTransformer(data)(schema, config);
 
-    expect(result).toBe(schema);
+    expect(result.schema).toBe(schema);
   });
 
   it('should handle non-object config', () => {
@@ -433,8 +450,8 @@ describe('applyConditionalRequirements', () => {
     const data = {};
 
     // @ts-ignore
-    const result = applyConditionalRequirements(schema, config, data);
+    const result = makeConditionalSchemaTransformer(data)(schema, config);
 
-    expect(result).toBe(schema);
+    expect(result.schema).toBe(schema);
   });
 });

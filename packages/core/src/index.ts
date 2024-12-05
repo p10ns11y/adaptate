@@ -121,35 +121,43 @@ export function transformSchema(
   return updatedSchema;
 }
 
-// TODO: Make the function either partial or hoc
-// Which returns a function that takes data later
-export function applyConditionalRequirements(
-  schema: ZodTypeAny,
-  config: any,
-  data: any
-) {
-  if (
-    schema instanceof ZodObject &&
-    typeof config === 'object' &&
-    !Array.isArray(config)
+export function makeConditionalSchemaTransformer(data: any) {
+  return function conditionalSchemaTransformer(
+    schema: ZodTypeAny,
+    config: any
   ) {
-    const shape = schema.shape;
-    const newShape = Object.fromEntries(
-      Object.entries(shape).map(([key, value]) => {
-        if (
-          config[key] &&
-          (config[key].requiredIf || typeof config[key] === 'function')
-        ) {
-          const condition = config[key].requiredIf ?? config[key];
-          if (typeof condition === 'function' && condition(data)) {
-            // @ts-ignore
-            return [key, value.unwrap()];
+    let transformer = {
+      run: () => schema.parse(data),
+      schema: schema,
+    };
+    if (
+      schema instanceof ZodObject &&
+      typeof config === 'object' &&
+      !Array.isArray(config)
+    ) {
+      const shape = schema.shape;
+      const newShape = Object.fromEntries(
+        Object.entries(shape).map(([key, value]) => {
+          if (
+            config[key] &&
+            (config[key].requiredIf || typeof config[key] === 'function')
+          ) {
+            const condition = config[key].requiredIf ?? config[key];
+            if (typeof condition === 'function' && condition(data)) {
+              // @ts-ignore
+              return [key, value.unwrap()];
+            }
           }
-        }
-        return [key, value];
-      })
-    );
-    return z.object(newShape);
-  }
-  return schema;
+          return [key, value];
+        })
+      );
+
+      let updatedSchema = z.object(newShape);
+
+      transformer.run = () => updatedSchema.parse(data);
+      transformer.schema = updatedSchema;
+    }
+
+    return transformer;
+  };
 }
