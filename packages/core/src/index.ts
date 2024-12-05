@@ -129,6 +129,7 @@ export function makeConditionalSchemaTransformer(data: any) {
     let transformer = {
       run: () => schema.parse(data),
       schema: schema,
+      staticConfig: {},
     };
     if (
       schema instanceof ZodObject &&
@@ -147,12 +148,18 @@ export function makeConditionalSchemaTransformer(data: any) {
               // @ts-ignore
               return [key, value.unwrap()];
             }
+          } else if (config[key]) {
+            // @ts-ignore
+            transformer.staticConfig[key] = config[key];
           }
           return [key, value];
         })
       );
 
-      let updatedSchema = z.object(newShape);
+      let updatedSchema = transformSchema(
+        z.object(newShape),
+        transformer.staticConfig
+      );
 
       transformer.run = () => updatedSchema.parse(data);
       transformer.schema = updatedSchema;

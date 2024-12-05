@@ -398,6 +398,7 @@ describe('makeConditionalSchemaTransformer', () => {
       firstName: {
         requiredIf: (data: any) => data.age > 18,
       },
+      age: true,
       secondName: (data: any) => !!data.firstName,
     };
 
@@ -414,17 +415,51 @@ describe('makeConditionalSchemaTransformer', () => {
         ...firstNameRequiredData,
         age: 10,
       })(schema, config).run()
-    ).toThrow();
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [ZodError: [
+        {
+          "code": "invalid_type",
+          "expected": "string",
+          "received": "undefined",
+          "path": [
+            "secondName"
+          ],
+          "message": "Required"
+        }
+      ]]
+    `);
 
     expect(() =>
       makeConditionalSchemaTransformer(secondNameRequiredData)(
         schema,
         config
       ).run()
-    ).toThrow();
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [ZodError: [
+        {
+          "code": "invalid_type",
+          "expected": "string",
+          "received": "undefined",
+          "path": [
+            "secondName"
+          ],
+          "message": "Required"
+        },
+        {
+          "code": "invalid_type",
+          "expected": "number",
+          "received": "undefined",
+          "path": [
+            "age"
+          ],
+          "message": "Required"
+        }
+      ]]
+    `);
     expect(() =>
       makeConditionalSchemaTransformer({
         ...secondNameRequiredData,
+        age: 37,
         secondName: 'Sathyam',
       })(schema, config).run()
     ).not.toThrow();
@@ -438,6 +473,105 @@ describe('makeConditionalSchemaTransformer', () => {
     const result = makeConditionalSchemaTransformer(data)(schema, config);
 
     expect(result.schema).toBe(schema);
+  });
+
+  it('should returns a result with updatedSchema, runner, staticConfig', () => {
+    const schema = z.object({
+      name: z.string().optional(),
+      age: z.number().optional(),
+      canBuyAlcohol: z.boolean().optional(),
+    });
+
+    const config = {
+      name: true,
+      canBuyAlcohol: {
+        requiredIf: (data: any) => data.age >= 18,
+      },
+    };
+    const data = {
+      name: 'Peram',
+      age: 37,
+    };
+
+    const result = makeConditionalSchemaTransformer(data)(schema, config);
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "run": [Function],
+        "schema": ZodObject {
+          "_cached": null,
+          "_def": {
+            "catchall": ZodNever {
+              "_def": {
+                "typeName": "ZodNever",
+              },
+              "and": [Function],
+              "array": [Function],
+              "brand": [Function],
+              "catch": [Function],
+              "default": [Function],
+              "describe": [Function],
+              "isNullable": [Function],
+              "isOptional": [Function],
+              "nullable": [Function],
+              "nullish": [Function],
+              "optional": [Function],
+              "or": [Function],
+              "parse": [Function],
+              "parseAsync": [Function],
+              "pipe": [Function],
+              "promise": [Function],
+              "readonly": [Function],
+              "refine": [Function],
+              "refinement": [Function],
+              "safeParse": [Function],
+              "safeParseAsync": [Function],
+              "spa": [Function],
+              "superRefine": [Function],
+              "transform": [Function],
+            },
+            "shape": [Function],
+            "typeName": "ZodObject",
+            "unknownKeys": "strip",
+          },
+          "and": [Function],
+          "array": [Function],
+          "augment": [Function],
+          "brand": [Function],
+          "catch": [Function],
+          "default": [Function],
+          "describe": [Function],
+          "isNullable": [Function],
+          "isOptional": [Function],
+          "nonstrict": [Function],
+          "nullable": [Function],
+          "nullish": [Function],
+          "optional": [Function],
+          "or": [Function],
+          "parse": [Function],
+          "parseAsync": [Function],
+          "pipe": [Function],
+          "promise": [Function],
+          "readonly": [Function],
+          "refine": [Function],
+          "refinement": [Function],
+          "safeParse": [Function],
+          "safeParseAsync": [Function],
+          "spa": [Function],
+          "superRefine": [Function],
+          "transform": [Function],
+        },
+        "staticConfig": {
+          "name": true,
+        },
+      }
+    `);
+
+    expect(result.staticConfig).toMatchInlineSnapshot(`
+      {
+        "name": true,
+      }
+    `);
   });
 
   it('should handle non-object config', () => {
