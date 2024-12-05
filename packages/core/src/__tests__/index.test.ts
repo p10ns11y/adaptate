@@ -2,13 +2,11 @@ import { describe, it, expect } from 'vitest';
 
 import { z } from 'zod';
 
-// NOTE to Self: In test it better import directly from source
-// It is easy to forget building the dependencies
-// Introduce special import map `#adaptate/utils/openapi`
 import {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
-} from '@adaptate/utils/openapi';
+} from '#utils/openapi';
+
 import { transformSchema, applyConditionalRequirements } from '../';
 
 describe('transformSchema', () => {

@@ -20,7 +20,8 @@
     "paths": {
       "@adaptate/core": ["./packages/core/src"],
       "@adaptate/utils": ["./packages/utils/src"],
-      "@adaptate/utils/*": ["./packages/utils/src/*"]
+      "@adaptate/utils/*": ["./packages/utils/src/*"],
+      "#utils/*": ["./packages/utils/src/*"]
     }
   },
   "include": ["packages", "packages/core/src/**/*.ts", "tests/**/*.ts"],

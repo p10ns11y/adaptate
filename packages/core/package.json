@@ -35,6 +35,9 @@
     "package.json",
     "README.md"
   ],
+  "imports": {
+    "#utils/*": "../utils/src/*"
+  },
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
