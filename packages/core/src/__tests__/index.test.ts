@@ -384,6 +384,7 @@ describe('makeConditionalSchemaTransformer', () => {
     const schema = z.object({
       firstName: z.string().optional(),
       secondName: z.string().optional(),
+      parentContactNumber: z.number().optional(),
       age: z.number().optional(),
       address: z
         .object({
@@ -395,42 +396,24 @@ describe('makeConditionalSchemaTransformer', () => {
     });
 
     const config = {
-      firstName: {
-        requiredIf: (data: any) => data.age > 18,
+      parentContactNumber: {
+        requiredIf: (data: any) => data.age < 18,
       },
       age: true,
       secondName: (data: any) => !!data.firstName,
     };
 
     let firstNameRequiredData = {
-      firstName: 'John',
-      age: 20,
+      firstName: 'Mario',
+      age: 17,
     };
     let secondNameRequiredData = {
       firstName: 'Peram',
+      age: 24,
     };
 
     expect(() =>
-      makeConditionalSchemaTransformer({
-        ...firstNameRequiredData,
-        age: 10,
-      })(schema, config).run()
-    ).toThrowErrorMatchingInlineSnapshot(`
-      [ZodError: [
-        {
-          "code": "invalid_type",
-          "expected": "string",
-          "received": "undefined",
-          "path": [
-            "secondName"
-          ],
-          "message": "Required"
-        }
-      ]]
-    `);
-
-    expect(() =>
-      makeConditionalSchemaTransformer(secondNameRequiredData)(
+      makeConditionalSchemaTransformer(firstNameRequiredData)(
         schema,
         config
       ).run()
@@ -450,7 +433,26 @@ describe('makeConditionalSchemaTransformer', () => {
           "expected": "number",
           "received": "undefined",
           "path": [
-            "age"
+            "parentContactNumber"
+          ],
+          "message": "Required"
+        }
+      ]]
+    `);
+
+    expect(() =>
+      makeConditionalSchemaTransformer(secondNameRequiredData)(
+        schema,
+        config
+      ).run()
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [ZodError: [
+        {
+          "code": "invalid_type",
+          "expected": "string",
+          "received": "undefined",
+          "path": [
+            "secondName"
           ],
           "message": "Required"
         }
