@@ -102,14 +102,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build
 
-      # === OIDC Trusted Publishing Fix ===
-      - name: Update npm to latest (required for OIDC)
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: npm install -g npm@latest
+      # ===Use npx instead of global install ===
 
       - name: Publish to npm (using npm CLI for OIDC + provenance)
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: npm publish --workspaces --provenance --access public
+        run: npx npm@latest publish --workspaces --provenance --access public
 
       - name: Commit and tag (manual only)
         if: github.event_name == 'workflow_dispatch'
