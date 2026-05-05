@@ -28,16 +28,14 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "js-yaml": "^4.1.0"
+    "@apidevtools/json-schema-ref-parser": "^15.3.5",
+    "js-yaml": "^4.1.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "vite": "^5.4.10",
-    "zod": "^3.23.8"
-  },
-  "peerDependencies": {
-    "zod": "^3.23.8"
+    "terser": "^5.46.2",
+    "vite": "^8.0.10",
+    "zod": "3.24.4"
   },
   "files": [
     "build",

@@ -531,6 +531,11 @@ describe('makeConditionalSchemaTransformer', () => {
               "spa": [Function],
               "superRefine": [Function],
               "transform": [Function],
+              "~standard": {
+                "validate": [Function],
+                "vendor": "zod",
+                "version": 1,
+              },
             },
             "shape": [Function],
             "typeName": "ZodObject",
@@ -562,6 +567,11 @@ describe('makeConditionalSchemaTransformer', () => {
           "spa": [Function],
           "superRefine": [Function],
           "transform": [Function],
+          "~standard": {
+            "validate": [Function],
+            "vendor": "zod",
+            "version": 1,
+          },
         },
         "staticConfig": {
           "name": true,
