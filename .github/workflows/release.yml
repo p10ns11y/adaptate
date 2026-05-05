@@ -1,41 +1,32 @@
 name: Release
 
 on:
-  # Auto-trigger when version changes in package.json on main
   push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
-
-  # Manual trigger with version bump
+    branches: [main]
+    paths: ['package.json']
   workflow_dispatch:
     inputs:
       bump:
         description: 'Version bump type'
         required: true
         type: choice
-        options:
-          - patch
-          - minor
-          - major
+        options: [patch, minor, major]
 
 jobs:
   release:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-      id-token: write          # Required for npm OIDC trusted publishing
+      id-token: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 2
 
-      - name: Check if version changed (auto-trigger)
+      - name: Check version changed (auto-trigger)
         id: check
         if: github.event_name == 'push'
         run: |
@@ -43,13 +34,11 @@ jobs:
           PREVIOUS=$(git show HEAD\~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           if [ "$CURRENT" != "$PREVIOUS" ]; then
             echo "publish=true" >> $GITHUB_OUTPUT
-            echo "Version changed: $PREVIOUS → $CURRENT"
           else
             echo "publish=false" >> $GITHUB_OUTPUT
-            echo "Version unchanged, skipping publish"
           fi
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         uses: actions/setup-node@v4
         with:
@@ -80,7 +69,6 @@ jobs:
             else console.log(major + '.' + minor + '.' + (patch+1));
           ")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          echo "Bumping to $NEW_VERSION"
 
           node -e "
             const fs = require('fs');
@@ -95,18 +83,25 @@ jobs:
 
       - name: Read version (auto-trigger)
         if: github.event_name == 'push' && steps.check.outputs.publish == 'true'
-        run: |
-          echo "NEW_VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_ENV
+        run: echo "NEW_VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_ENV
 
       - name: Build
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build
 
-      # ===Use npx instead of global install ===
-
-      - name: Publish to npm (using npm CLI for OIDC + provenance)
+      # === FINAL PUBLISH STEP (Fixed for pnpm + OIDC) ===
+      - name: Publish packages to npm (using latest npm)
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: npx npm@latest publish --workspaces --provenance --access public
+        run: |
+          echo "=== Publishing packages with OIDC ==="
+          
+          for dir in packages/core packages/utils; do
+            if [ -f "$dir/package.json" ]; then
+              echo ""
+              echo ">>> Publishing: $dir"
+              (cd "$dir" && npx npm@latest publish --provenance --access public)
+            fi
+          done
 
       - name: Commit and tag (manual only)
         if: github.event_name == 'workflow_dispatch'
