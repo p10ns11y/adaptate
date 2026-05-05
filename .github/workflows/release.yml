@@ -17,7 +17,7 @@ on:
           - rc
           - beta
           - alpha
-          - as-is          # option for rare cases
+          - as-is          # ← New option for rare cases
 
 jobs:
   release:
@@ -107,6 +107,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: |
           echo "=== Publishing workspace packages ==="
+          for dir in packages/core packages/utils; do
+            if [ -f "$dir/package.json" ]; then
+              echo ">>> Publishing: $dir"
+              (cd "$dir" && npx npm@latest publish --provenance --access public)
+            fi
+          done
 
           echo ""
           echo "=== Publishing root package (adaptate) ==="
