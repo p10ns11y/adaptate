@@ -36,6 +36,19 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - **Default branch:** `main`
 - Feature branches: `cursor/<role>-<short-slug>-<suffix>` for cloud agents
 
+## Skills (tool-agnostic SOPs)
+
+Operational guides for common tasks live in [`skills/`](skills/README.md). Any coding agent should check this directory when performing the relevant task:
+
+| Skill | When to use |
+|-------|-------------|
+| [`skills/add-feature.md`](skills/add-feature.md) | Implementing a new capability |
+| [`skills/fix-bug.md`](skills/fix-bug.md) | Investigating and fixing a reported issue |
+| [`skills/verify.md`](skills/verify.md) | Running quality gates before committing |
+| [`skills/add-test.md`](skills/add-test.md) | Writing new tests |
+| [`skills/refactor.md`](skills/refactor.md) | Restructuring code without changing behavior |
+| [`skills/release.md`](skills/release.md) | Preparing a version bump for publishing |
+
 ## Rules
 - Run `npx turbo run check-types` after TypeScript changes
 - Run `npx vitest run --coverage` to verify tests pass
@@ -43,6 +56,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - No force pushes to `main`
 - Use tools efficiently, cache results
 - Escalate on failures
+- Before committing: follow [`skills/verify.md`](skills/verify.md)
 
 ## Cursor Cloud specific instructions
 
