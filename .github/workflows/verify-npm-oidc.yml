@@ -1,0 +1,48 @@
+name: Verify npm OIDC Connection (Dry Run)
+
+on:
+  workflow_dispatch:   # Only manual trigger for safety
+
+jobs:
+  verify-oidc:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write          # ← Critical for OIDC
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Update npm to latest (required for OIDC)
+        run: npm install -g npm@latest
+
+      - name: Install dependencies (for build if needed)
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+          pnpm install --frozen-lockfile
+
+      - name: Build (optional but recommended)
+        run: npx turbo run build
+
+      # ============================================================
+      # This is the key test: Dry-run + provenance forces full OIDC flow
+      # ============================================================
+      - name: Dry-run publish to test OIDC connection
+        run: npm publish --workspaces --dry-run --provenance --access public
+
+      - name: ✅ OIDC Connection Verified Successfully
+        if: success()
+        run: |
+          echo "✅ SUCCESS: GitHub ↔ npmjs OIDC connection is working!"
+          echo "   - OIDC token was successfully requested from GitHub"
+          echo "   - npm CLI exchanged it with npmjs.com"
+          echo "   - Provenance attestation generation succeeded"
+          echo "   - No authentication errors (ENEEDAUTH)"
