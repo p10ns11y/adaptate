@@ -1,0 +1,39 @@
+---
+description: Patterns and conventions for working with Zod schemas in this monorepo; applies when editing schema transformation or OpenAPI conversion code.
+alwaysApply: false
+---
+
+# Zod Schema Patterns (Adaptate)
+
+## Schema unwrapping
+
+- Use `schema.unwrap()` to strip optionality from `ZodOptional` types — **never** use `.required()` which is a ZodObject method.
+- Check `schema.isOptional()` before unwrapping.
+- After unwrapping, use `instanceof ZodObject` / `instanceof ZodArray` to branch logic.
+
+## Config objects
+
+The `Config` type drives which schema fields become required:
+
+- `true` → make the field required (unwrap optional)
+- Nested object → recurse into that sub-schema
+- Function `(data: any) => boolean` → conditional requirement (used with `makeConditionalSchemaTransformer`)
+- `{ requiredIf: (data: any) => boolean }` → explicit conditional syntax
+
+## Merge semantics
+
+- Use `ZodObject.merge()` to combine the original schema shape with the transformed shape. This preserves fields not mentioned in the config.
+- Build updated shapes via `Object.fromEntries(Object.entries(shape).map(...))` then construct a new `z.object(newShape)`.
+
+## Testing conventions
+
+- Always test both passing and failing parse cases.
+- Use `toThrowErrorMatchingInlineSnapshot` for Zod validation errors — captures exact error messages.
+- Use `toMatchInlineSnapshot` for successful parse results and schema shapes.
+- Test recursive/nested configs to verify deep traversal works.
+
+## OpenAPI conversion
+
+- `openAPISchemaToZod` handles: `string`, `number`, `integer`, `boolean`, `object`, `array`, `enum`, `allOf`, `oneOf`, `anyOf`, `$ref`.
+- Not all Zod features have OpenAPI equivalents — `zodToOpenAPISchema` is intentionally basic.
+- `getDereferencedOpenAPIDocument` resolves all `$ref` pointers before conversion.
