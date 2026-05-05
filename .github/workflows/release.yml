@@ -10,7 +10,13 @@ on:
         description: 'Version bump type'
         required: true
         type: choice
-        options: [patch, minor, major]
+        options:
+          - patch
+          - minor
+          - major
+          - rc
+          - beta
+          - alpha
 
 jobs:
   release:
@@ -32,11 +38,7 @@ jobs:
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
           PREVIOUS=$(git show HEAD\~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
-          if [ "$CURRENT" != "$PREVIOUS" ]; then
-            echo "publish=true" >> $GITHUB_OUTPUT
-          else
-            echo "publish=false" >> $GITHUB_OUTPUT
-          fi
+          echo "publish=$([ "$CURRENT" != "$PREVIOUS" ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
@@ -57,18 +59,31 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      # === Improved Version Bump (supports pre-releases) ===
       - name: Bump version (manual only)
         if: github.event_name == 'workflow_dispatch'
         run: |
           NEW_VERSION=$(node -e "
             const pkg = require('./package.json');
-            const [major, minor, patch] = pkg.version.replace(/[+-].*$/, '').split('.').map(Number);
+            let version = pkg.version;
             const bump = '${{ inputs.bump }}';
-            if (bump === 'major') console.log((major+1) + '.0.0');
-            else if (bump === 'minor') console.log(major + '.' + (minor+1) + '.0');
-            else console.log(major + '.' + minor + '.' + (patch+1));
+            
+            // Handle pre-release bumps
+            if (['rc', 'beta', 'alpha'].includes(bump)) {
+              const base = version.replace(/-[a-zA-Z0-9.]+$/, '');
+              const prerelease = bump;
+              console.log(base + '-' + prerelease + '.1');
+            } else {
+              // Normal semver bump
+              const clean = version.replace(/[+-].*$/, '');
+              const [major, minor, patch] = clean.split('.').map(Number);
+              if (bump === 'major') console.log((major+1) + '.0.0');
+              else if (bump === 'minor') console.log(major + '.' + (minor+1) + '.0');
+              else console.log(major + '.' + minor + '.' + (patch+1));
+            }
           ")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Bumping to $NEW_VERSION"
 
           node -e "
             const fs = require('fs');
@@ -89,19 +104,21 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build
 
-      # === FINAL PUBLISH STEP (Fixed for pnpm + OIDC) ===
-      - name: Publish packages to npm (using latest npm)
+      # === PUBLISH ALL PACKAGES (including root) ===
+      - name: Publish to npm (OIDC + Provenance)
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: |
-          echo "=== Publishing packages with OIDC ==="
-          
+          echo "=== Publishing workspace packages ==="
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
-              echo ""
               echo ">>> Publishing: $dir"
               (cd "$dir" && npx npm@latest publish --provenance --access public)
             fi
           done
+
+          echo ""
+          echo "=== Publishing root package (adaptate) ==="
+          npx npm@latest publish --provenance --access public
 
       - name: Commit and tag (manual only)
         if: github.event_name == 'workflow_dispatch'
