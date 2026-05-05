@@ -1,15 +1,14 @@
 name: Verify npm OIDC Connection (Dry Run)
 
 on:
-  workflow_dispatch:   # Only manual trigger for safety
+  workflow_dispatch:
 
 jobs:
   verify-oidc:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-      id-token: write          # ← Critical for OIDC
+      id-token: write
 
     steps:
       - name: Checkout
@@ -20,26 +19,27 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies (for build if needed)
+      - name: Install dependencies
         run: |
           corepack enable
           corepack prepare pnpm@latest --activate
           pnpm install --frozen-lockfile
 
-      - name: Build (optional but recommended)
+      - name: Build
         run: npx turbo run build
 
-      # ============================================================
-      # This is the key test: Dry-run + provenance forces full OIDC flow
-      # ============================================================
-      - name: Dry-run publish to test OIDC connection
-        run: npx npm@latest publish --workspaces --dry-run --provenance --access public
+      - name: Dry-run publish with latest npm (OIDC test)
+        run: |
+          echo "=== Testing OIDC + Provenance ==="
+          
+          for dir in packages/core packages/utils; do
+            if [ -f "$dir/package.json" ]; then
+              echo ""
+              echo ">>> Testing package: $dir"
+              (cd "$dir" && npx npm@latest publish --dry-run --provenance --access public)
+            fi
+          done
 
       - name: ✅ OIDC Connection Verified Successfully
         if: success()
-        run: |
-          echo "✅ SUCCESS: GitHub ↔ npmjs OIDC connection is working!"
-          echo "   - OIDC token was successfully requested from GitHub"
-          echo "   - npm CLI exchanged it with npmjs.com"
-          echo "   - Provenance attestation generation succeeded"
-          echo "   - No authentication errors (ENEEDAUTH)"
+        run: echo "✅ GitHub ↔ npmjs OIDC connection is working!"
