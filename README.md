@@ -6,102 +6,59 @@ Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI
 
 ## Overview
 
-`adaptate` is a dynamic and adaptable model validator that leverages the power of Zod for schema validation and is interoperable with OpenAPI. This library allows you to define, validate, and transform schemas seamlessly.
+`adaptate` is a dynamic and adaptable model validator that leverages Zod for schema validation and is interoperable with OpenAPI. Define a single optional Zod schema for your data model, then use configuration objects to declare which fields each consumer requires — at runtime.
 
-## Features
+## Packages
 
-- Make schemas required based on configuration
-- Apply conditional requirements to schemas
-- Convert JSON Schema to Zod schemas
-- Convert Zod schemas to OpenAPI schemas
+| Package | Description |
+|---------|-------------|
+| [`@adaptate/core`](packages/core/) | Schema transformation engine — make fields required based on config |
+| [`@adaptate/utils`](packages/utils/) | OpenAPI ↔ Zod conversion, YAML spec loading with `$ref` resolution |
 
 ## Installation
 
-To install the library, use npm or yarn:
+```sh
+pnpm add @adaptate/core
+# or
+npm install @adaptate/core
+```
+
+For OpenAPI utilities:
 
 ```sh
-npm install adaptate
+pnpm add @adaptate/utils
 # or
-yarn add adaptate
+npm install @adaptate/utils
 ```
+
+Peer dependency: `zod@^3.23.8`
+
+## The Problem
+
+In component-oriented applications, different components consume different subsets of the same data model. One component needs `name` and `age`, another needs `address.city`, and a third needs everything. The data often comes from different API endpoints with varying completeness.
+
+Without runtime validation per consumer, you either:
+- Make everything optional (no safety) 
+- Make everything required (breaks partial views)
+- Maintain separate schemas per component (duplication nightmare)
+
+**Adaptate** solves this: define one schema with all fields optional, then use a config object to declare what each consumer requires.
 
 ## Usage
 
-So what this package ~~Sells~~ solves while there are so many packages in the [ecosystem](https://zod.dev/?id=ecosystem) out there.
-
-#### The pitch for a common use case
-
-In real-world web applications (for the sake of brevity assuming component-oriented apps/pages where the view/page is divided into composed components), developers run into an untreated and often unnoticed issue of data (props) flow into components.
-
-Imagine a hypothetical page component
-
-```tsx
-{
-  /* I will check authentication and authorization to access this page
-    And put necessary session information and render the content if it is successful
-  */
-}
-<Page>
-  <Sidebar>
-    <Navigations />
-  </Sidebar>
-  {/* I will fetch the business data from an API endpoint, say, `/api/participants` once and
-      Pass it down or put it in the global store. This data, either as a whole (not likely)
-      Or partially will be used by 1000s of components on this page
-      And from the same data model, each component requires different properties
-  */}
-  <Main>
-    <Content>
-      <ComponentOne
-        data={
-          'I need so and so props from the parent to behave and function as expected'
-        }
-      />
-      <ComponentTwo
-        data={
-          'I need only these props from the parent to behave and function as expected'
-        }
-      />
-      {/* Oops! I am also used on some other page
-          Where the same data model has more properties
-          And the data comes from another endpoint, say, `/api/participants/participantId`.
-          And I am one of the most used components and many developers individually
-          Extend the component based on requirements. Yes, communication loop and forgetting
-          That it is also used in some other place is a problem when working on the component
-          In isolation
-        */}
-      <ComponentThree
-        data={
-          'I need all these props from the parent to behave and function as expected'
-        }
-      />
-      <ComponentFour
-        data={
-          'I need everything from the parent to behave and function as expected'
-        }
-      />
-    </Content>
-  </Main>
-</Page>;
-```
-
-## Make Required Schema Based on Configuration
-
-You can make a Zod schema required based on a configuration (components need) using the transformSchema function.
+### Make Fields Required by Configuration
 
 ```ts
 import { z } from 'zod';
-import { transformSchema } from 'adaptate';
+import { transformSchema } from '@adaptate/core';
 
 const schema = z.object({
   name: z.string().optional(),
   age: z.number().optional(),
-  address: z
-    .object({
-      street: z.string().optional(),
-      city: z.string().optional(),
-    })
-    .optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+  }).optional(),
 });
 
 const config = {
@@ -117,44 +74,34 @@ const updatedSchema = transformSchema(schema, config);
 updatedSchema.parse({
   name: 'Davin',
   age: 30,
-  address: {
-    city: 'Pettit',
-  },
-}); // will pass
+  address: { city: 'Pettit' },
+}); // passes
 
 updatedSchema.parse({
   name: 'Davin',
   age: 30,
-  address: {
-    street: 'First Avenue',
-  },
-}); // will throw as required city property is missing
+  address: { street: 'First Avenue' },
+}); // throws — required city is missing
 ```
 
-## What more can be cooked?
-
-#### Conditional Schema Transformer
+### Conditional Requirements
 
 <details>
-<summary>Make Conditional Schema Transformer</summary>
-
-You can make conditional schema transfer using data early and later use the transformer taking `schema` and `config` with conditionals (`requiredIf`).
+<summary>Make fields required based on runtime data</summary>
 
 ```ts
 import { z } from 'zod';
-import { makeConditionalSchemaTransformer } from 'adaptate';
+import { makeConditionalSchemaTransformer } from '@adaptate/core';
 
 const schema = z.object({
   firstName: z.string().optional(),
   secondName: z.string().optional(),
   parentContactNumber: z.number().optional(),
   age: z.number().optional(),
-  address: z
-    .object({
-      street: z.string().optional(),
-      city: z.string().optional(),
-    })
-    .optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+  }).optional(),
   title: z.string().optional(),
 });
 
@@ -166,173 +113,103 @@ const config = {
   secondName: (data: any) => !!data.firstName,
 };
 
-let firstNameRequiredData = {
-  firstName: 'Mario',
-  age: 17,
-};
+const data = { firstName: 'Mario', age: 17 };
+const conditionalTransformer = makeConditionalSchemaTransformer(data);
+const transformer = conditionalTransformer(schema, config);
 
-let conditionalTransformer = makeConditionalSchemaTransformer(
-  firstNameRequiredData
-);
-
-let transformer = conditionalTransformer(schema, config);
-
-let transformedSchema = transformer.schema;
-
-// To parse the data and validate
-transformer.run(); // will throw as parentContactNumber is required
-// Equivalent to transformer.schema.parse(data); and reduces verbosity
-
-// Removes the conditional requirement if you want to use it with
-// Regular transformSchema function
-transformer.staticConfig = {
-  age: true,
-  secondName: (data: any) => !!data.firstName,
-};
+transformer.run(); // throws — parentContactNumber is required (age < 18)
 ```
 
 </details>
 
-#### Converting OpenAPI Schema to Zod Schema (most commonly needed)
+### OpenAPI ↔ Zod Conversion
 
-Refer [@adaptate/utils README](/packages/utils/README.md#converting-openapi-schema-to-zod-schema-most-commonly-needed)
+<details>
+<summary>Convert OpenAPI schemas to Zod and back</summary>
 
-#### Converting Zod Schema to OpenAPI Schema
+**Load and dereference an OpenAPI spec:**
 
-Refer [@adaptate/utils README](/packages/utils/README.md#converting-zod-schema-to-openapi-schema)
+```ts
+import { getDereferencedOpenAPIDocument } from '@adaptate/utils';
 
-#### Generate zod schemas(modules) from existing OpenAPI yml spec
+const doc = await getDereferencedOpenAPIDocument({
+  location: 'filesystem',
+  callSiteURL: import.meta.url,
+  relativePathToSpecFile: './api-spec.yml',
+});
+```
 
-Refer [@adaptate/utils README](/packages/utils/README.md#generate-zod-schemas-from-existing-openapi-spec)
+**Convert OpenAPI schema to Zod:**
+
+```ts
+import { incomplete_openAPISchemaToZod } from '@adaptate/utils';
+
+const zodSchema = incomplete_openAPISchemaToZod({
+  type: 'object',
+  required: ['age'],
+  properties: {
+    name: { type: 'string' },
+    age: { type: 'number' },
+  },
+});
+```
+
+**Convert Zod to OpenAPI schema:**
+
+```ts
+import { z } from 'zod';
+import { incomplete_zodToOpenAPISchema } from '@adaptate/utils';
+
+const openAPISchema = incomplete_zodToOpenAPISchema(
+  z.object({ name: z.string(), age: z.number() })
+);
+```
+
+See [`@adaptate/utils` README](packages/utils/README.md) for full documentation.
+
+</details>
+
+## Development
+
+This is a pnpm monorepo orchestrated with Turborepo.
+
+**Requirements:** Node.js ≥ 20, pnpm 9.12.3
+
+```sh
+pnpm install          # Install dependencies
+pnpm build            # Full pipeline: check-types → test → build
+pnpm test             # Run Vitest in watch mode
+npx vitest run        # Single test run
+npx turbo run check-types  # TypeScript type checking
+```
+
+### Project Structure
+
+```
+├── packages/
+│   ├── core/         # @adaptate/core — schema transformation
+│   └── utils/        # @adaptate/utils — OpenAPI utilities
+├── skills/           # Tool-agnostic agent SOPs
+├── AGENTS.md         # Agent guidelines
+├── CODING_STYLE.md   # Coding conventions
+└── turbo.json        # Turborepo task graph
+```
+
+See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](skills/) for operational procedures.
 
 ## Credits
 
-I have attempted to recreate what I have done at work with the help of **ChatGPT Canvas** model, the problem is simple and yet enough to test the muscle of code generators where the solution involved recursion and dealing with deep and nested data structures. It produced bugs and those are hard to figure out even for humans in the recursion context such as using correct APIs of the library (`required` instead of `unwrap`). I have tried to generate a minimal project with basic toolings. It did a decent job.
-
 <details>
-<summary> Suggestion vs Final edits</summary>
+<summary>Background and motivation</summary>
 
-```diff
- import { z, ZodObject, ZodArray, ZodTypeAny } from 'zod';
+This library recreates and generalizes a pattern from [Oneflow AB](https://oneflow.com), where a component used on two different pages received data from different endpoints. The same model had different required fields depending on context. A runtime validation layer with component-specific configs prevented breakage without duplicating schemas.
 
--export function transformSchema(schema: ZodTypeAny, config: any, parentData: any = {}) {
--  const schemaWithConditionalRequirements = applyConditionalRequirements(schema, config, parentData);
--
--  if (schemaWithConditionalRequirements instanceof ZodObject && typeof config === 'object' && !Array.isArray(config)) {
--    const shape = schemaWithConditionalRequirements.shape;
--    const newShape = Object.fromEntries(
--      Object.entries(shape).map(([key, value]) => {
--        if (config[key] === true) {
--          return [key, value.required()];
--        } else if (typeof config[key] === 'object') {
--          return [key, transformSchema(value, config[key], parentData)];
--        }
--        return [key, value];
--      })
--    );
--    return z.object(newShape).required();
--  } else if (schemaWithConditionalRequirements instanceof ZodArray && config['*']) {
--    const elementSchema = schemaWithConditionalRequirements.element;
--    return z.array(transformSchema(elementSchema, config['*'], parentData));
--  }
--  return schemaWithConditionalRequirements;
-+export function transformSchema(
-+  schema: ZodTypeAny,
-+  config: Config
-+): ZodTypeAny {
-+  function extendSchema(
-+    partialSchema: ZodObject<any>,
-+    partialConfig: Config
-+  ): ZodObject<any> {
-+    const unwrappedPartialSchema = partialSchema?.isOptional?.()
-+      ? // @ts-ignore
-+        partialSchema.unwrap()
-+      : partialSchema;
-+
-+    if (
-+      unwrappedPartialSchema instanceof ZodObject &&
-+      typeof partialConfig === 'object' &&
-+      !Array.isArray(partialConfig)
-+    ) {
-+      const shape = unwrappedPartialSchema.shape;
-+      // @ts-ignore
-+      const newShape = Object.fromEntries(
-+        // @ts-ignore
-+        Object.entries(shape).map(([key, value]) => {
-+          // @ts-ignore
-+          let unwrappedValue = value?.isOptional?.() ? value.unwrap() : value;
-+          if (partialConfig[key] === true) {
-+            // @ts-ignore
-+            return [key, unwrappedValue];
-+          } else if (typeof partialConfig[key] === 'object') {
-+            // @ts-ignore
-+            return [key, extendSchema(value, partialConfig[key])];
-+          }
-+          return [key, value];
-+        })
-+      );
-+
-+      let updatedPartialSchema = z.object(newShape);
-+
-+      // @ts-ignore
-+      return unwrappedPartialSchema.merge(updatedPartialSchema);
-+    }
-+
-+    if (unwrappedPartialSchema instanceof ZodArray && partialConfig['*']) {
-+      const elementSchema = unwrappedPartialSchema.element as ZodObject<any>;
-+
-+      let updatedPartialSchema = z.array(
-+        extendSchema(elementSchema, partialConfig['*'])
-+      );
-+
-+      // @ts-ignore
-+      return updatedPartialSchema;
-+    }
-+    return unwrappedPartialSchema;
-+  }
-+
-+  let updatedSchema = schema;
-+
-+  if (schema instanceof ZodArray && config['*']) {
-+    // @ts-ignore
-+    updatedSchema = transformSchema(schema.element, config['*']);
-+    updatedSchema = z.array(schema.element.merge(updatedSchema));
-+  } else if (schema instanceof ZodObject) {
-+    // @ts-ignore
-+    updatedSchema = extendSchema(schema, config);
-+    // @ts-ignore
-+    updatedSchema = schema.merge(updatedSchema);
-+  } else {
-+    throw new Error('The given schema must be a Zod object.');
-+  }
-+
-+  return updatedSchema;
- }
-```
-
-### Converting OpenAPI Schema to Zod Schema (most commonly needed)
-
-Refer [@adaptate/utils README](/packages/utils/README.md#converting-openapi-schema-to-zod-schema-most-commonly-needed)
-
-### Converting Zod Schema to OpenAPI Schema
-
-The utility is in the early stage and not one to one. For complete and advanced use cases check [zod-to-json-schema](https://snyk.io/advisor/npm-package/zod-to-json-schema)
-
-Refer [@adaptate/utils README](/packages/utils/README.md#converting-zod-schema-to-openapi-schema)
-
-### Generate zod schemas(modules) from existing OpenAPI yml spec
-
-Refer [@adaptate/utils README](/packages/utils/README.md#generate-zod-schemas-from-existing-openapi-spec)
-
-</details>
+The initial implementation was prototyped with **ChatGPT Canvas** — an exercise in testing code generators on recursive Zod schema traversal. The key insight: generators initially used `.required()` (a ZodObject method) instead of `.unwrap()` (strips optionality) — a subtle bug in recursive contexts.
 
 [Full conversation with ChatGPT Canvas](https://chatgpt.com/share/6728eb4e-07f8-8005-b586-c4b8ee0e798c)
 
-### So why?
-
-<details>
-  <summary>The Background</summary>
-
-At [Oneflow AB](https://oneflow.com), we faced a situation where a component was used on two different pages, each receiving data from different endpoints. This led to discrepancies in the properties of the same model for valid reasons. To avoid breaking the app, I have built a run-time validation library that abstracted business data extensively. Although it wasn't completely this sophisticated, it supported specifying business entities, types such as `collection` or `entity`, and reusable specifications like `relations` to reduce the verbosity in config definitions. It also included React-specific hooks that worked seamlessly with error boundaries. This effort aims to create a more generic solution that can be extended to various use cases.
-
 </details>
+
+## License
+
+MIT

@@ -1,89 +1,93 @@
+# @adaptate/utils
+
+OpenAPI ↔ Zod conversion utilities and YAML spec loading with full `$ref` resolution.
+
 ## Installation
 
-To install the library, use npm or yarn:
-
 ```sh
-npm install @adaptate/utils
+pnpm add @adaptate/utils
 # or
-yarn add @adaptate/utils
+npm install @adaptate/utils
 ```
 
-### Generate zod schemas from existing OpenAPI spec
+Peer dependency: `zod@^3.23.8`
 
-Spec parser that takes care of the usage of `$ref`.
+## API
+
+### `getDereferencedOpenAPIDocument(options)`
+
+Loads an OpenAPI spec (YAML or JSON) and resolves all `$ref` pointers, returning a fully dereferenced document.
 
 ```ts
 import { getDereferencedOpenAPIDocument } from '@adaptate/utils';
 
-// from local disk
-let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+// From filesystem
+const doc = await getDereferencedOpenAPIDocument({
   location: 'filesystem',
   callSiteURL: import.meta.url,
   relativePathToSpecFile: '../fixtures/base-schema.yml',
 });
 
-// or from web
-
-let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
+// From web URL
+const doc = await getDereferencedOpenAPIDocument({
   location: 'web',
   webURL: 'https://api.apis.guru/v2/specs/googleapis.com/books/v1/openapi.yaml',
 });
-
-for (let [name, schema] of Object.entries(
-  dereferencedOpenAPIDocument.components.schemas
-)) {
-  // Generate zod schema
-  let zodSchema = openAPISchemaToZod(schema);
-  // write zodSchema to .ts or .d.ts modules
-}
 ```
 
-use [json-schema-to-zod](https://github.com/StefanTerdell/json-schema-to-zod) and `$ref` is already expanded by `getDereferencedOpenAPIDocument` and you can skip [this part](https://github.com/StefanTerdell/json-schema-to-zod?tab=readme-ov-file#example-with-refs-resolved-and-output-formatted-1)
+Once dereferenced, iterate over schemas to generate Zod types:
 
 ```ts
-for (let [name, schema] of Object.entries(
-  dereferencedOpenAPIDocument.components.schemas
-)) {
-  // Generate zod schema module for each schema
-  jsonSchemaToZod(schema, {
-    name,
-    module: 'esm',
-    type: true,
-  });
+for (const [name, schema] of Object.entries(doc.components.schemas)) {
+  const zodSchema = incomplete_openAPISchemaToZod(schema);
 }
 ```
 
-### Converting OpenAPI Schema to Zod Schema (most commonly needed)
+### `incomplete_openAPISchemaToZod(schema)`
 
-The utility is in the early stage and not one to one. For complete and advanced use cases check [json-schema-to-zod](https://snyk.io/advisor/npm-package/json-schema-to-zod)
+Converts a JSON Schema / OpenAPI schema object to a Zod schema.
+
+Supports: `string`, `number`, `integer`, `boolean`, `object`, `array`, `enum`, `allOf`, `oneOf`, `anyOf`, `$ref` (pre-resolved).
 
 ```ts
 import { incomplete_openAPISchemaToZod } from '@adaptate/utils';
 
-const openAPISchema = {
+const zodSchema = incomplete_openAPISchemaToZod({
   type: 'object',
   required: ['age'],
   properties: {
     name: { type: 'string' },
     age: { type: 'number' },
   },
-};
+});
 
-const zodSchema = incomplete_openAPISchemaToZod(openAPISchema);
+zodSchema.parse({ name: 'Ada', age: 25 }); // passes
 ```
 
-### Converting Zod Schema to OpenAPI Schema
+> **Note:** This is a basic converter. For production-grade conversion, consider [json-schema-to-zod](https://github.com/StefanTerdell/json-schema-to-zod) — `getDereferencedOpenAPIDocument` handles `$ref` resolution so you can skip that step.
 
-The utility is in the early stage and not one to one. For complete and advanced use cases check [zod-to-json-schema](https://snyk.io/advisor/npm-package/zod-to-json-schema)
+### `incomplete_zodToOpenAPISchema(zodSchema)`
+
+Converts a Zod schema to an OpenAPI-compatible JSON Schema object.
 
 ```ts
 import { z } from 'zod';
 import { incomplete_zodToOpenAPISchema } from '@adaptate/utils';
 
-const zodSchema = z.object({
-  name: z.string(),
-  age: z.number(),
-});
-
-const openAPISchema = incomplete_zodToOpenAPISchema(zodSchema);
+const openAPISchema = incomplete_zodToOpenAPISchema(
+  z.object({ name: z.string(), age: z.number() })
+);
+// { type: 'object', properties: { name: { type: 'string' }, age: { type: 'number' } }, required: ['name', 'age'] }
 ```
+
+> **Note:** This is a basic converter. For advanced use cases, see [zod-to-json-schema](https://github.com/StefanTerdell/json-schema-to-zod).
+
+## Exports
+
+| Import path | Environment | Entry |
+|-------------|-------------|-------|
+| `@adaptate/utils` | Browser | `build/index.es.js` |
+| `@adaptate/utils/openapi` | Node/SSR | `ssr-build/openapi.js` |
+| `@adaptate/utils/ssr` | Node/SSR | `ssr-build/index.js` |
+
+The browser build externalizes Node builtins. Use the `/ssr` or `/openapi` export for server-side usage that requires filesystem access (e.g., loading YAML specs from disk).
