@@ -1,0 +1,18 @@
+{
+  "files.watcherExclude": {
+    "**/coverage/**": true,
+    "**/build/**": true,
+    "**/ssr-build/**": true,
+    "**/.turbo/**": true
+  },
+  "search.exclude": {
+    "**/coverage/**": true,
+    "**/build/**": true,
+    "**/ssr-build/**": true,
+    "**/.turbo/**": true,
+    "**/pnpm-lock.yaml": true
+  },
+  "files.readonlyInclude": {
+    "**/pnpm-lock.yaml": true
+  }
+}
