@@ -1,17 +1,19 @@
-name: Publish on Version Change
+name: Release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
-      - 'packages/**/package.json'
-
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
 
     permissions:
@@ -21,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -31,22 +35,48 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          corepack prepare pnpm@latest --activate
-          pnpm install
+          corepack prepare pnpm@9.12.3 --activate
+          pnpm install --frozen-lockfile
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        run: |
+          NEW_VERSION=$(node -e "
+            const pkg = require('./package.json');
+            const [major, minor, patch] = pkg.version.replace(/[+-].*$/, '').split('.').map(Number);
+            const bump = '${{ inputs.bump }}';
+            if (bump === 'major') console.log((major+1) + '.0.0');
+            else if (bump === 'minor') console.log(major + '.' + (minor+1) + '.0');
+            else console.log(major + '.' + minor + '.' + (patch+1));
+          ")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          node -e "
+            const fs = require('fs');
+            const version = '$NEW_VERSION';
+            const files = ['package.json', 'packages/core/package.json', 'packages/utils/package.json'];
+            for (const file of files) {
+              const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+              pkg.version = version;
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
 
       - name: Build project
         run: npx turbo run build
 
-      # pnpm will publish all packages in the monorepo
-      # --provenance for comprehensive metadata about the build process,
-      # enhancing the security and traceability of artifacts
-      - name: Publish adaptate to npm
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_USER_TOKEN }}
-        run: pnpm publish --recursive --provenance --access public
+        run: pnpm publish --recursive --provenance --access public --no-git-checks
 
-      # - name: Publish @adaptate/core to GitHub Packages
-      #   working-directory: packages/core
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: npm publish --registry=https://npm.pkg.github.com/
+      - name: Commit and tag
+        run: |
+          git add package.json packages/*/package.json
+          git commit -m "chore: release v${NEW_VERSION}"
+          git tag "v${NEW_VERSION}"
+          git push origin main --tags
