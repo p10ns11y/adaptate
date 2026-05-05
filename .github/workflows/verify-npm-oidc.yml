@@ -20,9 +20,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Update npm to latest (required for OIDC)
-        run: npm install -g npm@latest
-
       - name: Install dependencies (for build if needed)
         run: |
           corepack enable
@@ -36,7 +33,7 @@ jobs:
       # This is the key test: Dry-run + provenance forces full OIDC flow
       # ============================================================
       - name: Dry-run publish to test OIDC connection
-        run: npm publish --workspaces --dry-run --provenance --access public
+        run: npx npm@latest publish --workspaces --dry-run --provenance --access public
 
       - name: ✅ OIDC Connection Verified Successfully
         if: success()
