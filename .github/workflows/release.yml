@@ -1,14 +1,14 @@
 name: Release
 
 on:
-  # Auto-trigger: version change in package.json on main
+  # Auto-trigger when version changes in package.json on main
   push:
     branches:
       - main
     paths:
       - 'package.json'
 
-  # Manual trigger: bump and publish
+  # Manual trigger with version bump
   workflow_dispatch:
     inputs:
       bump:
@@ -26,7 +26,7 @@ jobs:
 
     permissions:
       contents: write
-      id-token: write
+      id-token: write          # Required for npm OIDC trusted publishing
 
     steps:
       - name: Checkout code
@@ -35,18 +35,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 2
 
-      - name: Check version changed (auto-trigger)
+      - name: Check if version changed (auto-trigger)
         id: check
         if: github.event_name == 'push'
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
-          PREVIOUS=$(git show HEAD~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
+          PREVIOUS=$(git show HEAD\~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           if [ "$CURRENT" != "$PREVIOUS" ]; then
             echo "publish=true" >> $GITHUB_OUTPUT
             echo "Version changed: $PREVIOUS → $CURRENT"
           else
             echo "publish=false" >> $GITHUB_OUTPUT
-            echo "Version unchanged, skipping"
+            echo "Version unchanged, skipping publish"
           fi
 
       - name: Set up Node.js
@@ -102,9 +102,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build
 
-      - name: Publish to npm
+      # === OIDC Trusted Publishing Fix ===
+      - name: Update npm to latest (required for OIDC)
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: pnpm publish --recursive --provenance --access public --no-git-checks
+        run: npm install -g npm@latest
+
+      - name: Publish to npm (using npm CLI for OIDC + provenance)
+        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
+        run: npm publish --workspaces --provenance --access public
 
       - name: Commit and tag (manual only)
         if: github.event_name == 'workflow_dispatch'
