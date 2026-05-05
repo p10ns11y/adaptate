@@ -4,11 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Version bump type (use "none" to publish current version as-is)'
+        description: 'Version bump type'
         required: true
         type: choice
         options:
-          - none
           - patch
           - minor
           - major
@@ -19,7 +18,7 @@ jobs:
 
     permissions:
       contents: write
-      packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -45,7 +44,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version
-        if: inputs.bump != 'none'
         run: |
           NEW_VERSION=$(node -e "
             const pkg = require('./package.json');
@@ -56,10 +54,11 @@ jobs:
             else console.log(major + '.' + minor + '.' + (patch+1));
           ")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Bumping to $NEW_VERSION"
 
           node -e "
             const fs = require('fs');
-            const version = process.env.NEW_VERSION || '$NEW_VERSION';
+            const version = '$NEW_VERSION';
             const files = ['package.json', 'packages/core/package.json', 'packages/utils/package.json'];
             for (const file of files) {
               const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -68,30 +67,15 @@ jobs:
             }
           "
 
-      - name: Set current version (no bump)
-        if: inputs.bump == 'none'
-        run: |
-          NEW_VERSION=$(node -e "const pkg = require('./package.json'); console.log(pkg.version);")
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-
-      - name: Build project
+      - name: Build
         run: npx turbo run build
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_USER_TOKEN }}
         run: pnpm publish --recursive --provenance --access public --no-git-checks
 
       - name: Commit and tag
-        if: inputs.bump != 'none'
         run: |
           git add package.json packages/*/package.json
           git commit -m "chore: release v${NEW_VERSION}"
           git tag "v${NEW_VERSION}"
           git push origin main --tags
-
-      - name: Tag only (no bump)
-        if: inputs.bump == 'none'
-        run: |
-          git tag "v${NEW_VERSION}" || true
-          git push origin --tags || true
