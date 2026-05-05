@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          corepack prepare pnpm@9.12.3 --activate
+          corepack prepare pnpm@latest --activate
           pnpm install --frozen-lockfile
 
       - name: Configure git
