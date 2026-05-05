@@ -1,4 +1,4 @@
-import { z, ZodObject, ZodArray, ZodTypeAny } from 'zod';
+import { z } from 'zod';
 
 export type Config = Record<string, any>;
 
@@ -44,40 +44,32 @@ export type Config = Record<string, any>;
  * @category Helper
  * @module transformSchema
  * */
-// @ts-ignore
 export function transformSchema(
-  schema: ZodTypeAny,
+  schema: z.ZodType | any,
   config: Config
-): ZodTypeAny {
+): z.ZodType {
   function extendSchema(
-    partialSchema: ZodObject<any>,
+    partialSchema: z.ZodObject<any>,
     partialConfig: Config
-  ): ZodObject<any> {
+  ): z.ZodObject<any> {
     const unwrappedPartialSchema = partialSchema?.isOptional?.()
-      ? // @ts-ignore
-        partialSchema.unwrap()
+      ? (partialSchema as any).unwrap()
       : partialSchema;
 
     if (
-      unwrappedPartialSchema instanceof ZodObject &&
+      unwrappedPartialSchema instanceof z.ZodObject &&
       typeof partialConfig === 'object' &&
       !Array.isArray(partialConfig)
     ) {
       const shape = unwrappedPartialSchema.shape;
-      // @ts-ignore
       const newShape = Object.fromEntries(
-        // @ts-ignore
-        Object.entries(shape).map(([key, value]) => {
-          // @ts-ignore
+        Object.entries(shape).map(([key, value]: [string, any]) => {
           let unwrappedValue = value?.isOptional?.() ? value.unwrap() : value;
           if (partialConfig[key] === true) {
-            // @ts-ignore
             return [key, unwrappedValue];
           } else if (partialConfig[key] === false) {
-            // @ts-ignore
             return [key, unwrappedValue.optional()];
           } else if (typeof partialConfig[key] === 'object') {
-            // @ts-ignore
             return [key, extendSchema(value, partialConfig[key])];
           }
           return [key, value];
@@ -86,34 +78,40 @@ export function transformSchema(
 
       let updatedPartialSchema = z.object(newShape);
 
-      // @ts-ignore
-      return unwrappedPartialSchema.merge(updatedPartialSchema);
+      return z.object({
+        ...unwrappedPartialSchema.shape,
+        ...updatedPartialSchema.shape,
+      });
     }
 
-    if (unwrappedPartialSchema instanceof ZodArray && partialConfig['*']) {
-      const elementSchema = unwrappedPartialSchema.element as ZodObject<any>;
+    if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig['*']) {
+      const elementSchema = unwrappedPartialSchema.element as z.ZodObject<any>;
 
       let updatedPartialSchema = z.array(
         extendSchema(elementSchema, partialConfig['*'])
       );
 
-      // @ts-ignore
-      return updatedPartialSchema;
+      return updatedPartialSchema as any;
     }
     return unwrappedPartialSchema;
   }
 
-  let updatedSchema = schema;
+  let updatedSchema: z.ZodType = schema;
 
-  if (schema instanceof ZodArray && config['*']) {
-    // @ts-ignore
-    updatedSchema = transformSchema(schema.element, config['*']);
-    updatedSchema = z.array(schema.element.merge(updatedSchema));
-  } else if (schema instanceof ZodObject) {
-    // @ts-ignore
-    updatedSchema = extendSchema(schema, config);
-    // @ts-ignore
-    updatedSchema = schema.merge(updatedSchema);
+  if (schema instanceof z.ZodArray && config['*']) {
+    let transformedElement = transformSchema(schema.element, config['*']);
+    updatedSchema = z.array(
+      z.object({
+        ...(schema.element as z.ZodObject<any>).shape,
+        ...(transformedElement as z.ZodObject<any>).shape,
+      })
+    );
+  } else if (schema instanceof z.ZodObject) {
+    let extended = extendSchema(schema, config);
+    updatedSchema = z.object({
+      ...schema.shape,
+      ...extended.shape,
+    });
   } else {
     throw new Error('The given schema must be a Zod object.');
   }
@@ -123,33 +121,31 @@ export function transformSchema(
 
 export function makeConditionalSchemaTransformer(data: any) {
   return function conditionalSchemaTransformer(
-    schema: ZodTypeAny,
+    schema: z.ZodType,
     config: any
   ) {
     let transformer = {
       run: () => schema.parse(data),
       schema: schema,
-      staticConfig: {},
+      staticConfig: {} as Record<string, any>,
     };
     if (
-      schema instanceof ZodObject &&
+      schema instanceof z.ZodObject &&
       typeof config === 'object' &&
       !Array.isArray(config)
     ) {
       const shape = schema.shape;
       const newShape = Object.fromEntries(
-        Object.entries(shape).map(([key, value]) => {
+        Object.entries(shape).map(([key, value]: [string, any]) => {
           if (
             config[key] &&
             (config[key].requiredIf || typeof config[key] === 'function')
           ) {
             const condition = config[key].requiredIf ?? config[key];
             if (typeof condition === 'function' && condition(data)) {
-              // @ts-ignore
               return [key, value.unwrap()];
             }
           } else if (config[key]) {
-            // @ts-ignore
             transformer.staticConfig[key] = config[key];
           }
           return [key, value];

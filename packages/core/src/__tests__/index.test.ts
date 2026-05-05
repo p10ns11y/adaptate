@@ -101,26 +101,24 @@ describe('transformSchema', () => {
       .toThrowErrorMatchingInlineSnapshot(`
         [ZodError: [
           {
-            "code": "invalid_type",
             "expected": "string",
-            "received": "undefined",
+            "code": "invalid_type",
             "path": [
               "category",
               "name"
             ],
-            "message": "Required"
+            "message": "Invalid input: expected string, received undefined"
           },
           {
-            "code": "invalid_type",
             "expected": "string",
-            "received": "undefined",
+            "code": "invalid_type",
             "path": [
               "category",
               "subcategories",
               0,
               "name"
             ],
-            "message": "Required"
+            "message": "Invalid input: expected string, received undefined"
           }
         ]]
       `);
@@ -133,18 +131,17 @@ describe('transformSchema', () => {
 
     expect(() => reTransformedSchema.parse(validData))
       .toThrowErrorMatchingInlineSnapshot(`
-      [ZodError: [
-        {
-          "code": "invalid_type",
-          "expected": "string",
-          "received": "undefined",
-          "path": [
-            "warrantyPeriod"
-          ],
-          "message": "Required"
-        }
-      ]]
-    `);
+        [ZodError: [
+          {
+            "expected": "string",
+            "code": "invalid_type",
+            "path": [
+              "warrantyPeriod"
+            ],
+            "message": "Invalid input: expected string, received undefined"
+          }
+        ]]
+      `);
 
     let reReTransformedSchema = transformSchema(reTransformedSchema, {
       category: {
@@ -172,26 +169,24 @@ describe('transformSchema', () => {
       .toThrowErrorMatchingInlineSnapshot(`
         [ZodError: [
           {
-            "code": "invalid_type",
             "expected": "string",
-            "received": "undefined",
+            "code": "invalid_type",
             "path": [
               "category",
               "name"
             ],
-            "message": "Required"
+            "message": "Invalid input: expected string, received undefined"
           },
           {
-            "code": "invalid_type",
             "expected": "array",
-            "received": "string",
+            "code": "invalid_type",
             "path": [
               "category",
               "subcategories",
               0,
               "items"
             ],
-            "message": "Expected array, received string"
+            "message": "Invalid input: expected array, received string"
           }
         ]]
       `);
@@ -420,22 +415,20 @@ describe('makeConditionalSchemaTransformer', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [ZodError: [
         {
-          "code": "invalid_type",
           "expected": "string",
-          "received": "undefined",
+          "code": "invalid_type",
           "path": [
             "secondName"
           ],
-          "message": "Required"
+          "message": "Invalid input: expected string, received undefined"
         },
         {
-          "code": "invalid_type",
           "expected": "number",
-          "received": "undefined",
+          "code": "invalid_type",
           "path": [
             "parentContactNumber"
           ],
-          "message": "Required"
+          "message": "Invalid input: expected number, received undefined"
         }
       ]]
     `);
@@ -448,13 +441,12 @@ describe('makeConditionalSchemaTransformer', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [ZodError: [
         {
-          "code": "invalid_type",
           "expected": "string",
-          "received": "undefined",
+          "code": "invalid_type",
           "path": [
             "secondName"
           ],
-          "message": "Required"
+          "message": "Invalid input: expected string, received undefined"
         }
       ]]
     `);
@@ -501,77 +493,147 @@ describe('makeConditionalSchemaTransformer', () => {
       {
         "run": [Function],
         "schema": ZodObject {
-          "_cached": null,
-          "_def": {
-            "catchall": ZodNever {
-              "_def": {
-                "typeName": "ZodNever",
+          "decode": [Function],
+          "decodeAsync": [Function],
+          "def": {
+            "shape": {
+              "age": ZodOptional {
+                "decode": [Function],
+                "decodeAsync": [Function],
+                "def": {
+                  "innerType": ZodNumber {
+                    "decode": [Function],
+                    "decodeAsync": [Function],
+                    "def": {
+                      "checks": [],
+                      "type": "number",
+                    },
+                    "encode": [Function],
+                    "encodeAsync": [Function],
+                    "format": null,
+                    "isFinite": true,
+                    "isInt": false,
+                    "maxValue": Infinity,
+                    "minValue": -Infinity,
+                    "optional": [Function],
+                    "parse": [Function],
+                    "parseAsync": [Function],
+                    "safeDecode": [Function],
+                    "safeDecodeAsync": [Function],
+                    "safeEncode": [Function],
+                    "safeEncodeAsync": [Function],
+                    "safeParse": [Function],
+                    "safeParseAsync": [Function],
+                    "spa": [Function],
+                    "toJSONSchema": [Function],
+                    "type": "number",
+                  },
+                  "type": "optional",
+                },
+                "encode": [Function],
+                "encodeAsync": [Function],
+                "isOptional": [Function],
+                "parse": [Function],
+                "parseAsync": [Function],
+                "safeDecode": [Function],
+                "safeDecodeAsync": [Function],
+                "safeEncode": [Function],
+                "safeEncodeAsync": [Function],
+                "safeParse": [Function],
+                "safeParseAsync": [Function],
+                "spa": [Function],
+                "toJSONSchema": [Function],
+                "type": "optional",
+                "unwrap": [Function],
               },
-              "and": [Function],
-              "array": [Function],
-              "brand": [Function],
-              "catch": [Function],
-              "default": [Function],
-              "describe": [Function],
-              "isNullable": [Function],
-              "isOptional": [Function],
-              "nullable": [Function],
-              "nullish": [Function],
-              "optional": [Function],
-              "or": [Function],
-              "parse": [Function],
-              "parseAsync": [Function],
-              "pipe": [Function],
-              "promise": [Function],
-              "readonly": [Function],
-              "refine": [Function],
-              "refinement": [Function],
-              "safeParse": [Function],
-              "safeParseAsync": [Function],
-              "spa": [Function],
-              "superRefine": [Function],
-              "transform": [Function],
-              "~standard": {
-                "validate": [Function],
-                "vendor": "zod",
-                "version": 1,
+              "canBuyAlcohol": ZodBoolean {
+                "decode": [Function],
+                "decodeAsync": [Function],
+                "def": {
+                  "type": "boolean",
+                },
+                "encode": [Function],
+                "encodeAsync": [Function],
+                "isOptional": [Function],
+                "optional": [Function],
+                "parse": [Function],
+                "parseAsync": [Function],
+                "safeDecode": [Function],
+                "safeDecodeAsync": [Function],
+                "safeEncode": [Function],
+                "safeEncodeAsync": [Function],
+                "safeParse": [Function],
+                "safeParseAsync": [Function],
+                "spa": [Function],
+                "toJSONSchema": [Function],
+                "type": "boolean",
+              },
+              "name": ZodString {
+                "base64": [Function],
+                "base64url": [Function],
+                "cidrv4": [Function],
+                "cidrv6": [Function],
+                "cuid": [Function],
+                "cuid2": [Function],
+                "date": [Function],
+                "datetime": [Function],
+                "decode": [Function],
+                "decodeAsync": [Function],
+                "def": {
+                  "type": "string",
+                },
+                "duration": [Function],
+                "e164": [Function],
+                "email": [Function],
+                "emoji": [Function],
+                "encode": [Function],
+                "encodeAsync": [Function],
+                "format": null,
+                "guid": [Function],
+                "ipv4": [Function],
+                "ipv6": [Function],
+                "jwt": [Function],
+                "ksuid": [Function],
+                "maxLength": null,
+                "minLength": null,
+                "nanoid": [Function],
+                "optional": [Function],
+                "parse": [Function],
+                "parseAsync": [Function],
+                "safeDecode": [Function],
+                "safeDecodeAsync": [Function],
+                "safeEncode": [Function],
+                "safeEncodeAsync": [Function],
+                "safeParse": [Function],
+                "safeParseAsync": [Function],
+                "spa": [Function],
+                "time": [Function],
+                "toJSONSchema": [Function],
+                "type": "string",
+                "ulid": [Function],
+                "url": [Function],
+                "uuid": [Function],
+                "uuidv4": [Function],
+                "uuidv6": [Function],
+                "uuidv7": [Function],
+                "xid": [Function],
               },
             },
-            "shape": [Function],
-            "typeName": "ZodObject",
-            "unknownKeys": "strip",
+            "type": "object",
           },
-          "and": [Function],
-          "array": [Function],
-          "augment": [Function],
-          "brand": [Function],
-          "catch": [Function],
-          "default": [Function],
-          "describe": [Function],
-          "isNullable": [Function],
-          "isOptional": [Function],
-          "nonstrict": [Function],
-          "nullable": [Function],
-          "nullish": [Function],
-          "optional": [Function],
-          "or": [Function],
+          "encode": [Function],
+          "encodeAsync": [Function],
           "parse": [Function],
           "parseAsync": [Function],
-          "pipe": [Function],
-          "promise": [Function],
-          "readonly": [Function],
-          "refine": [Function],
-          "refinement": [Function],
+          "safeDecode": [Function],
+          "safeDecodeAsync": [Function],
+          "safeEncode": [Function],
+          "safeEncodeAsync": [Function],
           "safeParse": [Function],
           "safeParseAsync": [Function],
           "spa": [Function],
-          "superRefine": [Function],
-          "transform": [Function],
-          "~standard": {
-            "validate": [Function],
-            "vendor": "zod",
-            "version": 1,
-          },
+          "toJSONSchema": [Function],
+          "type": "object",
         },
         "staticConfig": {
           "name": true,
