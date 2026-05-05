@@ -30,7 +30,7 @@ importers:
         specifier: ^8.0.10
         version: 8.0.10(@types/node@25.6.0)(terser@5.46.2)
       zod:
-        specifier: '4'
+        specifier: ^4.0.0
         version: 4.4.3
 
   packages/utils:
@@ -52,7 +52,7 @@ importers:
         specifier: ^8.0.10
         version: 8.0.10(@types/node@25.6.0)(terser@5.46.2)
       zod:
-        specifier: '4'
+        specifier: ^4.0.0
         version: 4.4.3
 
 packages:
