@@ -34,7 +34,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 
 ## Branches
 - **Default branch:** `main`
-- Feature branches: `cursor/<role>-<short-slug>-<suffix>` for cloud agents
+- Feature branches: `cursor/<short-description>-<suffix>` for cloud agents (e.g. `cursor/zod-v4-migration-3f1e`)
 
 ## Skills (tool-agnostic SOPs)
 
