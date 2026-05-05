@@ -55,6 +55,10 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Upgrade npm for OIDC support
+        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: |
@@ -102,9 +106,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC)
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: pnpm publish --recursive --provenance --access public --no-git-checks
+        run: |
+          cd packages/core && npm publish --provenance --access public
+          cd ../utils && npm publish --provenance --access public
+          cd ../.. && npm publish --provenance --access public
 
       - name: Commit and tag (manual only)
         if: github.event_name == 'workflow_dispatch'
