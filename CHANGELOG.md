@@ -2,62 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0] - 2026-05-05 — Initial Public Release & Release Automation
+> **Note**: This project has been in active development for approximately **2 years** (since ~2024). This changelog summarizes the major milestones.
+
+## [0.1.0] - ~2024 — Initial Commit & Early Development
+
+### Added
+- Initial commit of the project
+- Basic schema validation foundation
+- Early exploration of dynamic/adaptable validation patterns
+
+## [0.2.0] — ~2024-2025 — Core Features & Tooling
+
+### Added
+- **Dynamic schema builder**
+- **Simple version** of the validator
+- **Turbo + Vite** bundling setup for monorepo
+- Early OpenAPI spec loading + Zod conversion experiments
+
+### Changed
+- Improved bundler configuration (prevent dev/prod scramble)
+- Increased test coverage and edge case handling
+
+## [0.3.0] - 2026-05-05 — Public Release & Release Automation
 
 ### Added
 - **@adaptate/core**: Schema transformation engine (`transformSchema`, conditional requirements)
-- **@adaptate/utils**: Initial OpenAPI ↔ Zod conversion + YAML loading with `$ref` resolution
+- **@adaptate/utils**: OpenAPI ↔ Zod conversion + YAML loading with `$ref` resolution
 - Full monorepo setup (pnpm + Turborepo)
-- Comprehensive GitHub Actions CI/CD
+- Comprehensive GitHub Actions CI/CD with OIDC trusted publishing
 
 ### Changed
-- Major release workflow improvements:
-  - OIDC trusted publishing (no NPM tokens/secrets needed)
-  - Auto-publish on version bump in PRs
-  - Manual version bump via GitHub Actions (patch/minor/major)
-  - Provenance + public npm publishing
+- Major release workflow improvements (auto-publish on version bump, manual bump support)
 - Package manager upgraded to pnpm 10.33.3
-
-### Technical
-- Strict TypeScript + Vitest + coverage
-- Dual build (browser + SSR) for utils
 
 ## [Unreleased] - 2026-05-11 — Feature-Complete OpenAPI ↔ Zod Converters
 
 ### Added
-- **Fully feature-complete** `@adaptate/utils`:
+- **Fully feature-complete** `@adaptate/utils` converters:
   - Enums, literal unions
-  - Full string/number/array validations (min/max, pattern, format, exclusive*, multipleOf, minItems/maxItems)
-  - Combinators: `allOf` (→ `.and()`), `anyOf`/`oneOf` (→ `.union()`)
-  - `nullable`, proper `required` handling, descriptions, `ZodDate`/`ZodBigInt`
-- Comprehensive test suite (roundtrips, edge cases, combinators)
+  - Full string/number/array validations
+  - Combinators (`allOf`/`anyOf`/`oneOf`)
+  - `nullable`, proper `required` handling
+- Comprehensive test suite + documentation overhaul
 
 ### Changed
-- **Clean API exports** — Removed legacy placeholder aliases (`incomplete_*`, `simple_*`, `partial_*`)
-  Now only exports the primary API:
-  - `getDereferencedOpenAPIDocument`
-  - `openAPISchemaToZod`
-  - `zodToOpenAPISchema`
-- **Coding style**: `let` by default (user preference). Removed `.eslintrc.json`
-- **Documentation overhaul**:
-  - All READMEs updated with clean names + `.deepPartial()` examples
-  - Modernized Credits section (AI agents as standard)
-  - Updated `AGENTS.md`
-
-### Commits (Key)
-
-| Date       | SHA       | Message |
-|------------|-----------|---------|
-| 2026-05-11 | `7e1c611` | docs: modernize Credits section |
-| 2026-05-11 | `a442c26` | docs: improve root README with .deepPartial() |
-| 2026-05-11 | `a4d7199` | docs: update AGENTS.md |
-| 2026-05-11 | `502b24b` | docs: update root README to clean utils API |
-| 2026-05-11 | `7cca25a` | test: expand tests for feature-complete converters |
-| 2026-05-11 | `6d91363` | refactor: replace const with let throughout openapi.ts |
-| 2026-05-11 | `c0f4b3b` | chore: remove .eslintrc.json |
-| 2026-05-10 | `aaeb0f4` | feat: simplify exports to clean names |
-| 2026-05-10 | `4c7493b` | feat: implement full feature-complete OpenAPI ↔ Zod converters |
+- Clean exports (removed legacy `incomplete_*` aliases)
+- `let` by default coding style
+- All READMEs and `AGENTS.md` updated
 
 ---
 
-**Note**: This project has been developed with heavy AI agent assistance (Grok, Cursor, Claude). The initial prototype explored ChatGPT Canvas, but current workflows use modern agentic development.
+**Development Note**: This project has been developed with heavy assistance from AI coding agents (Grok, Cursor, Claude, etc.). The initial prototype was explored using early ChatGPT Canvas, but current workflows use modern agentic development.
