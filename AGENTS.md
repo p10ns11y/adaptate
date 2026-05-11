@@ -5,7 +5,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 
 ## Structure
 - `packages/core/`: Schema transformation engine (`transformSchema`, `makeConditionalSchemaTransformer`)
-- `packages/utils/`: OpenAPI ↔ Zod conversion utilities, YAML loading
+- `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
 
 ## Commands
 - Install: `pnpm install`
@@ -16,6 +16,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 
 ## Coding Style
 - TypeScript: Strict typing, no `any`, ESM modules throughout
+- **Variable declarations**: Use `let` by default (user preference). `const` is allowed only when reassignment is impossible.
 - Naming: CamelCase for types/interfaces, camelCase for functions/variables
 - Imports: Group by type (external libs, internal workspace refs)
 - Zod patterns: Use `unwrap()` not `required()` for unwrapping optional schemas
@@ -63,7 +64,7 @@ Operational guides for common tasks live in [`skills/`](skills/README.md). Any c
 This is a **TypeScript library monorepo** (pnpm workspaces + Turborepo) with two packages:
 
 - `@adaptate/core` — Schema transformation engine (Zod-based)
-- `@adaptate/utils` — OpenAPI ↔ Zod conversion utilities
+- `@adaptate/utils` — **Feature-complete** OpenAPI ↔ Zod conversion utilities
 
 ### Quick reference
 

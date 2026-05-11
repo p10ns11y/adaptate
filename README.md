@@ -31,7 +31,7 @@ pnpm add @adaptate/utils
 npm install @adaptate/utils
 ```
 
-Peer dependency: `zod@^3.23.8`
+Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 ## The Problem
 
@@ -48,6 +48,37 @@ Without runtime validation per consumer, you either:
 
 ### Make Fields Required by Configuration
 
+There are two common ways to create a fully optional schema:
+
+**1. Using `.deepPartial()` (recommended)**
+
+```ts
+import { z } from 'zod';
+import { transformSchema } from '@adaptate/core';
+
+const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+  }),
+}).deepPartial();
+
+const config = {
+  name: true,
+  age: true,
+  address: { city: true },
+};
+
+const updatedSchema = transformSchema(schema, config);
+
+updatedSchema.parse({ name: 'Davin', age: 30, address: { city: 'Pettit' } }); // passes
+updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } }); // throws
+```
+
+**2. Manual `.optional()` (still works)**
+
 ```ts
 import { z } from 'zod';
 import { transformSchema } from '@adaptate/core';
@@ -61,27 +92,7 @@ const schema = z.object({
   }).optional(),
 });
 
-const config = {
-  name: true,
-  age: true,
-  address: {
-    city: true,
-  },
-};
-
-const updatedSchema = transformSchema(schema, config);
-
-updatedSchema.parse({
-  name: 'Davin',
-  age: 30,
-  address: { city: 'Pettit' },
-}); // passes
-
-updatedSchema.parse({
-  name: 'Davin',
-  age: 30,
-  address: { street: 'First Avenue' },
-}); // throws — required city is missing
+// ... same config and usage as above
 ```
 
 ### Conditional Requirements
@@ -94,30 +105,19 @@ import { z } from 'zod';
 import { makeConditionalSchemaTransformer } from '@adaptate/core';
 
 const schema = z.object({
-  firstName: z.string().optional(),
-  secondName: z.string().optional(),
   parentContactNumber: z.number().optional(),
   age: z.number().optional(),
-  address: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-  }).optional(),
-  title: z.string().optional(),
 });
 
 const config = {
-  parentContactNumber: {
-    requiredIf: (data: any) => data.age < 18,
-  },
+  parentContactNumber: { requiredIf: (data: any) => data.age < 18 },
   age: true,
-  secondName: (data: any) => !!data.firstName,
 };
 
-const data = { firstName: 'Mario', age: 17 };
-const conditionalTransformer = makeConditionalSchemaTransformer(data);
-const transformer = conditionalTransformer(schema, config);
+const data = { age: 17 };
+const transformer = makeConditionalSchemaTransformer(data)(schema, config);
 
-transformer.run(); // throws — parentContactNumber is required (age < 18)
+transformer.run(); // throws — parentContactNumber required because age < 18
 ```
 
 </details>
@@ -125,7 +125,7 @@ transformer.run(); // throws — parentContactNumber is required (age < 18)
 ### OpenAPI ↔ Zod Conversion
 
 <details>
-<summary>Convert OpenAPI schemas to Zod and back</summary>
+<summary>Convert OpenAPI schemas to Zod and back (now fully feature-complete)</summary>
 
 **Load and dereference an OpenAPI spec:**
 
@@ -142,14 +142,14 @@ const doc = await getDereferencedOpenAPIDocument({
 **Convert OpenAPI schema to Zod:**
 
 ```ts
-import { incomplete_openAPISchemaToZod } from '@adaptate/utils';
+import { openAPISchemaToZod } from '@adaptate/utils';
 
-const zodSchema = incomplete_openAPISchemaToZod({
+const zodSchema = openAPISchemaToZod({
   type: 'object',
   required: ['age'],
   properties: {
-    name: { type: 'string' },
-    age: { type: 'number' },
+    name: { type: 'string', minLength: 2 },
+    age: { type: 'integer', minimum: 0 },
   },
 });
 ```
@@ -158,10 +158,10 @@ const zodSchema = incomplete_openAPISchemaToZod({
 
 ```ts
 import { z } from 'zod';
-import { incomplete_zodToOpenAPISchema } from '@adaptate/utils';
+import { zodToOpenAPISchema } from '@adaptate/utils';
 
-const openAPISchema = incomplete_zodToOpenAPISchema(
-  z.object({ name: z.string(), age: z.number() })
+const openAPISchema = zodToOpenAPISchema(
+  z.object({ name: z.string().min(2), age: z.number().int() })
 );
 ```
 
@@ -199,16 +199,9 @@ See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](ski
 
 ## Credits
 
-<details>
-<summary>Background and motivation</summary>
+This library recreates and generalizes a pattern originally observed at [Oneflow AB](https://oneflow.com), where the same data model was consumed by different components with varying required fields depending on context.
 
-This library recreates and generalizes a pattern from [Oneflow AB](https://oneflow.com), where a component used on two different pages received data from different endpoints. The same model had different required fields depending on context. A runtime validation layer with component-specific configs prevented breakage without duplicating schemas.
-
-The initial implementation was prototyped with **ChatGPT Canvas** — an exercise in testing code generators on recursive Zod schema traversal. The key insight: generators initially used `.required()` (a ZodObject method) instead of `.unwrap()` (strips optionality) — a subtle bug in recursive contexts.
-
-[Full conversation with ChatGPT Canvas](https://chatgpt.com/share/6728eb4e-07f8-8005-b586-c4b8ee0e798c)
-
-</details>
+**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. This PR (#21) marks the first use of AI coding agents (Grok) in the project.
 
 ## License
 

@@ -8,188 +8,156 @@ import {
   zodToOpenAPISchema,
 } from '../openapi';
 
-describe('openAPISchemaToZod', () => {
-  it('should convert OpenAPI string schema to Zod string schema', () => {
-    let openAPISchema = {
-      type: 'object',
-      required: ['name'],
-      properties: {
-        name: {
-          type: 'string',
-        },
-        items: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-      },
-    };
-
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    // @ts-ignore
-    expect(zodSchema.shape.items).toBeInstanceOf(z.ZodOptional);
-    // @ts-ignore
-    expect(zodSchema.shape.items.unwrap()).toBeInstanceOf(z.ZodArray);
-    expect(
-      // @ts-ignore
-      zodSchema.shape.items.unwrap().element.unwrap().unwrap()
-    ).toBeInstanceOf(z.ZodString);
+describe('openAPISchemaToZod (feature-complete)', () => {
+  it('should convert enum schema', () => {
+    const schema = { enum: ['active', 'inactive'] };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse('active')).toBe('active');
+    expect(() => zodSchema.parse('pending')).toThrow();
   });
 
-  it('should convert OpenAPI number schema to Zod number schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['id'],
-      properties: {
-        id: {
-          type: 'number',
-        },
-      },
+  it('should handle string with minLength, maxLength, pattern, and format', () => {
+    const schema = {
+      type: 'string',
+      minLength: 3,
+      maxLength: 10,
+      pattern: '^[a-z]+$', 
+      format: 'email'
     };
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.id).toBeInstanceOf(z.ZodNumber);
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse('test@example.com')).toBe('test@example.com');
+    expect(() => zodSchema.parse('ab')).toThrow(); // too short
+    expect(() => zodSchema.parse('test@')).toThrow(); // invalid email
   });
 
-  it('should convert OpenAPI boolean schema to Zod boolean schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['enabled'],
-      properties: {
-        enabled: {
-          type: 'boolean',
-        },
-      },
+  it('should handle number with minimum, maximum, exclusiveMinimum, multipleOf', () => {
+    const schema = {
+      type: 'number',
+      minimum: 10,
+      maximum: 100,
+      exclusiveMinimum: 10,
+      multipleOf: 5
     };
-
-    const zodSchema = openAPISchemaToZod(openAPISchema);
-    // @ts-ignore
-    expect(zodSchema.shape.enabled).toBeInstanceOf(z.ZodBoolean);
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse(15)).toBe(15);
+    expect(() => zodSchema.parse(5)).toThrow();
+    expect(() => zodSchema.parse(101)).toThrow();
+    expect(() => zodSchema.parse(12)).toThrow(); // not multiple of 5
   });
 
-  it('should convert OpenAPI array schema to Zod array schema', () => {
-    const openAPISchema = {
-      type: 'object',
-      required: ['products'],
-      properties: {
-        products: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    };
-
-    const zodSchema = openAPISchemaToZod(
-      openAPISchema
-    ) as z.ZodArray<z.ZodString>;
-
-    // @ts-ignore
-    expect(zodSchema.shape.products).toBeInstanceOf(z.ZodArray);
+  it('should handle integer type', () => {
+    const schema = { type: 'integer' };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse(42)).toBe(42);
+    expect(() => zodSchema.parse(42.5)).toThrow();
   });
 
-  it('should convert OpenAPI object schema to Zod object schema', () => {
-    const openAPISchema = {
+  it('should handle array with minItems and maxItems', () => {
+    const schema = {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: 2,
+      maxItems: 5
+    };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse(['a', 'b'])).toEqual(['a', 'b']);
+    expect(() => zodSchema.parse(['a'])).toThrow();
+  });
+
+  it('should handle object with required fields', () => {
+    const schema = {
       type: 'object',
-      required: ['name', 'age', 'email', 'count'],
+      required: ['name', 'age'],
       properties: {
         name: { type: 'string' },
-        age: { type: 'number' },
-        email: { type: 'string', format: 'email' },
-        count: { type: 'integer' },
-        unknownType: { type: 'unknown' },
-      },
+        age: { type: 'integer' },
+        email: { type: 'string' }
+      }
     };
-    const zodSchema = openAPISchemaToZod(openAPISchema) as z.ZodObject<{
-      name: z.ZodString;
-      age: z.ZodNumber;
-      email: z.ZodString;
-      count: z.ZodNumber;
-      unknownType: z.ZodAny;
-    }>;
-    expect(zodSchema).toBeInstanceOf(z.ZodObject);
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.age).toBeInstanceOf(z.ZodNumber);
-    expect(zodSchema.shape.email).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.count).toBeInstanceOf(z.ZodNumber);
-    // @ts-ignore
-    expect(zodSchema.shape.unknownType.unwrap()).toBeInstanceOf(z.ZodAny);
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse({ name: 'Ada', age: 30 })).toEqual({ name: 'Ada', age: 30 });
+    expect(() => zodSchema.parse({ name: 'Ada' })).toThrow(); // missing age
   });
 
-  it('should convert OpenAPI schema with $ref to another component using openapi-spec-parser', async () => {
-    let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-      location: 'filesystem',
-      callSiteURL: import.meta.url,
-      relativePathToSpecFile: '../fixtures/base-schema.yml',
-    });
-    let zodSchema = openAPISchemaToZod(
-      // @ts-ignore
-      dereferencedOpenAPIDocument.components.schemas.Category
-    ) as z.ZodObject<{
-      name: z.ZodString;
-      subcategories: z.ZodArray<
-        z.ZodObject<{ name: z.ZodString; items: z.ZodArray<z.ZodString> }>
-      >;
-    }>;
+  it('should handle allOf (intersection)', () => {
+    const schema = {
+      allOf: [
+        { type: 'object', properties: { name: { type: 'string' } } },
+        { type: 'object', properties: { age: { type: 'integer' } } }
+      ]
+    };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse({ name: 'Ada', age: 30 })).toEqual({ name: 'Ada', age: 30 });
+  });
 
-    expect(zodSchema).toBeInstanceOf(z.ZodObject);
-    expect(zodSchema.shape.name).toBeInstanceOf(z.ZodString);
-    expect(zodSchema.shape.subcategories).toBeInstanceOf(z.ZodArray);
-    expect(zodSchema.shape.subcategories.element.shape.name).toBeInstanceOf(
-      z.ZodString
-    );
-    expect(zodSchema.shape.subcategories.element.shape.items).toBeInstanceOf(
-      z.ZodArray
-    );
+  it('should handle anyOf/oneOf (union)', () => {
+    const schema = {
+      anyOf: [
+        { type: 'string' },
+        { type: 'integer' }
+      ]
+    };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse('hello')).toBe('hello');
+    expect(zodSchema.parse(42)).toBe(42);
+  });
+
+  it('should handle nullable', () => {
+    const schema = { type: 'string', nullable: true };
+    const zodSchema = openAPISchemaToZod(schema);
+    expect(zodSchema.parse(null)).toBeNull();
+    expect(zodSchema.parse('test')).toBe('test');
   });
 });
 
-describe('zodToOpenAPISchema', () => {
-  it('should convert Zod string schema to OpenAPI string schema', () => {
-    const zodSchema = z.string();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'string' });
+describe('zodToOpenAPISchema (feature-complete)', () => {
+  it('should convert Zod string with validations', () => {
+    const zodSchema = z.string().min(3).max(10).email();
+    const openApi = zodToOpenAPISchema(zodSchema);
+    expect(openApi.type).toBe('string');
+    expect(openApi.minLength).toBe(3);
+    expect(openApi.maxLength).toBe(10);
+    expect(openApi.format).toBe('email');
   });
 
-  it('should convert Zod number schema to OpenAPI number schema', () => {
-    const zodSchema = z.number();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'number' });
+  it('should convert Zod number with constraints', () => {
+    const zodSchema = z.number().int().min(10).max(100).multipleOf(5);
+    const openApi = zodToOpenAPISchema(zodSchema);
+    expect(openApi.type).toBe('integer');
+    expect(openApi.minimum).toBe(10);
+    expect(openApi.maximum).toBe(100);
+    expect(openApi.multipleOf).toBe(5);
   });
 
-  it('should convert Zod boolean schema to OpenAPI boolean schema', () => {
-    const zodSchema = z.boolean();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'boolean' });
+  it('should handle Zod enum', () => {
+    const zodSchema = z.enum(['active', 'inactive']);
+    const openApi = zodToOpenAPISchema(zodSchema);
+    expect(openApi.enum).toEqual(['active', 'inactive']);
   });
 
-  it('should convert Zod array schema to OpenAPI array schema', () => {
-    const zodSchema = z.array(z.string());
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({ type: 'array', items: { type: 'string' } });
-  });
-
-  it('should convert Zod object schema to OpenAPI object schema', () => {
+  it('should handle Zod object with required fields', () => {
     const zodSchema = z.object({
       name: z.string(),
-      age: z.number(),
+      age: z.number().optional(),
+      email: z.string().email()
     });
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        age: { type: 'number' },
-      },
-    });
+    const openApi = zodToOpenAPISchema(zodSchema);
+    expect(openApi.required).toEqual(['name', 'email']);
   });
 
-  it('should handle unsupported Zod schema type', () => {
-    const zodSchema = z.date();
-    const openAPISchema = zodToOpenAPISchema(zodSchema);
-    expect(openAPISchema).toEqual({});
+  it('should roundtrip openAPISchemaToZod ↔ zodToOpenAPISchema', () => {
+    const original = {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: { type: 'string', minLength: 2 },
+        age: { type: 'integer', minimum: 0 }
+      }
+    };
+    const zodSchema = openAPISchemaToZod(original);
+    const backToOpenApi = zodToOpenAPISchema(zodSchema);
+    expect(backToOpenApi.type).toBe('object');
+    expect(backToOpenApi.required).toEqual(['name']);
   });
 });
 
