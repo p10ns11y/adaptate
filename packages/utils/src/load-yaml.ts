@@ -1,6 +1,6 @@
 import yaml from 'js-yaml';
 
-export async function getYamlContent(fileURL: string, relativePath: string) {
+export async function getYamlContent(fileURL: string, relativePath: string): Promise<unknown> {
   let fs = await import('node:fs');
   let path = await import('node:path');
   let { fileURLToPath } = await import('node:url');
@@ -8,9 +8,7 @@ export async function getYamlContent(fileURL: string, relativePath: string) {
   let fileURLPath = fileURLToPath(fileURL);
   let callerDirectoryName = dirname(fileURLPath);
   let yamlFilePath = path.resolve(callerDirectoryName, relativePath);
-  let openapiDocument = yaml.load(
-    fs.readFileSync(yamlFilePath, 'utf8')
-  ) as any;
 
-  return openapiDocument;
+  const loaded = yaml.load(fs.readFileSync(yamlFilePath, 'utf8'));
+  return loaded as unknown;
 }
