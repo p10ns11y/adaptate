@@ -48,6 +48,37 @@ Without runtime validation per consumer, you either:
 
 ### Make Fields Required by Configuration
 
+There are two common ways to create a fully optional schema:
+
+**1. Using `.deepPartial()` (recommended)**
+
+```ts
+import { z } from 'zod';
+import { transformSchema } from '@adaptate/core';
+
+const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+  }),
+}).deepPartial();
+
+const config = {
+  name: true,
+  age: true,
+  address: { city: true },
+};
+
+const updatedSchema = transformSchema(schema, config);
+
+updatedSchema.parse({ name: 'Davin', age: 30, address: { city: 'Pettit' } }); // passes
+updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } }); // throws
+```
+
+**2. Manual `.optional()` (still works)**
+
 ```ts
 import { z } from 'zod';
 import { transformSchema } from '@adaptate/core';
@@ -61,16 +92,7 @@ const schema = z.object({
   }).optional(),
 });
 
-const config = {
-  name: true,
-  age: true,
-  address: { city: true },
-};
-
-const updatedSchema = transformSchema(schema, config);
-
-updatedSchema.parse({ name: 'Davin', age: 30, address: { city: 'Pettit' } }); // passes
-updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } }); // throws
+// ... same config and usage as above
 ```
 
 ### Conditional Requirements
