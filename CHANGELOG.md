@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-> **Note**: This project has been in development for approximately **2 years**. The changelog below summarizes major phases. Exact early commit details are summarized from repository history.
+> **Note**: This project has been in development for approximately **2 years**. The changelog below summarizes major phases.
 
 ## Early Development (~2024 – early 2026)
 
@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
 - Auto-publish on version change + manual bump support
 - Package manager upgraded to pnpm 10
 
-## 2026-05-11 — Feature-Complete OpenAPI ↔ Zod Converters (Current)
+## 2026-05-11 — Feature-Complete OpenAPI ↔ Zod Converters (Current PR)
 
 ### Added
 - **Fully feature-complete** `@adaptate/utils`:
@@ -39,8 +39,5 @@ All notable changes to this project will be documented in this file.
 - Clean exports (removed legacy `incomplete_*` aliases)
 - `let` by default coding style
 - Full documentation update (READMEs, AGENTS.md, `.deepPartial()` examples)
-- Modernized Credits section
 
----
-
-**Development Note**: Heavy use of AI coding agents (Grok, Cursor, Claude) throughout development. Early prototyping explored ChatGPT Canvas.
+**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. This PR (#21) marks the **first use of AI coding agents** (Grok) in the project.
