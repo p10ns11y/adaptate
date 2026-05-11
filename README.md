@@ -201,7 +201,7 @@ See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](ski
 
 This library recreates and generalizes a pattern originally observed at [Oneflow AB](https://oneflow.com), where the same data model was consumed by different components with varying required fields depending on context.
 
-**Modern note**: Built with heavy assistance from AI coding agents (Grok, Cursor, Claude, etc.). Agentic workflows are now the standard for development in this project.
+**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. This PR (#21) marks the first use of AI coding agents (Grok) in the project.
 
 ## License
 
