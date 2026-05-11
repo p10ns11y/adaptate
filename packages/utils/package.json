@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/utils",
-  "version": "2.1.0",
+  "version": "2.0.0",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -21,7 +21,7 @@
   "module": "./build/index.es.js",
   "jsnext:main": "./build/index.es.js",
   "jsnext": "./build/index.es.js",
-  "types": "./build/index.d.ts",
+  "types": "build/index.d.ts",
   "scripts": {
     "build": "vite build && vite build --ssr",
     "build:ssr": "vite build --ssr",
@@ -45,7 +45,7 @@
     "ssr-build",
     "package.json",
     "README.md"
-  ],
+  },
   "exports": {
     ".": {
       "types": "./src/index",
