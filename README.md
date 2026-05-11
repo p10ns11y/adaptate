@@ -31,7 +31,7 @@ pnpm add @adaptate/utils
 npm install @adaptate/utils
 ```
 
-Peer dependency: `zod@^3.23.8`
+Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 ## The Problem
 
@@ -64,24 +64,13 @@ const schema = z.object({
 const config = {
   name: true,
   age: true,
-  address: {
-    city: true,
-  },
+  address: { city: true },
 };
 
 const updatedSchema = transformSchema(schema, config);
 
-updatedSchema.parse({
-  name: 'Davin',
-  age: 30,
-  address: { city: 'Pettit' },
-}); // passes
-
-updatedSchema.parse({
-  name: 'Davin',
-  age: 30,
-  address: { street: 'First Avenue' },
-}); // throws — required city is missing
+updatedSchema.parse({ name: 'Davin', age: 30, address: { city: 'Pettit' } }); // passes
+updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } }); // throws
 ```
 
 ### Conditional Requirements
@@ -94,30 +83,19 @@ import { z } from 'zod';
 import { makeConditionalSchemaTransformer } from '@adaptate/core';
 
 const schema = z.object({
-  firstName: z.string().optional(),
-  secondName: z.string().optional(),
   parentContactNumber: z.number().optional(),
   age: z.number().optional(),
-  address: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-  }).optional(),
-  title: z.string().optional(),
 });
 
 const config = {
-  parentContactNumber: {
-    requiredIf: (data: any) => data.age < 18,
-  },
+  parentContactNumber: { requiredIf: (data: any) => data.age < 18 },
   age: true,
-  secondName: (data: any) => !!data.firstName,
 };
 
-const data = { firstName: 'Mario', age: 17 };
-const conditionalTransformer = makeConditionalSchemaTransformer(data);
-const transformer = conditionalTransformer(schema, config);
+const data = { age: 17 };
+const transformer = makeConditionalSchemaTransformer(data)(schema, config);
 
-transformer.run(); // throws — parentContactNumber is required (age < 18)
+transformer.run(); // throws — parentContactNumber required because age < 18
 ```
 
 </details>
@@ -125,7 +103,7 @@ transformer.run(); // throws — parentContactNumber is required (age < 18)
 ### OpenAPI ↔ Zod Conversion
 
 <details>
-<summary>Convert OpenAPI schemas to Zod and back</summary>
+<summary>Convert OpenAPI schemas to Zod and back (now fully feature-complete)</summary>
 
 **Load and dereference an OpenAPI spec:**
 
@@ -142,14 +120,14 @@ const doc = await getDereferencedOpenAPIDocument({
 **Convert OpenAPI schema to Zod:**
 
 ```ts
-import { incomplete_openAPISchemaToZod } from '@adaptate/utils';
+import { openAPISchemaToZod } from '@adaptate/utils';
 
-const zodSchema = incomplete_openAPISchemaToZod({
+const zodSchema = openAPISchemaToZod({
   type: 'object',
   required: ['age'],
   properties: {
-    name: { type: 'string' },
-    age: { type: 'number' },
+    name: { type: 'string', minLength: 2 },
+    age: { type: 'integer', minimum: 0 },
   },
 });
 ```
@@ -158,10 +136,10 @@ const zodSchema = incomplete_openAPISchemaToZod({
 
 ```ts
 import { z } from 'zod';
-import { incomplete_zodToOpenAPISchema } from '@adaptate/utils';
+import { zodToOpenAPISchema } from '@adaptate/utils';
 
-const openAPISchema = incomplete_zodToOpenAPISchema(
-  z.object({ name: z.string(), age: z.number() })
+const openAPISchema = zodToOpenAPISchema(
+  z.object({ name: z.string().min(2), age: z.number().int() })
 );
 ```
 
