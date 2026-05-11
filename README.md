@@ -199,16 +199,9 @@ See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](ski
 
 ## Credits
 
-<details>
-<summary>Background and motivation</summary>
+This library recreates and generalizes a pattern originally observed at [Oneflow AB](https://oneflow.com), where the same data model was consumed by different components with varying required fields depending on context.
 
-This library recreates and generalizes a pattern from [Oneflow AB](https://oneflow.com), where a component used on two different pages received data from different endpoints. The same model had different required fields depending on context. A runtime validation layer with component-specific configs prevented breakage without duplicating schemas.
-
-The initial implementation was prototyped with **ChatGPT Canvas** — an exercise in testing code generators on recursive Zod schema traversal. The key insight: generators initially used `.required()` (a ZodObject method) instead of `.unwrap()` (strips optionality) — a subtle bug in recursive contexts.
-
-[Full conversation with ChatGPT Canvas](https://chatgpt.com/share/6728eb4e-07f8-8005-b586-c4b8ee0e798c)
-
-</details>
+**Modern note**: Built with heavy assistance from AI coding agents (Grok, Cursor, Claude, etc.). Agentic workflows are now the standard for development in this project.
 
 ## License
 
