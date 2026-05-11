@@ -1,6 +1,6 @@
 {
   "name": "adaptate",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -51,7 +51,7 @@
     "Runtime Validation",
     "Component Props Validation",
     "Business Data Abstraction"
-  ],
+  },
   "engines": {
     "node": ">=22.0.0"
   },
