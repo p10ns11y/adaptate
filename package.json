@@ -1,6 +1,6 @@
 {
   "name": "adaptate",
-  "version": "2.1.0",
+  "version": "2.0.0",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -29,7 +29,7 @@
     "coveragebadge": "pnpm run test && npx make-coverage-badge --output-path ./coverage-badge.svg"
   },
   "devDependencies": {
-    "@types node": "^25.6.0",
+    "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
     "turbo": "^2.9.9",
     "vitest": "^4.1.5"
