@@ -35,7 +35,7 @@ export function openAPISchemaToZod(
       zodSchema = z.enum(enumValues as [string, ...string[]]);
     } else {
       zodSchema = z.union(
-        enumValues.map((v: unknown) => z.literal(v)) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+        enumValues.map((v: unknown) => z.literal(v as string | number | boolean)) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
       );
     }
   }
@@ -327,7 +327,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'boolean';
   } else if (current instanceof z.ZodArray) {
     result.type = 'array';
-    result.items = zodToOpenAPISchema(current.element);
+    result.items = zodToOpenAPISchema(current.element as z.ZodTypeAny);
 
     let checks: any[] = (current as any)._def?.checks || [];
     for (const check of checks) {
@@ -358,7 +358,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   } else if (current instanceof z.ZodEnum) {
     result.type = 'string';
     result.enum = (current as any).options;
-  } else if (current instanceof z.ZodNativeEnum) {
+  } else if ((current as any)._def?.typeName === 'ZodNativeEnum' || (current as any).nativeEnum) {
     let enumObj = (current as any).enum;
     result.enum = Object.values(enumObj).filter((v: unknown) => typeof v === 'string' || typeof v === 'number');
     // Could infer type but keep simple
