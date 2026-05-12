@@ -22,7 +22,7 @@ export function openAPISchemaToZod(
     return z.any();
   }
 
-  let isNullable =
+  const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) && schema.type.includes('null'));
 
@@ -30,12 +30,12 @@ export function openAPISchemaToZod(
 
   // Enum support
   if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
-    let enumValues = schema.enum;
+    const enumValues = schema.enum;
     if (enumValues.every((v: unknown) => typeof v === 'string')) {
       zodSchema = z.enum(enumValues as [string, ...string[]]);
     } else {
       zodSchema = z.union(
-        enumValues.map((v: unknown) => z.literal(v)) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+        enumValues.map((v: unknown) => z.literal(v as string | number | boolean)) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
       );
     }
   }
@@ -133,7 +133,7 @@ export function openAPISchemaToZod(
   }
   // Array
   else if (schema.type === 'array') {
-    let itemSchema = schema.items
+    const itemSchema = schema.items
       ? openAPISchemaToZod(schema.items, propertyKey, required)
       : z.any();
 
@@ -152,9 +152,9 @@ export function openAPISchemaToZod(
   }
   // Object
   else if (schema.type === 'object' || schema.properties) {
-    let properties = schema.properties || {};
-    let requiredProperties: string[] = schema.required || [];
-    let shape: Record<string, z.ZodTypeAny> = {};
+    const properties = schema.properties || {};
+    const requiredProperties: string[] = schema.required || [];
+    const shape: Record<string, z.ZodTypeAny> = {};
 
     for (const [key, value] of Object.entries(properties)) {
       let propZod = openAPISchemaToZod(value as any, key, requiredProperties);
@@ -189,7 +189,7 @@ export function openAPISchemaToZod(
     (schema.anyOf && Array.isArray(schema.anyOf)) ||
     (schema.oneOf && Array.isArray(schema.oneOf))
   ) {
-    let variants = (schema.anyOf || schema.oneOf).map((s: any) =>
+    const variants = (schema.anyOf || schema.oneOf).map((s: any) =>
       openAPISchemaToZod(s)
     );
     zodSchema = z.union(variants as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
@@ -204,7 +204,7 @@ export function openAPISchemaToZod(
   }
 
   // Apply top-level required/optional based on parent context (for primitive/array cases)
-  let shouldBeRequired = required.includes(propertyKey);
+  const shouldBeRequired = required.includes(propertyKey);
   if (!shouldBeRequired && propertyKey !== '') {
     // Only wrap in optional if this is a property in a parent object
     // and not already handled inside object branch
@@ -254,12 +254,12 @@ function unwrapOptional(schema: z.ZodTypeAny): {
 export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   if (!zodSchema) return {};
 
-  let { inner: current, isOptional: topOptional } = unwrapOptional(zodSchema);
+  const { inner: current, isOptional: topOptional } = unwrapOptional(zodSchema);
 
   let result: any = {};
 
   // Add description if present (works for most Zod types)
-  let description = (current as any)._def?.description;
+  const description = (current as any)._def?.description;
   if (description) {
     result.description = description;
   }
@@ -267,7 +267,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   if (current instanceof z.ZodString) {
     result.type = 'string';
 
-    let checks: any[] = (current as any)._def?.checks || [];
+    const checks: any[] = (current as any)._def?.checks || [];
     for (const check of checks) {
       switch (check.kind) {
         case 'min':
@@ -297,8 +297,8 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
       }
     }
   } else if (current instanceof z.ZodNumber) {
-    let checks: any[] = (current as any)._def?.checks || [];
-    let isInt = checks.some((c: any) => c.kind === 'int');
+    const checks: any[] = (current as any)._def?.checks || [];
+    const isInt = checks.some((c: any) => c.kind === 'int');
 
     result.type = isInt ? 'integer' : 'number';
 
@@ -327,21 +327,21 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'boolean';
   } else if (current instanceof z.ZodArray) {
     result.type = 'array';
-    result.items = zodToOpenAPISchema(current.element);
+    result.items = zodToOpenAPISchema(current.element as z.ZodTypeAny);
 
-    let checks: any[] = (current as any)._def?.checks || [];
+    const checks: any[] = (current as any)._def?.checks || [];
     for (const check of checks) {
       if (check.kind === 'min') result.minItems = check.value;
       if (check.kind === 'max') result.maxItems = check.value;
     }
   } else if (current instanceof z.ZodObject) {
-    let shape = (current as any).shape || {};
-    let properties: Record<string, any> = {};
-    let required: string[] = [];
+    const shape = (current as any).shape || {};
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
 
     for (const [key, value] of Object.entries(shape)) {
-      let { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodTypeAny);
-      let propSchema = zodToOpenAPISchema(propInner);
+      const { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodTypeAny);
+      const propSchema = zodToOpenAPISchema(propInner);
 
       properties[key] = propSchema;
 
@@ -358,15 +358,15 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   } else if (current instanceof z.ZodEnum) {
     result.type = 'string';
     result.enum = (current as any).options;
-  } else if (current instanceof z.ZodNativeEnum) {
-    let enumObj = (current as any).enum;
+  } else if ((current as any)._def?.typeName === 'ZodNativeEnum' || (current as any).nativeEnum) {
+    const enumObj = (current as any).enum;
     result.enum = Object.values(enumObj).filter((v: unknown) => typeof v === 'string' || typeof v === 'number');
     // Could infer type but keep simple
   } else if (current instanceof z.ZodUnion) {
-    let options = (current as any).options || [];
+    const options = (current as any).options || [];
     result.anyOf = options.map((opt: z.ZodTypeAny) => zodToOpenAPISchema(opt));
   } else if (current instanceof z.ZodNullable) {
-    let innerSchema = zodToOpenAPISchema((current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType);
+    const innerSchema = zodToOpenAPISchema((current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType);
     if (innerSchema.type) {
       if (Array.isArray(innerSchema.type)) {
         if (!innerSchema.type.includes('null')) innerSchema.type.push('null');
@@ -398,50 +398,3 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
 
 // Re-export the load yaml helper for SSR
 export { getYamlContent } from './load-yaml';
-
-// Keep the other functions (fetch, getDereferenced...) unchanged for compatibility
-export async function fetchYamlContent(webURL: string) {
-  let response = await globalThis.fetch(webURL, {
-    headers: { 'Content-Type': 'text/yaml' },
-    mode: 'cors',
-  });
-  let openapiDocument = yaml.load(await response.text());
-  return openapiDocument;
-}
-
-export type ServerOpenAPISpecParams = {
-  location: 'filesystem';
-  callSiteURL: string;
-  relativePathToSpecFile: string;
-};
-
-export type BrowserOpenAPISpecParams = {
-  location: 'web';
-  webURL: string;
-};
-
-export type OpenAPISpecParams = ServerOpenAPISpecParams | BrowserOpenAPISpecParams;
-
-export async function getDereferencedOpenAPIDocument(params: OpenAPISpecParams) {
-  let openapiDocument: any = {};
-
-  let isNodeEnvDetected = globalThis.process?.versions?.node;
-
-  try {
-    if (params.location === 'web') {
-      openapiDocument = await fetchYamlContent(params.webURL);
-    } else if (params.location === 'filesystem' || isNodeEnvDetected) {
-      let { getYamlContent } = await import('./load-yaml.ts');
-      openapiDocument = await getYamlContent(
-        params.callSiteURL,
-        params.relativePathToSpecFile
-      );
-    }
-
-    let SwaggerParser = await import('@apidevtools/json-schema-ref-parser');
-    let dereferenced = await SwaggerParser.default.dereference(openapiDocument);
-    return dereferenced;
-  } catch (error: any) {
-    throw new Error(`Error reading OpenAPI document: ${error?.message || ''}`);
-  }
-}
