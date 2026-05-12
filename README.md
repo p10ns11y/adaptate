@@ -173,6 +173,12 @@ See [`@adaptate/utils` README](packages/utils/README.md) for full documentation.
 
 **Compact & Powerful**: The core transformation logic is intentionally compact — fewer than 100 lines of code. Complex nested transformations (deep objects, arrays with wildcards, conditional requirements) are handled elegantly through recursion. This keeps the API surface small while delivering sophisticated behavior with minimal cognitive overhead.
 
+**For a deeper dive**, see [`DESIGN.md`](DESIGN.md) which covers:
+- Detailed code walkthroughs
+- Runtime complexity analysis (O(N) time, O(D) space)
+- Performance characteristics and trade-offs
+- Comparison with alternative approaches
+
 ## Development
 
 This is a pnpm monorepo orchestrated with Turborepo.
