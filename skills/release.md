@@ -39,16 +39,21 @@ Prepare a version bump and ensure the package is ready for publishing to npm.
 
 6. **Push to main**: The GitHub Actions workflow (`.github/workflows/release.yml`) triggers on version changes in `package.json` paths and publishes to npm automatically.
 
+7. **After publish (supply chain hygiene)**:
+   - Open [Socket.dev](https://socket.dev/) for each published artifact and version: [`adaptate`](https://socket.dev/npm/package/adaptate/overview), [`@adaptate/core`](https://socket.dev/npm/package/@adaptate/core/overview), [`@adaptate/utils`](https://socket.dev/npm/package/@adaptate/utils/overview).
+   - Confirm **Package Alerts** and **Dependency Alerts** are still clean (new transitive deps or advisories are what move scores sharply down; see [Package Scores](https://docs.socket.dev/docs/package-scores) for how the headline score relates to categories).
+
 ## Validation
 - [ ] All quality gates pass
 - [ ] Version follows semver correctly
 - [ ] All affected package.json files are updated
 - [ ] Commit message follows convention
 - [ ] CI workflow will be triggered by the paths changed
+- [ ] Post-publish: Socket.dev alerts checked for `adaptate`, `@adaptate/core`, and `@adaptate/utils` at the new version
 
 ## Rules
 - Never publish manually — use the CI workflow
 - Version bump commits should contain only version changes (no code changes)
 - Breaking changes must be documented in README
 - Coordinate version bumps across packages when they depend on each other
-- The `packageManager` field in root `package.json` should remain pinned to `pnpm@1.11.1` 
+- The `packageManager` field in root `package.json` should remain pinned to `pnpm@11.1.1` 
