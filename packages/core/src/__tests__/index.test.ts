@@ -349,7 +349,7 @@ describe('transformSchema', () => {
 
   it('should handle invalid schema type', () => {
     const invalidSchema = z.string();
-    const config = {};
+    const config = false;
 
     expect(() =>
       transformSchema(invalidSchema, config)
@@ -467,6 +467,11 @@ describe('makeConditionalSchemaTransformer', () => {
     const result = makeConditionalSchemaTransformer(data)(schema, config);
 
     expect(result.schema).toBe(schema);
+  });
+
+  it('should parse primitive schema through the initial runner', () => {
+    let transformer = makeConditionalSchemaTransformer('hello')(z.string(), {});
+    expect(transformer.run()).toBe('hello');
   });
 
   it('should returns a result with updatedSchema, runner, staticConfig', () => {

@@ -2,11 +2,10 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^test"],
-      "outputs": ["build/**"]
+      "dependsOn": ["^check-types", "^test"],
+      "outputs": ["build/**", "ssr-build/**"]
     },
     "test": {
-      "dependsOn": ["check-types"],
       "outputs": ["coverage/**"]
     },
     "check-types": {

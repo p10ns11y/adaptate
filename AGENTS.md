@@ -78,11 +78,13 @@ This is a **TypeScript library monorepo** (pnpm workspaces + Turborepo) with two
 
 ### Non-obvious notes
 
-- **TypeScript must be installed globally** (`npm install -g typescript@5.6.3`) because it is not listed in `package.json` devDependencies but is required by the `check-types` scripts in both packages. The lockfile pins it via ts-jest but pnpm strict mode doesn't hoist it.
+- **TypeScript** is a workspace `devDependency` (`typescript@6.0.3` at the repo root and in `@adaptate/core` / `@adaptate/utils`) so `tsc` is available from each package’s `node_modules/.bin` after `pnpm install`. No global `typescript` install is required.
 - The `turbo.json` build task depends on `^test`, which depends on `check-types`. Running `pnpm build` triggers the full pipeline: check-types → test → build.
 - There is a single `tsconfig.json` at the root used by both packages; individual packages do not have their own tsconfigs.
 - Tests use Vitest (not Jest), despite `@types/jest` being present in root devDependencies.
 - No linter (ESLint/Biome) is configured in this repository; type checking (`tsc --noEmit`) is the primary static analysis.
 - The `jest.config.mjs` at the root is legacy and non-functional (references missing `tsconfig.jest.json`); ignore it.
 - `packages/utils` builds both a browser bundle (`build/`) and an SSR bundle (`ssr-build/`). Node builtins are externalized in both.
+- **Bundler:** Both packages use **Vite 8** (`vite@^8.0.10` in each package; lockfile pins `vite@8.0.10`). Production `vite build` uses **Rolldown** (Vite’s default bundler in v8). There is no `rolldown-vite` dependency alias and no `pnpm.overrides` entry for Vite—stay on plain `vite` from the registry.
+- After a Vite major bump, run `pnpm build` and spot-check `packages/core/build/`, `packages/utils/build/`, and `packages/utils/ssr-build/` (entry files, chunk names, `.map` files) before releasing.
 - Path aliases: `#utils/*` maps to `../utils/src/*` in core's `package.json` imports; `@adaptate/*` paths are in root `tsconfig.json`.

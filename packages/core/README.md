@@ -10,7 +10,7 @@ pnpm add @adaptate/core
 npm install @adaptate/core
 ```
 
-Peer dependency: `zod@^3.23.8`
+Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 ## API
 
@@ -20,12 +20,13 @@ Transforms a Zod schema by making specified fields required based on a config ob
 
 **Config values:**
 - `true` — make the field required (strip optionality)
+- `false` — keep the field optional
 - Nested object — recurse into sub-schema
 - `{ '*': config }` — apply config to all array elements
 
 ```ts
 import { z } from 'zod';
-import { transformSchema } from '@adaptate/core';
+import { transformSchema, type Config } from '@adaptate/core';
 
 const schema = z.object({
   name: z.string().optional(),
@@ -40,12 +41,24 @@ const config = {
   name: true,
   age: true,
   address: { city: true },
-};
+} satisfies Config<z.infer<typeof schema>>;
 
 const updatedSchema = transformSchema(schema, config);
 
 updatedSchema.parse({ name: 'Davin', age: 30, address: { city: 'Pettit' } }); // passes
-updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } }); // throws
+updatedSchema.parse({ name: 'Davin', age: 30, address: { street: 'Main St' } } ); // throws
+```
+
+### `Config<T>` (Type Helper)
+
+Fully typed config for autocomplete and compile-time safety.
+
+```ts
+const config = {
+  name: true,
+  address: { city: true },
+  tags: { '*': true },
+} satisfies Config<z.infer<typeof userSchema>>;
 ```
 
 ### `makeConditionalSchemaTransformer(data)`

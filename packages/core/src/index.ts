@@ -1,56 +1,51 @@
 import { z } from 'zod';
 
-export type Config = Record<string, any>;
-
 /**
- * Make the given Zod schema required as per the configuration.
- * @param schema - The Zod schema to make required.
- * @param config - The configuration object.
- * @returns The updated Zod schema with required properties.
- * @throws If the given schema is not a Zod object.
- * @example
- * const schema = z.object({
- *   name: z.string().optional(),
- *   age: z.number().optional(),
- *     address: z.object({
- *       street: z.string().optional(),
- *       city: z.string().optional(),
- *     }).optional(),
- * });
+ * Type-safe configuration for `transformSchema` and conditional transformers.
  *
- * // Specify which properties are required, false will not make required
- * // In original schema optional properties yet
+ * ## High-value use cases this type enables:
+ * - Full autocomplete for every field path in your schema
+ * - Compile-time errors for typos or non-existent fields
+ * - Natural support for deeply nested objects
+ * - Special `'*'` syntax for array element configuration
+ * - `true` = make required, `false` = keep optional (or omit)
+ *
+ * @example
  * const config = {
  *   name: true,
- *    address: {
- *      city: true
- *   }
- * };
- * const updatedSchema = transformSchema(schema, config);
- * const validData = {
- *   name: 'John Doe',
- *   address: { city: 'New York' },
- * };
- * const invalidDataMissingName = {
- *   address: { city: 'New York' },
- * };
- * const invalidDataMissingCity = {
- *   name: 'John Doe',
- *   address: {},
- * };
- * schema.parse(validData); // Should pass
- * schema.parse(invalidDataMissingName); // Should fail due to missing 'name'
- * schema.parse(invalidDataMissingCity); // Should fail due to missing 'address.city'
- * @category Helper
- * @module transformSchema
- * */
-export function transformSchema(
-  schema: z.ZodType | any,
-  config: Config
-): z.ZodType {
+ *   address: { city: true, country: false },
+ *   tags: { '*': true },
+ * } satisfies Config<z.infer<typeof mySchema>>;
+ */
+export type Config<T = unknown> =
+  | boolean
+  | (unknown extends T
+      ? {
+          [key: string]: Config<unknown> | undefined;
+        } & {
+          '*'?: Config<unknown>;
+        }
+      : T extends readonly (infer U)[]
+        ? { '*'?: Config<U> }
+        : T extends object
+          ? { [K in keyof T]?: Config<T[K]> }
+          : never);
+
+/**
+ * Make fields required/optional based on config.
+ * Returns a properly typed Zod schema.
+ */
+export function transformSchema<
+  TSchema extends z.ZodTypeAny,
+  TConfig extends Config<z.infer<TSchema>>
+>(
+  schema: TSchema,
+  config: TConfig
+): TSchema {
+  // Runtime implementation (existing logic)
   function extendSchema(
     partialSchema: z.ZodObject<any>,
-    partialConfig: Config
+    partialConfig: any
   ): z.ZodObject<any> {
     const unwrappedPartialSchema = partialSchema?.isOptional?.()
       ? (partialSchema as any).unwrap()
@@ -86,37 +81,45 @@ export function transformSchema(
 
     if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig['*']) {
       const elementSchema = unwrappedPartialSchema.element as z.ZodObject<any>;
-
       let updatedPartialSchema = z.array(
         extendSchema(elementSchema, partialConfig['*'])
       );
-
       return updatedPartialSchema as any;
     }
     return unwrappedPartialSchema;
   }
 
+  if (
+    !(schema instanceof z.ZodObject) &&
+    !(schema instanceof z.ZodArray && (config as Record<string, unknown>)['*'])
+  ) {
+    throw new Error('The given schema must be a Zod object.');
+  }
+
   let updatedSchema: z.ZodType = schema;
 
-  if (schema instanceof z.ZodArray && config['*']) {
-    let transformedElement = transformSchema(schema.element, config['*']);
+  if (schema instanceof z.ZodArray && (config as any)['*']) {
+    let transformedElement = transformSchema(
+      schema.element as z.ZodTypeAny,
+      (config as any)['*']
+    );
     updatedSchema = z.array(
       z.object({
         ...(schema.element as z.ZodObject<any>).shape,
         ...(transformedElement as z.ZodObject<any>).shape,
       })
     );
-  } else if (schema instanceof z.ZodObject) {
-    let extended = extendSchema(schema, config);
+  } else {
+    // Guard above ensures this is a `ZodObject` whenever the array branch is not taken.
+    let objectSchema = schema as z.ZodObject<any>;
+    let extended = extendSchema(objectSchema, config);
     updatedSchema = z.object({
-      ...schema.shape,
+      ...objectSchema.shape,
       ...extended.shape,
     });
-  } else {
-    throw new Error('The given schema must be a Zod object.');
   }
 
-  return updatedSchema;
+  return updatedSchema as TSchema;
 }
 
 export function makeConditionalSchemaTransformer(data: any) {

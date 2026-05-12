@@ -40,4 +40,4 @@ All notable changes to this project will be documented in this file.
 - `let` by default coding style
 - Full documentation update (READMEs, AGENTS.md, `.deepPartial()` examples)
 
-**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. This PR (#21) marks the **first use of AI coding agents** (Grok) in the project.
+**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.

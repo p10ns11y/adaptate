@@ -51,4 +51,4 @@ Prepare a version bump and ensure the package is ready for publishing to npm.
 - Version bump commits should contain only version changes (no code changes)
 - Breaking changes must be documented in README
 - Coordinate version bumps across packages when they depend on each other
-- The `packageManager` field in root `package.json` should remain pinned to `pnpm@9.12.3`
+- The `packageManager` field in root `package.json` should remain pinned to `pnpm@1.11.1` 

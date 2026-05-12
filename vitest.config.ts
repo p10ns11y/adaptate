@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       reporter: ['text', 'json', 'html', 'json-summary'],
+      reportsDirectory: './coverage',
       include: ['packages/**/*.ts'],
       exclude: [
         'node_modules',
@@ -15,6 +16,12 @@ export default defineConfig({
         // export only no source code
         'packages/utils/src/index.ts',
       ],
+      thresholds: {
+        lines: 100,
+        statements: 100,
+        branches: 100,
+        functions: 100,
+      },
     },
   },
 });
