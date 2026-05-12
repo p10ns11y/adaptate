@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 2
@@ -43,9 +43,9 @@ jobs:
 
       - name: Setup Node.js
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install dependencies
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
