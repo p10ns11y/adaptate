@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/utils",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -92,6 +92,6 @@
     "Business Data Abstraction"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=20.0.0"
   }
 }
