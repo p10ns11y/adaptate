@@ -54,7 +54,7 @@ There are two common ways to create a fully optional schema:
 
 ```ts
 import { z } from 'zod';
-import { transformSchema } from '@adaptate/core';
+import { transformSchema, type Config } from '@adaptate/core';
 
 const schema = z.object({
   name: z.string(),
@@ -69,7 +69,7 @@ const config = {
   name: true,
   age: true,
   address: { city: true },
-};
+} satisfies Config<z.infer<typeof schema>>;
 
 const updatedSchema = transformSchema(schema, config);
 
