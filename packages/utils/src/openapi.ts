@@ -22,7 +22,7 @@ export function openAPISchemaToZod(
     return z.any();
   }
 
-  const isNullable =
+  let isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) && schema.type.includes('null'));
 
@@ -30,7 +30,7 @@ export function openAPISchemaToZod(
 
   // Enum support
   if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
-    const enumValues = schema.enum;
+    let enumValues = schema.enum;
     if (enumValues.every((v: unknown) => typeof v === 'string')) {
       zodSchema = z.enum(enumValues as [string, ...string[]]);
     } else {
@@ -133,7 +133,7 @@ export function openAPISchemaToZod(
   }
   // Array
   else if (schema.type === 'array') {
-    const itemSchema = schema.items
+    let itemSchema = schema.items
       ? openAPISchemaToZod(schema.items, propertyKey, required)
       : z.any();
 
@@ -152,9 +152,9 @@ export function openAPISchemaToZod(
   }
   // Object
   else if (schema.type === 'object' || schema.properties) {
-    const properties = schema.properties || {};
-    const requiredProperties: string[] = schema.required || [];
-    const shape: Record<string, z.ZodTypeAny> = {};
+    let properties = schema.properties || {};
+    let requiredProperties: string[] = schema.required || [];
+    let shape: Record<string, z.ZodTypeAny> = {};
 
     for (const [key, value] of Object.entries(properties)) {
       let propZod = openAPISchemaToZod(value as any, key, requiredProperties);
@@ -189,7 +189,7 @@ export function openAPISchemaToZod(
     (schema.anyOf && Array.isArray(schema.anyOf)) ||
     (schema.oneOf && Array.isArray(schema.oneOf))
   ) {
-    const variants = (schema.anyOf || schema.oneOf).map((s: any) =>
+    let variants = (schema.anyOf || schema.oneOf).map((s: any) =>
       openAPISchemaToZod(s)
     );
     zodSchema = z.union(variants as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
@@ -204,7 +204,7 @@ export function openAPISchemaToZod(
   }
 
   // Apply top-level required/optional based on parent context (for primitive/array cases)
-  const shouldBeRequired = required.includes(propertyKey);
+  let shouldBeRequired = required.includes(propertyKey);
   if (!shouldBeRequired && propertyKey !== '') {
     // Only wrap in optional if this is a property in a parent object
     // and not already handled inside object branch
@@ -254,12 +254,12 @@ function unwrapOptional(schema: z.ZodTypeAny): {
 export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   if (!zodSchema) return {};
 
-  const { inner: current, isOptional: topOptional } = unwrapOptional(zodSchema);
+  let { inner: current, isOptional: topOptional } = unwrapOptional(zodSchema);
 
   let result: any = {};
 
   // Add description if present (works for most Zod types)
-  const description = (current as any)._def?.description;
+  let description = (current as any)._def?.description;
   if (description) {
     result.description = description;
   }
@@ -267,7 +267,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   if (current instanceof z.ZodString) {
     result.type = 'string';
 
-    const checks: any[] = (current as any)._def?.checks || [];
+    let checks: any[] = (current as any)._def?.checks || [];
     for (const check of checks) {
       switch (check.kind) {
         case 'min':
@@ -297,8 +297,8 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
       }
     }
   } else if (current instanceof z.ZodNumber) {
-    const checks: any[] = (current as any)._def?.checks || [];
-    const isInt = checks.some((c: any) => c.kind === 'int');
+    let checks: any[] = (current as any)._def?.checks || [];
+    let isInt = checks.some((c: any) => c.kind === 'int');
 
     result.type = isInt ? 'integer' : 'number';
 
@@ -329,19 +329,19 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'array';
     result.items = zodToOpenAPISchema(current.element as z.ZodTypeAny);
 
-    const checks: any[] = (current as any)._def?.checks || [];
+    let checks: any[] = (current as any)._def?.checks || [];
     for (const check of checks) {
       if (check.kind === 'min') result.minItems = check.value;
       if (check.kind === 'max') result.maxItems = check.value;
     }
   } else if (current instanceof z.ZodObject) {
-    const shape = (current as any).shape || {};
-    const properties: Record<string, any> = {};
-    const required: string[] = [];
+    let shape = (current as any).shape || {};
+    let properties: Record<string, any> = {};
+    let required: string[] = [];
 
     for (const [key, value] of Object.entries(shape)) {
-      const { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodTypeAny);
-      const propSchema = zodToOpenAPISchema(propInner);
+      let { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodTypeAny);
+      let propSchema = zodToOpenAPISchema(propInner);
 
       properties[key] = propSchema;
 
@@ -359,14 +359,14 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'string';
     result.enum = (current as any).options;
   } else if ((current as any)._def?.typeName === 'ZodNativeEnum' || (current as any).nativeEnum) {
-    const enumObj = (current as any).enum;
+    let enumObj = (current as any).enum;
     result.enum = Object.values(enumObj).filter((v: unknown) => typeof v === 'string' || typeof v === 'number');
     // Could infer type but keep simple
   } else if (current instanceof z.ZodUnion) {
-    const options = (current as any).options || [];
+    let options = (current as any).options || [];
     result.anyOf = options.map((opt: z.ZodTypeAny) => zodToOpenAPISchema(opt));
   } else if (current instanceof z.ZodNullable) {
-    const innerSchema = zodToOpenAPISchema((current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType);
+    let innerSchema = zodToOpenAPISchema((current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType);
     if (innerSchema.type) {
       if (Array.isArray(innerSchema.type)) {
         if (!innerSchema.type.includes('null')) innerSchema.type.push('null');
