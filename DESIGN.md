@@ -95,16 +95,19 @@ There is no:
 
 ## 3. Performance Characteristics
 
-### Benchmarks (Typical Workloads)
+### Expected Performance (Theoretical)
 
-| Schema Size       | Properties | Transform Time | Notes                     |
-|-------------------|------------|----------------|---------------------------|
-| Small form        | ~20        | < 0.1ms        | Instant                   |
-| API response      | ~150       | ~0.5ms         | Negligible                |
-| Complex dashboard | ~500       | ~1.5ms         | Still instant to user     |
-| Large config      | ~2000      | ~5ms           | Acceptable for startup    |
+The transformation is a single O(N) tree traversal. In practice, this means:
 
-*Measured on Node 22, Apple M1, typical Zod schemas.*
+- **Small schemas** (~20 properties): Sub-millisecond
+- **Medium schemas** (~150 properties): Low single-digit milliseconds
+- **Large schemas** (~2000 properties): Still fast enough for module initialization
+
+These are **order-of-magnitude estimates** based on the algorithm complexity, not measured benchmarks. Real-world performance will vary based on:
+- Hardware
+- Node.js version
+- Schema complexity (not just property count)
+- Whether the result is cached/reused
 
 ### When Performance Matters (and When It Doesn't)
 
