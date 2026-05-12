@@ -19,11 +19,17 @@ import { z } from 'zod';
  */
 export type Config<T = unknown> =
   | boolean
-  | (T extends readonly (infer U)[]
-      ? { '*'?: Config<U> }
-      : T extends object
-        ? { [K in keyof T]?: Config<T[K]> }
-        : never);
+  | (unknown extends T
+      ? {
+          [key: string]: Config<unknown> | undefined;
+        } & {
+          '*'?: Config<unknown>;
+        }
+      : T extends readonly (infer U)[]
+        ? { '*'?: Config<U> }
+        : T extends object
+          ? { [K in keyof T]?: Config<T[K]> }
+          : never);
 
 /**
  * Make fields required/optional based on config.
@@ -83,20 +89,32 @@ export function transformSchema<
     return unwrappedPartialSchema;
   }
 
+  if (
+    !(schema instanceof z.ZodObject) &&
+    !(schema instanceof z.ZodArray && (config as Record<string, unknown>)['*'])
+  ) {
+    throw new Error('The given schema must be a Zod object.');
+  }
+
   let updatedSchema: z.ZodType = schema;
 
   if (schema instanceof z.ZodArray && (config as any)['*']) {
-    let transformedElement = transformSchema(schema.element, (config as any)['*']);
+    let transformedElement = transformSchema(
+      schema.element as z.ZodTypeAny,
+      (config as any)['*']
+    );
     updatedSchema = z.array(
       z.object({
         ...(schema.element as z.ZodObject<any>).shape,
         ...(transformedElement as z.ZodObject<any>).shape,
       })
     );
-  } else if (schema instanceof z.ZodObject) {
-    let extended = extendSchema(schema, config);
+  } else {
+    // Guard above ensures this is a `ZodObject` whenever the array branch is not taken.
+    let objectSchema = schema as z.ZodObject<any>;
+    let extended = extendSchema(objectSchema, config);
     updatedSchema = z.object({
-      ...schema.shape,
+      ...objectSchema.shape,
       ...extended.shape,
     });
   }

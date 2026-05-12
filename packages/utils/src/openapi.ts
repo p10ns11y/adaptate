@@ -1,5 +1,17 @@
 import yaml from 'js-yaml';
-import { z } from 'zod';
+import { z, globalRegistry } from 'zod';
+
+import {
+  coalesceZodObjectShape,
+  getSchemaChecks,
+  isZodStringLike,
+  mergeArrayLengthChecksIntoOpenApi,
+  mergeNullableOpenApiFragment,
+  mergeNumberChecksIntoOpenApi,
+  mergeStringChecksIntoOpenApi,
+  schemaIndicatesInteger,
+  unwrapOptional,
+} from './openapi-zod-checks';
 
 /**
  * Converts an OpenAPI / JSON Schema object to a Zod schema.
@@ -21,6 +33,10 @@ export function openAPISchemaToZod(
   if (!schema || typeof schema !== 'object') {
     return z.any();
   }
+
+  let unionTypeList = Array.isArray(schema.type) ? schema.type : [];
+  let openApiSchemaDeclaresNumericJsonType =
+    unionTypeList.includes('number') || unionTypeList.includes('integer');
 
   let isNullable =
     schema.nullable === true ||
@@ -91,8 +107,7 @@ export function openAPISchemaToZod(
   else if (
     schema.type === 'number' ||
     schema.type === 'integer' ||
-    (Array.isArray(schema.type) &&
-      (schema.type.includes('number') || schema.type.includes('integer')))
+    (unionTypeList.length > 0 && openApiSchemaDeclaresNumericJsonType)
   ) {
     let n: z.ZodNumber = z.number();
 
@@ -151,7 +166,7 @@ export function openAPISchemaToZod(
     zodSchema = arr;
   }
   // Object
-  else if (schema.type === 'object' || schema.properties) {
+  else if (schema.type === 'object' || ('properties' in schema && schema.properties)) {
     let properties = schema.properties || {};
     let requiredProperties: string[] = schema.required || [];
     let shape: Record<string, z.ZodTypeAny> = {};
@@ -223,22 +238,6 @@ export function openAPISchemaToZod(
 }
 
 /**
- * Helper to unwrap ZodOptional and detect optionality.
- */
-function unwrapOptional(schema: z.ZodTypeAny): {
-  inner: z.ZodTypeAny;
-  isOptional: boolean;
-} {
-  if (schema instanceof z.ZodOptional) {
-    return {
-      inner: (schema as any).unwrap ? (schema as any).unwrap() : (schema as any)._def.innerType,
-      isOptional: true,
-    };
-  }
-  return { inner: schema, isOptional: false };
-}
-
-/**
  * Converts a Zod schema to an OpenAPI / JSON Schema compatible object.
  * Now feature-complete with:
  * - Proper `required` array for objects (excludes .optional() fields)
@@ -249,79 +248,42 @@ function unwrapOptional(schema: z.ZodTypeAny): {
  * - Enum support
  * - Union / anyOf
  * - Description from .describe()
- * - Handles Zod v3/v4 shape and checks
+ * - Zod 4 attached checks (`_zod.def.checks`) and legacy `_def.checks` where present
  */
 export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   if (!zodSchema) return {};
 
-  let { inner: current, isOptional: topOptional } = unwrapOptional(zodSchema);
+  let { inner: current } = unwrapOptional(zodSchema);
 
   let result: any = {};
 
-  // Add description if present (works for most Zod types)
-  let description = (current as any)._def?.description;
+  // Zod 4 stores `.describe()` on `globalRegistry`; older Zod used `_def.description`.
+  let descriptionFromLegacy =
+    (current as any)._def?.description ?? (current as any)._zod?.def?.description;
+  let descriptionFromRegistry = globalRegistry.get(current)?.description;
+  let description =
+    (typeof descriptionFromLegacy === 'string' && descriptionFromLegacy) ||
+    (typeof descriptionFromRegistry === 'string' && descriptionFromRegistry);
   if (description) {
     result.description = description;
   }
 
-  if (current instanceof z.ZodString) {
+  if (isZodStringLike(current)) {
     result.type = 'string';
 
-    let checks: any[] = (current as any)._def?.checks || [];
-    for (const check of checks) {
-      switch (check.kind) {
-        case 'min':
-          result.minLength = check.value;
-          break;
-        case 'max':
-          result.maxLength = check.value;
-          break;
-        case 'regex':
-          result.pattern = check.regex.source || check.regex.toString();
-          break;
-        case 'email':
-          result.format = 'email';
-          break;
-        case 'uuid':
-          result.format = 'uuid';
-          break;
-        case 'url':
-          result.format = 'uri';
-          break;
-        case 'datetime':
-          result.format = 'date-time';
-          break;
-        case 'date':
-          result.format = 'date';
-          break;
-      }
+    for (let check of getSchemaChecks(current)) {
+      mergeStringChecksIntoOpenApi(result, check);
+    }
+
+    let rootStringDef = (current as any)._zod?.def;
+    if (rootStringDef?.check === 'string_format') {
+      mergeStringChecksIntoOpenApi(result, { _zod: { def: rootStringDef } });
     }
   } else if (current instanceof z.ZodNumber) {
-    let checks: any[] = (current as any)._def?.checks || [];
-    let isInt = checks.some((c: any) => c.kind === 'int');
+    result.type = schemaIndicatesInteger(current) ? 'integer' : 'number';
 
-    result.type = isInt ? 'integer' : 'number';
-
-    for (const check of checks) {
-      switch (check.kind) {
-        case 'min':
-          result.minimum = check.value;
-          if (check.inclusive === false) {
-            result.exclusiveMinimum = check.value;
-            delete result.minimum;
-          }
-          break;
-        case 'max':
-          result.maximum = check.value;
-          if (check.inclusive === false) {
-            result.exclusiveMaximum = check.value;
-            delete result.maximum;
-          }
-          break;
-        case 'multipleOf':
-          result.multipleOf = check.value;
-          break;
-      }
+    for (let check of getSchemaChecks(current)) {
+      mergeNumberChecksIntoOpenApi(result, check);
     }
   } else if (current instanceof z.ZodBoolean) {
     result.type = 'boolean';
@@ -329,13 +291,12 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'array';
     result.items = zodToOpenAPISchema(current.element as z.ZodTypeAny);
 
-    let checks: any[] = (current as any)._def?.checks || [];
-    for (const check of checks) {
-      if (check.kind === 'min') result.minItems = check.value;
-      if (check.kind === 'max') result.maxItems = check.value;
+    for (let check of getSchemaChecks(current)) {
+      mergeArrayLengthChecksIntoOpenApi(result, check);
     }
   } else if (current instanceof z.ZodObject) {
-    let shape = (current as any).shape || {};
+    let rawShape = (current as any).shape;
+    let shape = coalesceZodObjectShape(rawShape);
     let properties: Record<string, any> = {};
     let required: string[] = [];
 
@@ -358,25 +319,14 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
   } else if (current instanceof z.ZodEnum) {
     result.type = 'string';
     result.enum = (current as any).options;
-  } else if ((current as any)._def?.typeName === 'ZodNativeEnum' || (current as any).nativeEnum) {
-    let enumObj = (current as any).enum;
-    result.enum = Object.values(enumObj).filter((v: unknown) => typeof v === 'string' || typeof v === 'number');
-    // Could infer type but keep simple
   } else if (current instanceof z.ZodUnion) {
     let options = (current as any).options || [];
     result.anyOf = options.map((opt: z.ZodTypeAny) => zodToOpenAPISchema(opt));
   } else if (current instanceof z.ZodNullable) {
-    let innerSchema = zodToOpenAPISchema((current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType);
-    if (innerSchema.type) {
-      if (Array.isArray(innerSchema.type)) {
-        if (!innerSchema.type.includes('null')) innerSchema.type.push('null');
-      } else {
-        innerSchema.type = [innerSchema.type, 'null'];
-      }
-    } else {
-      innerSchema.nullable = true;
-    }
-    result = innerSchema;
+    let innerSchema = zodToOpenAPISchema(
+      (current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType
+    );
+    result = mergeNullableOpenApiFragment(innerSchema);
   } else if (current instanceof z.ZodAny || current instanceof z.ZodUnknown) {
     result = {}; // or { type: 'object' } but {} is valid "any"
   } else if (current instanceof z.ZodDate) {

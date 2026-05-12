@@ -25,7 +25,9 @@
   "scripts": {
     "build": "vite build && vite build --ssr",
     "build:ssr": "vite build --ssr",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test:pkg": "vitest run --config ../../vitest.config.ts src/__tests__",
+    "test:pkg:watch": "vitest --config ../../vitest.config.ts src/__tests__"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^15.3.5",
@@ -34,6 +36,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "terser": "^5.46.2",
+    "typescript": "6.0.3",
     "vite": "^8.0.10",
     "zod": "^4.0.0"
   },

@@ -78,7 +78,7 @@ This is a **TypeScript library monorepo** (pnpm workspaces + Turborepo) with two
 
 ### Non-obvious notes
 
-- **TypeScript must be installed globally** (`npm install -g typescript@5.6.3`) because it is not listed in `package.json` devDependencies but is required by the `check-types` scripts in both packages. The lockfile pins it via ts-jest but pnpm strict mode doesn't hoist it.
+- **TypeScript** is a workspace `devDependency` (`typescript@6.0.3` at the repo root and in `@adaptate/core` / `@adaptate/utils`) so `tsc` is available from each package’s `node_modules/.bin` after `pnpm install`. No global `typescript` install is required.
 - The `turbo.json` build task depends on `^test`, which depends on `check-types`. Running `pnpm build` triggers the full pipeline: check-types → test → build.
 - There is a single `tsconfig.json` at the root used by both packages; individual packages do not have their own tsconfigs.
 - Tests use Vitest (not Jest), despite `@types/jest` being present in root devDependencies.
