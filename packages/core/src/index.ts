@@ -1,166 +1,140 @@
 import { z } from 'zod';
 
-export type Config = Record<string, any>;
+// ============================================================================
+// TransformConfig Type
+// ============================================================================
 
 /**
- * Make the given Zod schema required as per the configuration.
- * @param schema - The Zod schema to make required.
- * @param config - The configuration object.
- * @returns The updated Zod schema with required properties.
- * @throws If the given schema is not a Zod object.
- * @example
- * const schema = z.object({
- *   name: z.string().optional(),
- *   age: z.number().optional(),
- *     address: z.object({
- *       street: z.string().optional(),
- *       city: z.string().optional(),
- *     }).optional(),
- * });
- *
- * // Specify which properties are required, false will not make required
- * // In original schema optional properties yet
- * const config = {
- *   name: true,
- *    address: {
- *      city: true
- *   }
- * };
- * const updatedSchema = transformSchema(schema, config);
- * const validData = {
- *   name: 'John Doe',
- *   address: { city: 'New York' },
- * };
- * const invalidDataMissingName = {
- *   address: { city: 'New York' },
- * };
- * const invalidDataMissingCity = {
- *   name: 'John Doe',
- *   address: {},
- * };
- * schema.parse(validData); // Should pass
- * schema.parse(invalidDataMissingName); // Should fail due to missing 'name'
- * schema.parse(invalidDataMissingCity); // Should fail due to missing 'address.city'
- * @category Helper
- * @module transformSchema
- * */
-export function transformSchema(
-  schema: z.ZodType | any,
-  config: Config
-): z.ZodType {
-  function extendSchema(
-    partialSchema: z.ZodObject<any>,
-    partialConfig: Config
-  ): z.ZodObject<any> {
-    const unwrappedPartialSchema = partialSchema?.isOptional?.()
-      ? (partialSchema as any).unwrap()
-      : partialSchema;
+ * Configuration type for transformSchema.
+ * - `true`  → make field required (unwrap ZodOptional)
+ * - `false` → make field optional (wrap with .optional())
+ * - `{ '*': NestedConfig }` → apply NestedConfig to all items (for arrays/objects)
+ * - Nested object → recursively transform
+ */
+export type TransformConfig = {
+  [key: string]:
+    | boolean
+    | { '*': TransformConfig }
+    | TransformConfig;
+};
 
-    if (
-      unwrappedPartialSchema instanceof z.ZodObject &&
-      typeof partialConfig === 'object' &&
-      !Array.isArray(partialConfig)
-    ) {
-      const shape = unwrappedPartialSchema.shape;
-      const newShape = Object.fromEntries(
-        Object.entries(shape).map(([key, value]: [string, any]) => {
-          let unwrappedValue = value?.isOptional?.() ? value.unwrap() : value;
-          if (partialConfig[key] === true) {
-            return [key, unwrappedValue];
-          } else if (partialConfig[key] === false) {
-            return [key, unwrappedValue.optional()];
-          } else if (typeof partialConfig[key] === 'object') {
-            return [key, extendSchema(value, partialConfig[key])];
+// ============================================================================
+// Helper Types
+// ============================================================================
+
+type MakeRequired<T extends z.ZodTypeAny> =
+  T extends z.ZodOptional<infer U> ? U : T;
+
+type MakeOptional<T extends z.ZodTypeAny> =
+  T extends z.ZodOptional<any> ? T : z.ZodOptional<T>;
+
+// ============================================================================
+// Main TransformSchemaType (Recursive)
+// ============================================================================
+
+export type TransformSchemaType<
+  TSchema extends z.ZodTypeAny,
+  TConfig extends TransformConfig
+> = TSchema extends z.ZodObject<infer Shape, infer UnknownKeys, infer Catchall>
+  ? z.ZodObject<
+      {
+        [K in keyof Shape]: K extends keyof TConfig
+          ? TConfig[K] extends true
+            ? MakeRequired<Shape[K]>
+            : TConfig[K] extends false
+              ? MakeOptional<Shape[K]>
+              : TConfig[K] extends { '*': infer NestedConfig }
+                ? Shape[K] extends z.ZodArray<infer Item>
+                  ? z.ZodArray<TransformSchemaType<Item, NestedConfig & TransformConfig>>
+                  : Shape[K]
+                : TConfig[K] extends object
+                  ? TransformSchemaType<Shape[K], TConfig[K] & TransformConfig>
+                  : Shape[K]
+          : Shape[K];
+      },
+      UnknownKeys,
+      Catchall
+    >
+  : TSchema extends z.ZodArray<infer Item>
+    ? TConfig extends { '*': infer NestedConfig }
+      ? z.ZodArray<TransformSchemaType<Item, NestedConfig & TransformConfig>>
+      : TSchema
+    : TSchema;
+
+// ============================================================================
+// transformSchema Implementation
+// ============================================================================
+
+export function transformSchema<
+  TSchema extends z.ZodTypeAny,
+  TConfig extends TransformConfig
+>(
+  schema: TSchema,
+  config: TConfig
+): TransformSchemaType<TSchema, TConfig> {
+  if (schema instanceof z.ZodObject) {
+    const shape = schema.shape as Record<string, z.ZodTypeAny>;
+    const newShape: Record<string, z.ZodTypeAny> = {};
+
+    for (const key of Object.keys(shape)) {
+      const fieldSchema = shape[key];
+      const fieldConfig = config[key];
+
+      if (fieldConfig === true) {
+        newShape[key] = fieldSchema instanceof z.ZodOptional
+          ? (fieldSchema as any).unwrap()
+          : fieldSchema;
+      } else if (fieldConfig === false) {
+        newShape[key] = fieldSchema instanceof z.ZodOptional
+          ? fieldSchema
+          : fieldSchema.optional();
+      } else if (
+        typeof fieldConfig === 'object' &&
+        fieldConfig !== null &&
+        '*' in fieldConfig
+      ) {
+        if (fieldSchema instanceof z.ZodArray) {
+          const itemSchema = fieldSchema.element;
+          const nestedConfig = (fieldConfig as any)['*'] as TransformConfig;
+
+          if (Object.keys(nestedConfig).length > 0) {
+            const transformedItem = transformSchema(itemSchema, nestedConfig);
+            newShape[key] = z.array(transformedItem);
+          } else {
+            newShape[key] = fieldSchema;
           }
-          return [key, value];
-        })
-      );
-
-      let updatedPartialSchema = z.object(newShape);
-
-      return z.object({
-        ...unwrappedPartialSchema.shape,
-        ...updatedPartialSchema.shape,
-      });
+        } else {
+          newShape[key] = fieldSchema;
+        }
+      } else if (typeof fieldConfig === 'object' && fieldConfig !== null) {
+        if (fieldSchema instanceof z.ZodObject) {
+          newShape[key] = transformSchema(fieldSchema, fieldConfig as TransformConfig);
+        } else if (fieldSchema instanceof z.ZodArray && fieldSchema.element instanceof z.ZodObject) {
+          const transformedItem = transformSchema(
+            fieldSchema.element,
+            fieldConfig as TransformConfig
+          );
+          newShape[key] = z.array(transformedItem);
+        } else {
+          newShape[key] = fieldSchema;
+        }
+      } else {
+        newShape[key] = fieldSchema;
+      }
     }
 
-    if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig['*']) {
-      const elementSchema = unwrappedPartialSchema.element as z.ZodObject<any>;
-
-      let updatedPartialSchema = z.array(
-        extendSchema(elementSchema, partialConfig['*'])
-      );
-
-      return updatedPartialSchema as any;
-    }
-    return unwrappedPartialSchema;
+    return z.object(newShape) as TransformSchemaType<TSchema, TConfig>;
   }
-
-  let updatedSchema: z.ZodType = schema;
 
   if (schema instanceof z.ZodArray && config['*']) {
-    let transformedElement = transformSchema(schema.element, config['*']);
-    updatedSchema = z.array(
-      z.object({
-        ...(schema.element as z.ZodObject<any>).shape,
-        ...(transformedElement as z.ZodObject<any>).shape,
-      })
-    );
-  } else if (schema instanceof z.ZodObject) {
-    let extended = extendSchema(schema, config);
-    updatedSchema = z.object({
-      ...schema.shape,
-      ...extended.shape,
-    });
-  } else {
-    throw new Error('The given schema must be a Zod object.');
+    const itemSchema = schema.element;
+    const nestedConfig = config['*'] as TransformConfig;
+    const transformedItem = transformSchema(itemSchema, nestedConfig);
+    return z.array(transformedItem) as TransformSchemaType<TSchema, TConfig>;
   }
 
-  return updatedSchema;
+  return schema as TransformSchemaType<TSchema, TConfig>;
 }
 
-export function makeConditionalSchemaTransformer(data: any) {
-  return function conditionalSchemaTransformer(
-    schema: z.ZodType,
-    config: any
-  ) {
-    let transformer = {
-      run: () => schema.parse(data),
-      schema: schema,
-      staticConfig: {} as Record<string, any>,
-    };
-    if (
-      schema instanceof z.ZodObject &&
-      typeof config === 'object' &&
-      !Array.isArray(config)
-    ) {
-      const shape = schema.shape;
-      const newShape = Object.fromEntries(
-        Object.entries(shape).map(([key, value]: [string, any]) => {
-          if (
-            config[key] &&
-            (config[key].requiredIf || typeof config[key] === 'function')
-          ) {
-            const condition = config[key].requiredIf ?? config[key];
-            if (typeof condition === 'function' && condition(data)) {
-              return [key, value.unwrap()];
-            }
-          } else if (config[key]) {
-            transformer.staticConfig[key] = config[key];
-          }
-          return [key, value];
-        })
-      );
-
-      let updatedSchema = transformSchema(
-        z.object(newShape),
-        transformer.staticConfig
-      );
-
-      transformer.run = () => updatedSchema.parse(data);
-      transformer.schema = updatedSchema;
-    }
-
-    return transformer;
-  };
-}
+// Re-export for convenience
+export { z } from 'zod';
