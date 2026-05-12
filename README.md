@@ -169,6 +169,10 @@ See [`@adaptate/utils` README](packages/utils/README.md) for full documentation.
 
 </details>
 
+## Design Philosophy
+
+**Compact & Powerful**: The core transformation logic is intentionally compact — fewer than 100 lines of code. Complex nested transformations (deep objects, arrays with wildcards, conditional requirements) are handled elegantly through recursion. This keeps the API surface small while delivering sophisticated behavior with minimal cognitive overhead.
+
 ## Development
 
 This is a pnpm monorepo orchestrated with Turborepo.
@@ -201,7 +205,7 @@ See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](ski
 
 This library recreates and generalizes a pattern originally observed at [Oneflow AB](https://oneflow.com), where the same data model was consumed by different components with varying required fields depending on context.
 
-**Development note**: The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
+**Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
 
 ## License
 
