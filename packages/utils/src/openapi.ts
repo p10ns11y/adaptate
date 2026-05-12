@@ -398,3 +398,50 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
 
 // Re-export the load yaml helper for SSR
 export { getYamlContent } from './load-yaml';
+
+// Keep the other functions (fetch, getDereferenced...) unchanged for compatibility
+export async function fetchYamlContent(webURL: string) {
+  let response = await globalThis.fetch(webURL, {
+    headers: { 'Content-Type': 'text/yaml' },
+    mode: 'cors',
+  });
+  let openapiDocument = yaml.load(await response.text());
+  return openapiDocument;
+}
+
+export type ServerOpenAPISpecParams = {
+  location: 'filesystem';
+  callSiteURL: string;
+  relativePathToSpecFile: string;
+};
+
+export type BrowserOpenAPISpecParams = {
+  location: 'web';
+  webURL: string;
+};
+
+export type OpenAPISpecParams = ServerOpenAPISpecParams | BrowserOpenAPISpecParams;
+
+export async function getDereferencedOpenAPIDocument(params: OpenAPISpecParams) {
+  let openapiDocument: any = {};
+
+  let isNodeEnvDetected = globalThis.process?.versions?.node;
+
+  try {
+    if (params.location === 'web') {
+      openapiDocument = await fetchYamlContent(params.webURL);
+    } else if (params.location === 'filesystem' || isNodeEnvDetected) {
+      let { getYamlContent } = await import('./load-yaml.ts');
+      openapiDocument = await getYamlContent(
+        params.callSiteURL,
+        params.relativePathToSpecFile
+      );
+    }
+
+    let SwaggerParser = await import('@apidevtools/json-schema-ref-parser');
+    let dereferenced = await SwaggerParser.default.dereference(openapiDocument);
+    return dereferenced;
+  } catch (error: any) {
+    throw new Error(`Error reading OpenAPI document: ${error?.message || ''}`);
+  }
+}
