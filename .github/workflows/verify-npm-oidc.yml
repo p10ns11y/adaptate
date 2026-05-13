@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Install dependencies
         run: |
@@ -36,7 +36,7 @@ jobs:
             if [ -f "$dir/package.json" ]; then
               echo ""
               echo ">>> Testing package: $dir"
-              (cd "$dir" && pnpm publish --dry-run --provenance --access public)
+              (cd "$dir" && npx npm@latest publish --dry-run --provenance --access public)
             fi
           done
 

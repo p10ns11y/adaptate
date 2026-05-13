@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     branches: [main]
-    paths: ['package.json']
+    paths: ["package.json"]
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Version bump type (or as-is for no change)'
+        description: "Version bump type (or as-is for no change)"
         required: true
         type: choice
         options:
@@ -17,7 +17,7 @@ on:
           - rc
           - beta
           - alpha
-          - as-is          # ← New option for rare cases
+          - as-is # ← New option for rare cases
 
 jobs:
   release:
@@ -45,7 +45,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Install dependencies
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
@@ -114,13 +114,13 @@ jobs:
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ">>> Publishing: $dir"
-              (cd "$dir" && pnpm publish --provenance --access public --no-git-checks)
+              (cd "$dir" && npx npm@latest publish --provenance --access public)
             fi
           done
 
           echo ""
           echo "=== Publishing root package (adaptate) ==="
-          pnpm publish --provenance --access public --no-git-checks
+          npx npm@latest publish --provenance --access public
 
       - name: Commit and tag (manual only, skip if as-is)
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
