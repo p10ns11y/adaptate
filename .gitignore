@@ -50,6 +50,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# pnpm content-addressable store (created inside the dev container)
+.pnpm-store/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devcontainer.schema.json",
+  "name": "Adaptate",
+
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+
+  "remoteUser": "node",
+
+  "runArgs": [
+    "--init"
+  ],
+
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "TURBO_TELEMETRY_DISABLED": "1",
+    "CI": "true"
+  },
+
+  "remoteEnv": {
+    "PNPM_HOME": "/home/node/.local/share/pnpm",
+    "PATH": "/home/node/.local/share/pnpm:${containerEnv:PATH}"
+  },
+
+  // Much simpler now — pnpm is already installed
+"postCreateCommand": "sudo corepack enable && pnpm install --frozen-lockfile",
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "npm.packageManager": "pnpm",
+        "search.exclude": {
+          "**/.turbo": true,
+          "**/node_modules": true
+        },
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/.turbo/**": true
+        }
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "yoavbls.pretty-ts-errors",
+        "usernamehw.errorlens",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vscode.vscode-typescript-next",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+
+  "shutdownAction": "stopContainer"
+}

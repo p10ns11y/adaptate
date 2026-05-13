@@ -7,6 +7,12 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - `packages/core/`: Schema transformation engine (`transformSchema`, `makeConditionalSchemaTransformer`)
 - `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
 
+## Dev container (optional filesystem isolation)
+
+Requires **Docker** or **Podman** and **Dev Containers** (**VS Code:** Microsoft `ms-vscode-remote.remote-containers`; **Cursor:** Anysphere **`anysphere.remote-containers`** — search Extensions for “Dev Containers”). Open the repo with **Dev Containers: Reopen in Container**. The workspace is the bind-mounted repository only (your host home is not mounted by default—keep it that way unless you deliberately need extra mounts).
+
+Configuration lives in [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json): **Node 24** image, **pnpm@11.1.1** via Corepack (matches root `engines` and `packageManager`). After the container starts, `postCreateCommand` runs `pnpm install --frozen-lockfile --ignore-scripts`, aligned with CI. Short how-to: [`.devcontainer/README.md`](.devcontainer/README.md).
+
 ## Commands
 - Install: `pnpm install` only — do **not** use `npm install` at the repo root (supply-chain posture in `.npmrc` + `pnpm-workspace.yaml` is for pnpm; npm bypasses or mismatches key defenses; see `package.json` `packageManager`)
 - Build: `pnpm build` (runs Turborepo pipeline: check-types → test → build)

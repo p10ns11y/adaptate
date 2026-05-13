@@ -198,6 +198,7 @@ npx turbo run check-types  # TypeScript type checking
 ### Project Structure
 
 ```
+├── .devcontainer/     # optional Dev Container (Node 24 + pnpm)
 ├── packages/
 │   ├── core/         # @adaptate/core — schema transformation
 │   └── utils/        # @adaptate/utils — OpenAPI utilities
@@ -207,7 +208,7 @@ npx turbo run check-types  # TypeScript type checking
 └── turbo.json        # Turborepo task graph
 ```
 
-See [`AGENTS.md`](AGENTS.md) for full development guidelines and [`skills/`](skills/) for operational procedures.
+See [`AGENTS.md`](AGENTS.md) and [`skills/`](skills/) for development guidelines and operational procedures. Optional **dev container**: [`.devcontainer/README.md`](.devcontainer/README.md), [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json).
 
 ## Credits
 
