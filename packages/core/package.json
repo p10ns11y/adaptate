@@ -21,6 +21,7 @@
   "scripts": {
     "build": "vite build",
     "check-types": "tsc --noEmit",
+    "lint": "oxlint -c ../../.oxlintrc.json ./src && eslint --config ../../eslint.config.js \"src/**/*.ts\"",
     "test:pkg": "vitest run --config ../../vitest.config.ts src/__tests__",
     "test:pkg:watch": "vitest --config ../../vitest.config.ts src/__tests__"
   },

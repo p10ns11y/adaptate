@@ -29,7 +29,7 @@ export function openAPISchemaToZod(
   schema: any,
   propertyKey: string = '',
   required: string[] = []
-): z.ZodTypeAny {
+): z.ZodType {
   if (!schema || typeof schema !== 'object') {
     return z.any();
   }
@@ -42,7 +42,7 @@ export function openAPISchemaToZod(
     schema.nullable === true ||
     (Array.isArray(schema.type) && schema.type.includes('null'));
 
-  let zodSchema: z.ZodTypeAny;
+  let zodSchema: z.ZodType;
 
   // Enum support
   if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
@@ -51,7 +51,7 @@ export function openAPISchemaToZod(
       zodSchema = z.enum(enumValues as [string, ...string[]]);
     } else {
       zodSchema = z.union(
-        enumValues.map((v: unknown) => z.literal(v as string | number | boolean)) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+        enumValues.map((v: unknown) => z.literal(v as string | number | boolean)) as [z.ZodType, ...z.ZodType[]]
       );
     }
   }
@@ -60,48 +60,49 @@ export function openAPISchemaToZod(
     schema.type === 'string' ||
     (Array.isArray(schema.type) && schema.type.includes('string'))
   ) {
-    let s = z.string();
+    let stringSchema: z.ZodType = z.string();
+
+    switch (schema.format) {
+      case 'email':
+        stringSchema = z.email();
+        break;
+      case 'uuid':
+        stringSchema = z.uuid();
+        break;
+      case 'uri':
+      case 'url':
+        stringSchema = z.url();
+        break;
+      case 'date-time':
+      case 'datetime':
+        stringSchema = z.iso.datetime();
+        break;
+      case 'date':
+        stringSchema = z.iso.date();
+        break;
+      case 'time':
+        stringSchema = z.iso.time();
+        break;
+      // Add more as needed: password, byte, etc. can stay as string()
+    }
+
+    let stringWithChecks = stringSchema as z.ZodString;
 
     if (typeof schema.minLength === 'number') {
-      s = s.min(schema.minLength);
+      stringWithChecks = stringWithChecks.min(schema.minLength);
     }
     if (typeof schema.maxLength === 'number') {
-      s = s.max(schema.maxLength);
+      stringWithChecks = stringWithChecks.max(schema.maxLength);
     }
     if (typeof schema.pattern === 'string') {
       try {
-        s = s.regex(new RegExp(schema.pattern));
+        stringWithChecks = stringWithChecks.regex(new RegExp(schema.pattern));
       } catch {
         // invalid regex, ignore
       }
     }
 
-    // Common OpenAPI formats
-    switch (schema.format) {
-      case 'email':
-        s = s.email();
-        break;
-      case 'uuid':
-        s = s.uuid();
-        break;
-      case 'uri':
-      case 'url':
-        s = s.url();
-        break;
-      case 'date-time':
-      case 'datetime':
-        s = s.datetime();
-        break;
-      case 'date':
-        s = s.date();
-        break;
-      case 'time':
-        s = s.time();
-        break;
-      // Add more as needed: password, byte, etc. can stay as string()
-    }
-
-    zodSchema = s;
+    zodSchema = stringWithChecks;
   }
   // Number / Integer
   else if (
@@ -169,7 +170,7 @@ export function openAPISchemaToZod(
   else if (schema.type === 'object' || ('properties' in schema && schema.properties)) {
     let properties = schema.properties || {};
     let requiredProperties: string[] = schema.required || [];
-    let shape: Record<string, z.ZodTypeAny> = {};
+    let shape: Record<string, z.ZodType> = {};
 
     for (const [key, value] of Object.entries(properties)) {
       let propZod = openAPISchemaToZod(value as any, key, requiredProperties);
@@ -207,7 +208,7 @@ export function openAPISchemaToZod(
     let variants = (schema.anyOf || schema.oneOf).map((s: any) =>
       openAPISchemaToZod(s)
     );
-    zodSchema = z.union(variants as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
+    zodSchema = z.union(variants as [z.ZodType, ...z.ZodType[]]);
   }
   // Fallback
   else {
@@ -250,7 +251,7 @@ export function openAPISchemaToZod(
  * - Description from .describe()
  * - Zod 4 attached checks (`_zod.def.checks`) and legacy `_def.checks` where present
  */
-export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
+export function zodToOpenAPISchema(zodSchema: z.ZodType): any {
   if (!zodSchema) return {};
 
   let { inner: current } = unwrapOptional(zodSchema);
@@ -289,7 +290,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     result.type = 'boolean';
   } else if (current instanceof z.ZodArray) {
     result.type = 'array';
-    result.items = zodToOpenAPISchema(current.element as z.ZodTypeAny);
+    result.items = zodToOpenAPISchema(current.element as z.ZodType);
 
     for (let check of getSchemaChecks(current)) {
       mergeArrayLengthChecksIntoOpenApi(result, check);
@@ -301,7 +302,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
     let required: string[] = [];
 
     for (const [key, value] of Object.entries(shape)) {
-      let { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodTypeAny);
+      let { inner: propInner, isOptional: propOptional } = unwrapOptional(value as z.ZodType);
       let propSchema = zodToOpenAPISchema(propInner);
 
       properties[key] = propSchema;
@@ -317,11 +318,22 @@ export function zodToOpenAPISchema(zodSchema: z.ZodTypeAny): any {
       result.required = required;
     }
   } else if (current instanceof z.ZodEnum) {
-    result.type = 'string';
-    result.enum = (current as any).options;
+    let enumOptions = (current as any).options as readonly unknown[];
+    let everyOptionIsNumber = enumOptions.every(
+      (optionValue) => typeof optionValue === 'number'
+    );
+    if (everyOptionIsNumber) {
+      let everyOptionIsInteger = enumOptions.every(
+        (optionValue) => Number.isInteger(optionValue as number)
+      );
+      result.type = everyOptionIsInteger ? 'integer' : 'number';
+    } else {
+      result.type = 'string';
+    }
+    result.enum = [...enumOptions];
   } else if (current instanceof z.ZodUnion) {
     let options = (current as any).options || [];
-    result.anyOf = options.map((opt: z.ZodTypeAny) => zodToOpenAPISchema(opt));
+    result.anyOf = options.map((opt: z.ZodType) => zodToOpenAPISchema(opt));
   } else if (current instanceof z.ZodNullable) {
     let innerSchema = zodToOpenAPISchema(
       (current as any).unwrap ? (current as any).unwrap() : (current as any)._def.innerType

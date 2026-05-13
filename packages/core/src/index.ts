@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Whether `undefined` is valid input for the schema (e.g. `ZodOptional`).
  * Uses `safeParse(undefined)` instead of deprecated `isOptional()`.
  */
-function schemaAcceptsUndefined(schema: z.ZodTypeAny): boolean {
+function schemaAcceptsUndefined(schema: z.ZodType): boolean {
   return schema.safeParse(undefined).success;
 }
 
@@ -44,7 +44,7 @@ export type Config<T = unknown> =
  * Returns a properly typed Zod schema.
  */
 export function transformSchema<
-  TSchema extends z.ZodTypeAny,
+  TSchema extends z.ZodType,
   TConfig extends Config<z.infer<TSchema>>
 >(
   schema: TSchema,
@@ -108,7 +108,7 @@ export function transformSchema<
 
   if (schema instanceof z.ZodArray && (config as any)['*']) {
     let transformedElement = transformSchema(
-      schema.element as z.ZodTypeAny,
+      schema.element as z.ZodType,
       (config as any)['*']
     );
     updatedSchema = z.array(

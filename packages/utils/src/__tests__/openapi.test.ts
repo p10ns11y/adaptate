@@ -506,12 +506,12 @@ describe('zodToOpenAPISchema (additional Zod kinds)', () => {
     expect(openApi.anyOf).toHaveLength(2);
   });
 
-  it('maps native enum', () => {
+  it('maps string enum (z.enum)', () => {
     enum Role {
       Admin = 'admin',
       User = 'user',
     }
-    let openApi = zodToOpenAPISchema(z.nativeEnum(Role));
+    let openApi = zodToOpenAPISchema(z.enum(Role));
     expect(openApi.enum).toEqual(expect.arrayContaining(['admin', 'user']));
   });
 
@@ -673,13 +673,24 @@ describe('zodToOpenAPISchema (runtime shape contracts)', () => {
     expect(openApi.required).toBeUndefined();
   });
 
-  it('retains numeric native enum values for OpenAPI enum parity', () => {
-    enum Http {
-      Ok = 200,
-      NotFound = 404,
-    }
-    let openApi = zodToOpenAPISchema(z.nativeEnum(Http));
+  it('retains numeric enum values for OpenAPI enum parity (z.enum)', () => {
+    // TypeScript numeric enums add reverse string keys; use a plain value map so `z.enum` lists only numbers.
+    const HttpStatusCode = {
+      Ok: 200,
+      NotFound: 404,
+    } as const;
+    let openApi = zodToOpenAPISchema(z.enum(HttpStatusCode));
     expect(openApi.enum).toEqual(expect.arrayContaining([200, 404]));
+  });
+
+  it('maps float numeric z.enum to OpenAPI number type', () => {
+    const FloatCodes = {
+      Low: 1.5,
+      High: 2.5,
+    } as const;
+    let openApi = zodToOpenAPISchema(z.enum(FloatCodes));
+    expect(openApi.type).toBe('number');
+    expect(openApi.enum).toEqual(expect.arrayContaining([1.5, 2.5]));
   });
 
   it('falls back to an empty schema for unsupported Zod types', () => {
