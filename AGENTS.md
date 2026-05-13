@@ -54,7 +54,7 @@ Operational guides for common tasks live in [`skills/`](skills/README.md). Any c
 
 ## Rules
 - Run `npx turbo run check-types` after TypeScript changes
-- Run `pnpm lint` to run Oxlint and ESLint (deprecation) on package sources
+- Run `pnpm lint` to run Oxlint and ESLint (deprecation) on package sources (also enforced in GitHub Actions: `.github/workflows/ci.yml` before `turbo run build`)
 - Run `npx vitest run --coverage` to verify tests pass
 - Build pipeline order: `check-types` → `test` → `build` (enforced by `turbo.json`)
 - No force pushes to `main`
