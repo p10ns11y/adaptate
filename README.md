@@ -2,7 +2,29 @@
 
 Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI
 
-![Coverage Badge](/coverage-badge.svg)
+<!-- Packages on npm -->
+[![npm: adaptate](https://img.shields.io/npm/v/adaptate?label=adaptate&logo=npm&color=cb3837)](https://www.npmjs.com/package/adaptate)
+[![npm: @adaptate/core](https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&logo=npm&color=cb3837)](https://www.npmjs.com/package/@adaptate/core)
+[![npm: @adaptate/utils](https://img.shields.io/npm/v/@adaptate/utils?label=%40adaptate%2Futils&logo=npm&color=cb3837)](https://www.npmjs.com/package/@adaptate/utils)
+[![downloads / month](https://img.shields.io/npm/dm/@adaptate/core?logo=npm&label=downloads%2Fmonth)](https://www.npmjs.com/package/@adaptate/core)
+[![minzipped](https://img.shields.io/bundlephobia/minzip/@adaptate/core?label=minzipped)](https://bundlephobia.com/package/@adaptate/core)
+[![types: included](https://img.shields.io/npm/types/@adaptate/core)](https://www.npmjs.com/package/@adaptate/core)
+
+<!-- Build, quality, supply chain -->
+[![CI](https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI)](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
+[![Coverage](./coverage-badge.svg)](./coverage)
+[![Socket.dev supply chain](https://img.shields.io/badge/socket.dev-supply%20chain-1f6feb)](https://socket.dev/npm/package/adaptate/overview)
+[![License: MIT](https://img.shields.io/npm/l/@adaptate/core?color=blue)](./LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/p10ns11y/adaptate?logo=github)](https://github.com/p10ns11y/adaptate/commits/main)
+[![Issues](https://img.shields.io/github/issues/p10ns11y/adaptate?logo=github)](https://github.com/p10ns11y/adaptate/issues)
+[![Stars](https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github)](https://github.com/p10ns11y/adaptate/stargazers)
+
+<!-- Language & toolchain -->
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](./tsconfig.json)
+[![Node >=24](https://img.shields.io/node/v/@adaptate/core?logo=node.js&logoColor=white)](https://nodejs.org)
+[![pnpm 11.1.1](https://img.shields.io/badge/pnpm-11.1.1-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
+[![Zod peer](https://img.shields.io/badge/zod-%5E3.25%20%7C%7C%20%5E4.0-3b82f6?logo=zod&logoColor=white)](https://zod.dev)
+[![Dev Container](https://img.shields.io/badge/dev%20container-ready-2496ED?logo=docker&logoColor=white)](./.devcontainer/README.md)
 
 ## Overview
 
