@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 /**
- * Whether `undefined` is valid input for the schema (e.g. `ZodOptional`).
- * Uses `safeParse(undefined)` instead of deprecated `isOptional()`.
+ * Whether this schema layer makes input optional (e.g. `ZodOptional`), i.e.
+ * `undefined` parses successfully. Implemented with `safeParse(undefined)` —
+ * not Zod's deprecated `schema.isOptional()` instance method.
  */
-function schemaAcceptsUndefined(schema: z.ZodType): boolean {
+function isOptional(schema: z.ZodType): boolean {
   return schema.safeParse(undefined).success;
 }
 
@@ -55,7 +56,7 @@ export function transformSchema<
     partialSchema: z.ZodObject<any>,
     partialConfig: any
   ): z.ZodObject<any> {
-    const unwrappedPartialSchema = schemaAcceptsUndefined(partialSchema)
+    const unwrappedPartialSchema = isOptional(partialSchema)
       ? (partialSchema as any).unwrap()
       : partialSchema;
 
@@ -67,7 +68,7 @@ export function transformSchema<
       const shape = unwrappedPartialSchema.shape;
       const newShape = Object.fromEntries(
         Object.entries(shape).map(([key, value]: [string, any]) => {
-          let unwrappedValue = schemaAcceptsUndefined(value) ? value.unwrap() : value;
+          let unwrappedValue = isOptional(value) ? value.unwrap() : value;
           if (partialConfig[key] === true) {
             return [key, unwrappedValue];
           } else if (partialConfig[key] === false) {
