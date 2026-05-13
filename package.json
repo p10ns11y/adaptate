@@ -1,6 +1,6 @@
 {
   "name": "adaptate",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -28,13 +28,20 @@
     "test:watch": "vitest --coverage",
     "typecheck": "turbo run check-types --filter=@adaptate/core --filter=@adaptate/utils",
     "build": "turbo run build",
-    "coveragebadge": "pnpm run test && npx make-coverage-badge --output-path ./coverage-badge.svg"
+    "coveragebadge": "pnpm run test && npx make-coverage-badge --output-path ./coverage-badge.svg",
+    "lint": "turbo run lint",
+    "lint:fix": "pnpm exec oxlint --fix -c .oxlintrc.json ./packages/core/src ./packages/utils/src && pnpm run lint:deprecation",
+    "lint:ox": "oxlint -c .oxlintrc.json ./packages/core/src ./packages/utils/src",
+    "lint:deprecation": "eslint \"packages/core/src/**/*.ts\" \"packages/utils/src/**/*.ts\""
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^10.3.0",
+    "oxlint": "^1.63.0",
     "turbo": "^2.9.9",
     "typescript": "6.0.3",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^4.1.5"
   },
   "description": "Dynamic and Adaptable Model Validator Using Zod, Interoperable with OpenAPI",

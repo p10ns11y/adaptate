@@ -5,8 +5,8 @@ import { z } from 'zod';
  * Keeps Zod 3-style `check.kind` handling alongside Zod 4 `_zod.def.checks`.
  */
 
-export function unwrapOptional(schema: z.ZodTypeAny): {
-  inner: z.ZodTypeAny;
+export function unwrapOptional(schema: z.ZodType): {
+  inner: z.ZodType;
   isOptional: boolean;
 } {
   if (schema instanceof z.ZodOptional) {
@@ -20,14 +20,14 @@ export function unwrapOptional(schema: z.ZodTypeAny): {
 }
 
 /** Zod 4 string schemas (`z.email()`, …) are not `instanceof ZodString` but use `_zod.def.type === 'string'`. */
-export function isZodStringLike(schema: z.ZodTypeAny): boolean {
+export function isZodStringLike(schema: z.ZodType): boolean {
   return (
     schema instanceof z.ZodString ||
     (schema as any)._zod?.def?.type === 'string'
   );
 }
 
-export function getSchemaChecks(schema: z.ZodTypeAny): any[] {
+export function getSchemaChecks(schema: z.ZodType): any[] {
   let fromZod4 = (schema as any)._zod?.def?.checks;
   if (Array.isArray(fromZod4)) {
     return fromZod4;

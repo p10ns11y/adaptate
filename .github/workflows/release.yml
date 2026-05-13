@@ -98,6 +98,10 @@ jobs:
         if: (github.event_name == 'push' && steps.check.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
         run: echo "NEW_VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_ENV
 
+      - name: Lint
+        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
+        run: pnpm lint
+
       - name: Build
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: npx turbo run build

@@ -55,14 +55,14 @@ describe('getSchemaChecks', () => {
   });
 
   it('falls back to _def.checks when _zod checks are absent', () => {
-    let schema = {} as z.ZodTypeAny;
+    let schema = {} as z.ZodType;
     let legacyChecks = [{ kind: 'min', value: 1 }];
     (schema as any)._def = { checks: legacyChecks };
     expect(getSchemaChecks(schema)).toEqual(legacyChecks);
   });
 
   it('returns an empty array when no checks exist', () => {
-    let bare = {} as z.ZodTypeAny;
+    let bare = {} as z.ZodType;
     expect(getSchemaChecks(bare)).toEqual([]);
   });
 });

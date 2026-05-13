@@ -85,7 +85,7 @@ Converts a Zod schema to an OpenAPI-compatible JSON Schema object.
 - String: min/max length, regex pattern, formats (email, uuid, etc.)
 - Number: min/max (inclusive/exclusive), multipleOf, integer
 - Array: minItems / maxItems
-- Enums (`z.enum`, `z.nativeEnum`)
+- Enums (`z.enum` — string enums and numeric member tuples; Zod v4 merged `z.nativeEnum` into `z.enum`)
 - Unions (`z.union` → `anyOf`)
 - Descriptions via `.describe()`
 - Common special types (`ZodDate`, `ZodBigInt`)
