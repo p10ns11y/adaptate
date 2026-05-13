@@ -1,6 +1,7 @@
 # Adaptate Coding Style Guide
 
 ## Tools
+- Dependency installs in this repo: **pnpm only** (`pnpm install`); do not use `npm install` at the root (supply-chain posture in `.npmrc` + `pnpm-workspace.yaml`; see `package.json` `packageManager`).
 - `tsc --noEmit`: Typecheck (via `npx turbo run check-types`).
 - `npx vitest run --coverage`: Run tests with coverage.
 - `pnpm build`: Full build pipeline (check-types → test → build).

@@ -114,13 +114,13 @@ jobs:
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ">>> Publishing: $dir"
-              (cd "$dir" && npx npm@latest publish --provenance --access public)
+              (cd "$dir" && pnpm publish --provenance --access public --no-git-checks)
             fi
           done
 
           echo ""
           echo "=== Publishing root package (adaptate) ==="
-          npx npm@latest publish --provenance --access public
+          pnpm publish --provenance --access public --no-git-checks
 
       - name: Commit and tag (manual only, skip if as-is)
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'

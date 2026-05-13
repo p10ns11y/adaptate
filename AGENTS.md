@@ -8,7 +8,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
 
 ## Commands
-- Install: `pnpm install`
+- Install: `pnpm install` only — do **not** use `npm install` at the repo root (supply-chain posture in `.npmrc` + `pnpm-workspace.yaml` is for pnpm; npm bypasses or mismatches key defenses; see `package.json` `packageManager`)
 - Build: `pnpm build` (runs Turborepo pipeline: check-types → test → build)
 - Test: `npx vitest run --coverage` (single run) or `pnpm test` (watch mode)
 - Typecheck: `npx turbo run check-types`
@@ -81,6 +81,8 @@ This is a **TypeScript library monorepo** (pnpm workspaces + Turborepo) with two
 | Build | `pnpm build` |
 
 ### Non-obvious notes
+
+- **Package manager:** Use **pnpm** only (`pnpm install`). **`npm install`** at the repo root breaks from the repo’s **supply-chain defenses** (`.npmrc`, `pnpm-workspace.yaml`) and can diverge from CI — not supported for developing Adaptate.
 
 | Tool | Role |
 |------|------|
