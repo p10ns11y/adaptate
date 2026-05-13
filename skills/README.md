@@ -26,6 +26,7 @@ Agents should:
 
 ## Conventions
 
+- Use **pnpm** for installs in this repository (`pnpm install`); do not use `npm install` at the root — the lockfile and configs assume pnpm for **supply-chain safety** (see `.npmrc`, `pnpm-workspace.yaml`, root `package.json` `packageManager`).
 - Each skill is a standalone Markdown file with: Overview, When to use, Steps, Validation, Rules.
 - Steps are numbered and imperative ("Run X", "Create Y", "Verify Z").
 - Validation describes what a successful completion looks like.

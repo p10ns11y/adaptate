@@ -12,6 +12,8 @@ npm install @adaptate/core
 
 Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
+**Monorepo development:** If you clone the **adaptate** repo to work on source, use **pnpm** at the repo root only — required for the repo’s supply-chain protections ([Development](../../README.md#development) in the root README). The install commands above remain correct when installing **published** packages from npm.
+
 ## API
 
 ### `transformSchema(schema, config)`

@@ -3,6 +3,8 @@
 ## Overview
 Run the full quality gate sequence to ensure code is ready for commit and push.
 
+Install dependencies with **`pnpm install`** in this monorepo only. **`npm install`** at the repo root is unsupported — it sidesteps the intended **supply-chain protections** in `.npmrc` and `pnpm-workspace.yaml` and can mismatch CI. Root `package.json` sets `packageManager`.
+
 ## When to use
 - Before every commit (automated via `.husky/pre-commit`)
 - Before pushing to remote

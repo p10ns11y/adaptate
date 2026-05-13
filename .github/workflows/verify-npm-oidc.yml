@@ -28,15 +28,15 @@ jobs:
       - name: Build
         run: npx turbo run build
 
-      - name: Dry-run publish with latest npm (OIDC test)
+      - name: Dry-run publish (OIDC + provenance, pnpm)
         run: |
           echo "=== Testing OIDC + Provenance ==="
-          
+
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ""
               echo ">>> Testing package: $dir"
-              (cd "$dir" && npx npm@latest publish --dry-run --provenance --access public)
+              (cd "$dir" && pnpm publish --dry-run --provenance --access public)
             fi
           done
 

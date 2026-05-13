@@ -3,6 +3,8 @@
 ## Overview
 Prepare a version bump and ensure the package is ready for publishing to npm.
 
+Develop and install in this repo with **pnpm** only (`pnpm install`, `pnpm build`). Do **not** run **`npm install`** at the repository root — that bypasses the repo’s **supply-chain controls** (`.npmrc`, `pnpm-workspace.yaml`); see `package.json` `packageManager`.
+
 ## When to use
 - New features or fixes are ready for consumers
 - Breaking changes require a major version bump
