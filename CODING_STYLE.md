@@ -21,7 +21,7 @@
 
 ## Zod Patterns
 - Never bundle `zod` — it is a peer dependency.
-- Recursive schema traversal: check `isOptional()` → `unwrap()` → `instanceof` → recurse.
+- Recursive schema traversal: treat optional when `schema.safeParse(undefined).success` → `unwrap()` → `instanceof` → recurse (not deprecated `isOptional()`).
 - Use `ZodObject.merge()` to combine original + transformed shapes.
 - Config-driven: `true` = required, object = recurse, function = conditional.
 

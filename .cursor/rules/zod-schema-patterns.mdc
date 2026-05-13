@@ -8,7 +8,7 @@ alwaysApply: false
 ## Schema unwrapping
 
 - Use `schema.unwrap()` to strip optionality from `ZodOptional` types — **never** use `.required()` which is a ZodObject method.
-- Check `schema.isOptional()` before unwrapping.
+- Detect optional wrappers with `schema.safeParse(undefined).success` (or a small helper) before unwrapping — avoid deprecated `schema.isOptional()`.
 - After unwrapping, use `instanceof ZodObject` / `instanceof ZodArray` to branch logic.
 
 ## Config objects
