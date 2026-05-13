@@ -7,6 +7,11 @@ packages:
 # Transitive deps must resolve from the registry / workspace (not arbitrary git URLs or tarballs).
 blockExoticSubdeps: true
 
+# Fail immediately if node_modules is out of sync with pnpm-lock.yaml before running any script.
+# This protects against running code with missing, stale, or potentially tampered dependencies
+# (strong defense against supply chain attacks like Shai-Hulud).
+verifyDepsBeforeRun: error
+
 # Do not install newly published versions until they are at least this many minutes old (supply-chain window).
 # Two days in minutes
 minimumReleaseAge: 2880
@@ -29,8 +34,17 @@ strictStorePkgContentCheck: true
 pmOnFail: error
 
 # Honor dependency engines against the running Node (see root package.json "engines").
+nodeVersion: 24.0.0 # Minimum supported version
 engineStrict: true
 
 # --- Lifecycle scripts ---
 strictDepBuilds: true
 dangerouslyAllowAllBuilds: false
+
+# ============================================================
+# Peer Dependencies & Isolation
+# ============================================================
+strict-peer-dependencies: true
+dedupe-peer-dependents: true
+shamefully-hoist: false
+public-hoist-pattern: []

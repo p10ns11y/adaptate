@@ -51,8 +51,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
         run: |
           corepack enable
-          corepack prepare pnpm@latest --activate
-          pnpm install --frozen-lockfile
+          corepack prepare pnpm@11.1.1  --activate
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Configure git
         if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
