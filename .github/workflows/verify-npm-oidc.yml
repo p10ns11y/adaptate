@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          corepack prepare pnpm@latest --activate
-          pnpm install --frozen-lockfile
+          corepack prepare pnpm@11.1.1 --activate --activate
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
         run: npx turbo run build
