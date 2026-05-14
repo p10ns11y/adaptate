@@ -1,17 +1,24 @@
-name: Verify npm OIDC Connection (Dry Run)
+name: Reusable - Publish Packages (OIDC + Provenance)
 
 on:
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      is_manual:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
-  verify-oidc:
+  publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    environment: ${{ inputs.is_manual && 'release' || '' }}
 
     steps:
       - name: Checkout
@@ -32,18 +39,15 @@ jobs:
       - name: Build
         run: npx turbo run build
 
-      - name: Dry-run publish (OIDC + provenance)
+      - name: Publish workspace packages
         run: |
-          echo "=== Testing OIDC + Provenance ==="
-
+          echo "=== Publishing workspace packages ==="
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
-              echo ""
-              echo ">>> Testing package: $dir"
-              (cd "$dir" && npx npm@latest publish --dry-run --provenance --access public)
+              echo ">>> Publishing: $dir"
+              (cd "$dir" && npx npm@latest publish --provenance --access public)
             fi
           done
 
-      - name: ✅ OIDC Connection Verified Successfully
-        if: success()
-        run: echo "✅ GitHub ↔ npmjs OIDC connection is working!"
+      - name: Publish root package (adaptate)
+        run: npx npm@latest publish --provenance --access public

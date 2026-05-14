@@ -17,58 +17,80 @@ on:
           - rc
           - beta
           - alpha
-          - as-is # ← New option for rare cases
+          - as-is
+
+permissions:
+  contents: read
 
 jobs:
-  release:
+  # =====================
+  # JOB 1: Build + Verify (Read-only)
+  # =====================
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
+      contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.1.1 --activate
+          pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: npx turbo run build
+
+      - name: Test
+        run: pnpm test
 
       - name: Check version changed (auto-trigger)
         id: check
         if: github.event_name == 'push'
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
-          PREVIOUS=$(git show HEAD\~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
+          PREVIOUS=$(git show HEAD~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           echo "publish=$([ "$CURRENT" != "$PREVIOUS" ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
+  # =====================
+  # JOB 2: Publish (calls reusable workflow)
+  # =====================
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && needs.build.outputs.publish == 'true')
 
-      - name: Install dependencies
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.1.1  --activate
-          pnpm install --frozen-lockfile --ignore-scripts
+    environment: ${{ github.event_name == 'workflow_dispatch' && 'release' || '' }}
 
-      - name: Configure git
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      # === Version Bump (skipped when "as-is" is selected) ===
-      - name: Bump version (manual only)
+      # Version bump logic (manual only)
+      - name: Bump version (manual)
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
         run: |
           NEW_VERSION=$(node -e "
             const pkg = require('./package.json');
             let version = pkg.version;
             const bump = '${{ inputs.bump }}';
-            
+
             if (['rc', 'beta', 'alpha'].includes(bump)) {
               const base = version.replace(/-[a-zA-Z0-9.]+$/, '');
               console.log(base + '-' + bump + '.1');
@@ -81,7 +103,6 @@ jobs:
             }
           ")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          echo "Bumping to $NEW_VERSION"
 
           node -e "
             const fs = require('fs');
@@ -94,44 +115,31 @@ jobs:
             }
           "
 
-      - name: Read version (auto-trigger or as-is)
-        if: (github.event_name == 'push' && steps.check.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
+      - name: Read current version
+        if: (github.event_name == 'push' && needs.build.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
         run: echo "NEW_VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_ENV
 
-      - name: Lint
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: pnpm lint
+      - name: Call Publish Reusable Workflow
+        uses: ./.github/workflows/reusable-publish.yml
+        with:
+          version: ${{ env.NEW_VERSION }}
+          is_manual: ${{ github.event_name == 'workflow_dispatch' }}
 
-      - name: Build
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: npx turbo run build
-
-      # === Publish All Packages ===
-      - name: Publish to npm (OIDC + Provenance)
-        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.publish == 'true'
-        run: |
-          echo "=== Publishing workspace packages ==="
-          for dir in packages/core packages/utils; do
-            if [ -f "$dir/package.json" ]; then
-              echo ">>> Publishing: $dir"
-              (cd "$dir" && npx npm@latest publish --provenance --access public)
-            fi
-          done
-
-          echo ""
-          echo "=== Publishing root package (adaptate) ==="
-          npx npm@latest publish --provenance --access public
-
-      - name: Commit and tag (manual only, skip if as-is)
+      # Git operations (only on manual bump)
+      - name: Commit and push (manual bump)
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.json packages/*/package.json
           git commit -m "chore: release v${NEW_VERSION}"
           git tag "v${NEW_VERSION}"
           git push origin main --tags
 
-      - name: Tag (auto-trigger or as-is)
-        if: (github.event_name == 'push' && steps.check.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
+      - name: Create tag (auto or as-is)
+        if: (github.event_name == 'push' && needs.build.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "v${NEW_VERSION}"
           git push origin --tags
