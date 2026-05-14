@@ -6,12 +6,12 @@ on:
       version:
         required: true
         type: string
-        description: "Current version being published (for logging)"
+        description: "Version being published (used for logging)"
       is_manual:
         required: false
         type: boolean
         default: false
-        description: "Whether triggered manually"
+        description: "Whether this was triggered manually (affects environment protection)"
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.is_manual && 'release' || '' }}
+    environment: ${{ inputs.is_manual && 'release' || '' }} # Requires approval for manual publishes
 
     steps:
       - name: Checkout
@@ -41,17 +41,36 @@ jobs:
       - name: Build
         run: npx turbo run build
 
-      - name: Publish root package
+      - name: Determine dist-tag for publishing
+        id: tag
         run: |
-          echo "=== Publishing root package (version: ${{ inputs.version }}) ==="
-          npx npm@latest publish --provenance --access public
+          VERSION="${{ inputs.version }}"
+
+          # Prerelease versions (rc, beta, alpha) cannot be published to 'latest' tag
+          if [[ "$VERSION" == *"-rc."* ]]; then
+            echo "tag=rc"
+          elif [[ "$VERSION" == *"-beta."* ]]; then
+            echo "tag=beta"
+          elif [[ "$VERSION" == *"-alpha."* ]]; then
+            echo "tag=alpha"
+          else
+            echo "tag=latest"
+          fi >> $GITHUB_OUTPUT
 
       - name: Publish workspace packages
         run: |
-          echo "=== Publishing workspace packages (version: ${{ inputs.version }}) ==="
+          TAG="${{ steps.tag.outputs.tag }}"
+          echo "=== Publishing workspace packages with tag: $TAG ==="
+
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ">>> Publishing: $dir"
-              (cd "$dir" && npx npm@latest publish --provenance --access public)
+              (cd "$dir" && npx npm@latest publish --tag "$TAG" --provenance --access public)
             fi
           done
+
+      - name: Publish root package
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          echo "=== Publishing root package with tag: $TAG ==="
+          npx npm@latest publish --tag "$TAG" --provenance --access public
