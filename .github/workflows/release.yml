@@ -125,6 +125,11 @@ jobs:
     needs: build
     if: needs.build.outputs.should_publish == 'true'
 
+    # ✅ Required when calling a reusable workflow that needs id-token
+    permissions:
+      contents: read
+      id-token: write
+
     uses: ./.github/workflows/reusable-publish.yml
     with:
       version: ${{ needs.build.outputs.version }}
