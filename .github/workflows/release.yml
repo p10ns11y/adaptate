@@ -1,136 +1,60 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
-    paths: ["package.json"]
   workflow_dispatch:
-    inputs:
-      bump:
-        description: "Version bump type (or as-is for no change)"
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - rc
-          - beta
-          - alpha
-          - as-is
 
 permissions:
   contents: read
 
 jobs:
-  # =====================
-  # JOB 1: Build + Version Preparation
-  # =====================
-  build:
+  check-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     outputs:
-      version: ${{ steps.set-version.outputs.version }}
-      should_publish: ${{ steps.check-publish.outputs.publish || 'true' }}
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      current_version: ${{ steps.version.outputs.current_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "24"
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.1.1 --activate
-          pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        run: npx turbo run build
-
-      - name: Test
-        run: pnpm test
-
-      # Check if version changed (for auto publish on push)
-      - name: Check if should publish (auto)
-        id: check-publish
-        if: github.event_name == 'push'
+      - name: Get current version
+        id: version
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
-          PREVIOUS=$(git show HEAD~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
-          echo "publish=$([ "$CURRENT" != "$PREVIOUS" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
 
-      # Version bumping (only on manual workflow_dispatch)
-      - name: Bump version (manual)
-        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
+      - name: Check if version changed since last tag
+        id: check
         run: |
-          NEW_VERSION=$(node -e '
-            const pkg = require("./package.json");
-            let version = pkg.version;
-            const bump = "${{ inputs.bump }}";
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-            if (["rc", "beta", "alpha"].includes(bump)) {
-              const base = version.replace(/-[a-zA-Z0-9.]+$/, "");
-              console.log(base + "-" + bump + ".1");
-            } else {
-              const clean = version.replace(/[+-].*$/, "");
-              const [major, minor, patch] = clean.split(".").map(Number);
-              if (bump === "major") console.log((major + 1) + ".0.0");
-              else if (bump === "minor") console.log(major + "." + (minor + 1) + ".0");
-              else console.log(major + "." + minor + "." + (patch + 1));
-            }
-          ')
-
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-
-          # Update all package.json files
-          node -e '
-            const fs = require("fs");
-            const version = process.env.NEW_VERSION;
-            const files = ["package.json", "packages/core/package.json", "packages/utils/package.json"];
-            for (const file of files) {
-              if (fs.existsSync(file)) {
-                const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
-                pkg.version = version;
-                fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-              }
-            }
-          '
-
-      # Set final version as output
-      - name: Set version output
-        id: set-version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.bump }}" != "as-is" ]; then
-            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "version=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_OUTPUT
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No previous tags found. Allowing publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
-  # =====================
-  # JOB 2: Publish (Reusable Workflow at JOB level)
-  # =====================
-  publish:
-    needs: build
-    if: needs.build.outputs.should_publish == 'true'
+          TAG_VERSION=$(git show $LATEST_TAG:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
+          CURRENT_VERSION=$(node -e "console.log(require('./package.json').version)")
 
-    # ✅ Required when calling a reusable workflow that needs id-token
+          if [ "$CURRENT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version changed ($TAG_VERSION → $CURRENT_VERSION). Allowing publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version has not changed since last tag ($TAG_VERSION). Skipping publish."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
+
+  publish:
+    needs: check-version
+    if: needs.check-version.outputs.should_publish == 'true'
     permissions:
       contents: read
       id-token: write
 
     uses: ./.github/workflows/reusable-publish.yml
     with:
-      version: ${{ needs.build.outputs.version }}
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      version: ${{ needs.check-version.outputs.current_version }}
+      is_manual: true

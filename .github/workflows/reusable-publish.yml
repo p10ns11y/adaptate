@@ -6,10 +6,12 @@ on:
       version:
         required: true
         type: string
+        description: "Current version being published (for logging)"
       is_manual:
         required: false
         type: boolean
         default: false
+        description: "Whether triggered manually"
 
 permissions:
   contents: read
@@ -39,15 +41,17 @@ jobs:
       - name: Build
         run: npx turbo run build
 
+      - name: Publish root package
+        run: |
+          echo "=== Publishing root package (version: ${{ inputs.version }}) ==="
+          npx npm@latest publish --provenance --access public
+
       - name: Publish workspace packages
         run: |
-          echo "=== Publishing workspace packages ==="
+          echo "=== Publishing workspace packages (version: ${{ inputs.version }}) ==="
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ">>> Publishing: $dir"
               (cd "$dir" && npx npm@latest publish --provenance --access public)
             fi
           done
-
-      - name: Publish root package (adaptate)
-        run: npx npm@latest publish --provenance --access public
