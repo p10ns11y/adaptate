@@ -41,6 +41,11 @@ jobs:
       - name: Build
         run: npx turbo run build
 
+      - name: Publish root package
+        run: |
+          echo "=== Publishing root package (version: ${{ inputs.version }}) ==="
+          npx npm@latest publish --provenance --access public
+
       - name: Publish workspace packages
         run: |
           echo "=== Publishing workspace packages (version: ${{ inputs.version }}) ==="
@@ -50,8 +55,3 @@ jobs:
               (cd "$dir" && npx npm@latest publish --provenance --access public)
             fi
           done
-
-      - name: Publish root package
-        run: |
-          echo "=== Publishing root package (version: ${{ inputs.version }}) ==="
-          npx npm@latest publish --provenance --access public
