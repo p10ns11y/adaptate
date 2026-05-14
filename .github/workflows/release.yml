@@ -2,126 +2,59 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      bump:
-        description: "Version bump type"
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - rc
-          - beta
-          - alpha
-          - as-is
 
 permissions:
   contents: read
 
 jobs:
-  prepare-release:
+  check-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      current_version: ${{ steps.version.outputs.current_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "24"
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Calculate new version
+      - name: Get current version
         id: version
         run: |
-          if [ "${{ inputs.bump }}" = "as-is" ]; then
-            VERSION=$(node -e "console.log(require('./package.json').version)")
-          else
-            VERSION=$(node -e '
-              const pkg = require("./package.json");
-              let version = pkg.version;
-              const bump = "${{ inputs.bump }}";
+          CURRENT=$(node -e "console.log(require('./package.json').version)")
+          echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
 
-              if (["rc", "beta", "alpha"].includes(bump)) {
-                const base = version.replace(/-[a-zA-Z0-9.]+$/, "");
-                console.log(base + "-" + bump + ".1");
-              } else {
-                const clean = version.replace(/[+-].*$/, "");
-                const [major, minor, patch] = clean.split(".").map(Number);
-                if (bump === "major") console.log((major + 1) + ".0.0");
-                else if (bump === "minor") console.log(major + "." + (minor + 1) + ".0");
-                else console.log(major + "." + minor + "." + (patch + 1));
-              }
-            ')
+      - name: Check if version changed since last tag
+        id: check
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No previous tags found. Allowing publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Create release branch
-        if: inputs.bump != 'as-is'
-        run: |
-          BRANCH_NAME="release/v${VERSION}"
-          git checkout -b "$BRANCH_NAME"
+          TAG_VERSION=$(git show $LATEST_TAG:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
+          CURRENT_VERSION=$(node -e "console.log(require('./package.json').version)")
 
-      - name: Update package versions
-        if: inputs.bump != 'as-is'
-        run: |
-          node -e '
-            const fs = require("fs");
-            const version = "${{ env.VERSION }}";
-            const files = ["package.json", "packages/core/package.json", "packages/utils/package.json"];
-            files.forEach(file => {
-              if (fs.existsSync(file)) {
-                const pkg = JSON.parse(fs.readFileSync(file));
-                pkg.version = version;
-                fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-              }
-            });
-          '
-
-      - name: Commit, tag and push
-        if: inputs.bump != 'as-is'
-        run: |
-          VERSION="${{ env.VERSION }}"
-          git add package.json packages/*/package.json
-          git commit -m "chore(release): v${VERSION}"
-          git tag "v${VERSION}"
-          git push origin "release/v${VERSION}" --tags
-
-      - name: Create tag (as-is)
-        if: inputs.bump == 'as-is'
-        run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          git tag "v${VERSION}"
-          git push origin --tags
-
-      - name: Set version output
-        id: version
-        run: |
-          FINAL_VERSION="${{ env.VERSION || $(node -e "console.log(require('./package.json').version)") }}"
-          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+          if [ "$CURRENT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version changed ($TAG_VERSION → $CURRENT_VERSION). Allowing publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version has not changed since last tag ($TAG_VERSION). Skipping publish."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
 
   publish:
-    needs: prepare-release
+    needs: check-version
+    if: needs.check-version.outputs.should_publish == 'true'
     permissions:
       contents: read
       id-token: write
 
     uses: ./.github/workflows/reusable-publish.yml
     with:
-      version: ${{ needs.prepare-release.outputs.version }}
+      version: ${{ needs.check-version.outputs.current_version }}
       is_manual: true
