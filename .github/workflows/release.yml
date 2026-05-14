@@ -24,25 +24,21 @@ permissions:
 
 jobs:
   # =====================
-  # JOB 1: Build + Version Preparation
+  # JOB 1: Build + Verify (Read-only)
   # =====================
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
 
-    outputs:
-      version: ${{ steps.set-version.outputs.version }}
-      should_publish: ${{ steps.check-publish.outputs.publish || 'true' }}
-
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 2
 
       - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: "24"
           package-manager-cache: false
@@ -62,70 +58,88 @@ jobs:
       - name: Test
         run: pnpm test
 
-      # Check if version changed (for auto publish on push)
-      - name: Check if should publish (auto)
-        id: check-publish
+      - name: Check version changed (auto-trigger)
+        id: check
         if: github.event_name == 'push'
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
           PREVIOUS=$(git show HEAD~1:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           echo "publish=$([ "$CURRENT" != "$PREVIOUS" ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
-      # Version bumping (only on manual workflow_dispatch)
-      - name: Bump version (manual)
-        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
-        run: |
-          NEW_VERSION=$(node -e '
-            const pkg = require("./package.json");
-            let version = pkg.version;
-            const bump = "${{ inputs.bump }}";
-
-            if (["rc", "beta", "alpha"].includes(bump)) {
-              const base = version.replace(/-[a-zA-Z0-9.]+$/, "");
-              console.log(base + "-" + bump + ".1");
-            } else {
-              const clean = version.replace(/[+-].*$/, "");
-              const [major, minor, patch] = clean.split(".").map(Number);
-              if (bump === "major") console.log((major + 1) + ".0.0");
-              else if (bump === "minor") console.log(major + "." + (minor + 1) + ".0");
-              else console.log(major + "." + minor + "." + (patch + 1));
-            }
-          ')
-
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-
-          # Update all package.json files
-          node -e '
-            const fs = require("fs");
-            const version = process.env.NEW_VERSION;
-            const files = ["package.json", "packages/core/package.json", "packages/utils/package.json"];
-            for (const file of files) {
-              if (fs.existsSync(file)) {
-                const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
-                pkg.version = version;
-                fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-              }
-            }
-          '
-
-      # Set final version as output
-      - name: Set version output
-        id: set-version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.bump }}" != "as-is" ]; then
-            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "version=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_OUTPUT
-          fi
-
   # =====================
-  # JOB 2: Publish (Reusable Workflow at JOB level)
+  # JOB 2: Publish (calls reusable workflow)
   # =====================
   publish:
     needs: build
-    if: needs.build.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && needs.build.outputs.publish == 'true')
 
-    uses: ./.github/workflows/reusable-publish.yml
-    with:
-      version: ${{ needs.build.outputs.version }}
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && 'release' || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      # Version bump logic (manual only)
+      - name: Bump version (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
+        run: |
+          NEW_VERSION=$(node -e "
+            const pkg = require('./package.json');
+            let version = pkg.version;
+            const bump = '${{ inputs.bump }}';
+
+            if (['rc', 'beta', 'alpha'].includes(bump)) {
+              const base = version.replace(/-[a-zA-Z0-9.]+$/, '');
+              console.log(base + '-' + bump + '.1');
+            } else {
+              const clean = version.replace(/[+-].*$/, '');
+              const [major, minor, patch] = clean.split('.').map(Number);
+              if (bump === 'major') console.log((major+1) + '.0.0');
+              else if (bump === 'minor') console.log(major + '.' + (minor+1) + '.0');
+              else console.log(major + '.' + minor + '.' + (patch+1));
+            }
+          ")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          node -e "
+            const fs = require('fs');
+            const version = '$NEW_VERSION';
+            const files = ['package.json', 'packages/core/package.json', 'packages/utils/package.json'];
+            for (const file of files) {
+              const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+              pkg.version = version;
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
+
+      - name: Read current version
+        if: (github.event_name == 'push' && needs.build.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
+        run: echo "NEW_VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_ENV
+
+      - name: Call Publish Reusable Workflow
+        uses: ./.github/workflows/reusable-publish.yml
+        with:
+          version: ${{ env.NEW_VERSION }}
+          is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+
+      # Git operations (only on manual bump)
+      - name: Commit and push (manual bump)
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'as-is'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json packages/*/package.json
+          git commit -m "chore: release v${NEW_VERSION}"
+          git tag "v${NEW_VERSION}"
+          git push origin main --tags
+
+      - name: Create tag (auto or as-is)
+        if: (github.event_name == 'push' && needs.build.outputs.publish == 'true') || (github.event_name == 'workflow_dispatch' && inputs.bump == 'as-is')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${NEW_VERSION}"
+          git push origin --tags
