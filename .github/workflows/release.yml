@@ -1,64 +1,62 @@
 name: Release
 
 on:
-  workflow_dispatch: # Only manual trigger for safety (after Mini Shai-Hulud lessons)
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  check-version:
+  release:
     runs-on: ubuntu-latest
-
-    outputs:
-      should_publish: ${{ steps.check.outputs.should_publish }}
-      current_version: ${{ steps.version.outputs.current_version }}
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get current version from package.json
+      - name: Get current version
         id: version
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
           echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
 
-      - name: Check if version changed since last release tag
+      - name: Check if version changed since last tag
         id: check
         run: |
-          # Get the latest tag. If no tags exist, allow publishing.
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
           if [ -z "$LATEST_TAG" ]; then
-            echo "No previous tags found. Allowing first publish."
             echo "should_publish=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Get version from the last tag
           TAG_VERSION=$(git show $LATEST_TAG:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           CURRENT_VERSION=$(node -e "console.log(require('./package.json').version)")
 
           if [ "$CURRENT_VERSION" != "$TAG_VERSION" ]; then
-            echo "Version changed from $TAG_VERSION to $CURRENT_VERSION. Publishing allowed."
             echo "should_publish=true" >> $GITHUB_OUTPUT
           else
-            echo "Version has not changed since last tag ($TAG_VERSION). Skipping publish."
             echo "should_publish=false" >> $GITHUB_OUTPUT
           fi
 
-  publish:
-    needs: check-version
-    if: needs.check-version.outputs.should_publish == 'true'
+      - name: Publish
+        if: steps.check.outputs.should_publish == 'true'
+        uses: ./.github/workflows/reusable-publish.yml
+        with:
+          version: ${{ steps.version.outputs.current_version }}
+          is_manual: true
 
-    permissions:
-      contents: read
-      id-token: write # Required for OIDC trusted publishing
-
-    uses: ./.github/workflows/reusable-publish.yml
-    with:
-      version: ${{ needs.check-version.outputs.current_version }}
-      is_manual: true
+      - name: Create and push annotated tag (after successful publish)
+        if: steps.check.outputs.should_publish == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.current_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
