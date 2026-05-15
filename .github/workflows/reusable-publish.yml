@@ -6,25 +6,26 @@ on:
       version:
         required: true
         type: string
-        description: "Version being published (used for logging)"
       is_manual:
         required: false
         type: boolean
         default: false
-        description: "Whether this was triggered manually (affects environment protection)"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.is_manual && 'release' || '' }} # Requires approval for manual publishes
+    environment: ${{ inputs.is_manual && 'release' || '' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -41,12 +42,10 @@ jobs:
       - name: Build
         run: npx turbo run build
 
-      - name: Determine dist-tag for publishing
+      - name: Determine publish tag
         id: tag
         run: |
           VERSION="${{ inputs.version }}"
-
-          # Prerelease versions (rc, beta, alpha) cannot be published to 'latest' tag
           if [[ "$VERSION" == *"-rc."* ]]; then
             echo "tag=rc"
           elif [[ "$VERSION" == *"-beta."* ]]; then
@@ -61,7 +60,6 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           echo "=== Publishing workspace packages with tag: $TAG ==="
-
           for dir in packages/core packages/utils; do
             if [ -f "$dir/package.json" ]; then
               echo ">>> Publishing: $dir"
@@ -74,3 +72,11 @@ jobs:
           TAG="${{ steps.tag.outputs.tag }}"
           echo "=== Publishing root package with tag: $TAG ==="
           npx npm@latest publish --tag "$TAG" --provenance --access public
+
+      - name: Create and push annotated tag
+        run: |
+          VERSION="${{ inputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
