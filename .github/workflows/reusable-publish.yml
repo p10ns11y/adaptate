@@ -13,9 +13,10 @@ on:
         default: false
         description: "Whether this was triggered manually (selects the protected release environment)"
 
-# Tag push needs contents:write on the default GITHUB_TOKEN; npm provenance needs id-token:write.
+# Default for jobs that omit `permissions`: checkout + npm publish (no repo writes).
+# Tagging runs in a follow-up job with `contents: write` only (GitHub has no per-step permissions).
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
@@ -77,6 +78,18 @@ jobs:
           TAG="${{ steps.tag.outputs.tag }}"
           echo "=== Publishing root package with tag: $TAG ==="
           npx npm@latest publish --tag "$TAG" --provenance --access public
+
+  create-and-push-annotated-tag:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Create and push annotated tag
         run: |
