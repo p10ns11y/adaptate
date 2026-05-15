@@ -1,17 +1,18 @@
 name: Release
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Only manual trigger for safety (after Mini Shai-Hulud lessons)
 
 permissions:
   contents: read
 
 jobs:
-  release:
+  check-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      current_version: ${{ steps.version.outputs.current_version }}
 
     steps:
       - name: Checkout
@@ -19,34 +20,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get current version
+      - name: Get current version from package.json
         id: version
         run: |
           CURRENT=$(node -e "console.log(require('./package.json').version)")
           echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
 
-      - name: Check if version changed since last tag
+      - name: Check if version changed since last release tag
         id: check
         run: |
+          # Get the latest tag. If no tags exist, allow publishing.
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
           if [ -z "$LATEST_TAG" ]; then
+            echo "No previous tags found. Allowing first publish."
             echo "should_publish=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          # Get version from the last tag
           TAG_VERSION=$(git show $LATEST_TAG:package.json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).version))")
           CURRENT_VERSION=$(node -e "console.log(require('./package.json').version)")
 
           if [ "$CURRENT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version changed from $TAG_VERSION to $CURRENT_VERSION. Publishing allowed."
             echo "should_publish=true" >> $GITHUB_OUTPUT
           else
+            echo "Version has not changed since last tag ($TAG_VERSION). Skipping publish."
             echo "should_publish=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Publish & Create Tag
-        if: steps.check.outputs.should_publish == 'true'
-        uses: ./.github/workflows/reusable-publish.yml
-        with:
-          version: ${{ steps.version.outputs.current_version }}
-          is_manual: true
+  publish:
+    needs: check-version
+    if: needs.check-version.outputs.should_publish == 'true'
+
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC trusted publishing (npm provenance)
+
+    uses: ./.github/workflows/reusable-publish.yml
+    with:
+      version: ${{ needs.check-version.outputs.current_version }}
+      is_manual: true
