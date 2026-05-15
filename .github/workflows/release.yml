@@ -54,9 +54,11 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.should_publish == 'true'
 
+    # Ceiling for the called workflow: reusable-publish tags the repo (contents:write).
+    # Nested jobs cannot exceed the caller job's permissions.
     permissions:
-      contents: read
-      id-token: write # Required for OIDC trusted publishing (npm provenance)
+      contents: write
+      id-token: write # OIDC trusted publishing (npm provenance)
 
     uses: ./.github/workflows/reusable-publish.yml
     with:

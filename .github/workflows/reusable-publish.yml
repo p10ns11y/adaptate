@@ -15,6 +15,7 @@ on:
 
 # Default for jobs that omit `permissions`: checkout + npm publish (no repo writes).
 # Tagging runs in a follow-up job with `contents: write` only (GitHub has no per-step permissions).
+# Callers must grant at least contents: write on the job that `uses:` this workflow, or nested jobs cannot request write.
 permissions:
   contents: read
   id-token: write
