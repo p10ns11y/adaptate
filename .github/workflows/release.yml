@@ -56,7 +56,7 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write # Required for OIDC trusted publishing
+      id-token: write # Required for OIDC trusted publishing (npm provenance)
 
     uses: ./.github/workflows/reusable-publish.yml
     with:
