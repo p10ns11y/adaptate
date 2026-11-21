@@ -108,6 +108,21 @@ if (existsSync(effectSourcePath)) {
     console.error(`${packageJson.name}: ${effectBundleRelativePath} does not externalize effect`);
     process.exit(1);
   }
+  const effectTypes = readFileSync(join(packageDirectory, effectTypesRelativePath), 'utf8');
+  const requiredSignatureFragments = [
+    'export type ConfigReport',
+    'export type FinalReport',
+    '(text: string): Effect.Effect<FinalReport<',
+    '(text: string, configName: keyof TConfigs):',
+  ];
+  for (const signatureFragment of requiredSignatureFragments) {
+    if (!effectTypes.includes(signatureFragment)) {
+      console.error(
+        `${packageJson.name}: ${effectTypesRelativePath} is missing \`${signatureFragment}\``,
+      );
+      process.exit(1);
+    }
+  }
   const buildDirectory = join(packageDirectory, 'build');
   for (const fileName of readdirSync(buildDirectory)) {
     if (!fileName.endsWith('.js') || fileName === 'effect.es.js') continue;

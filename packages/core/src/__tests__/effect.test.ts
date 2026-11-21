@@ -22,6 +22,7 @@ const configs = {
   card: { title: true },
   kitchen: { servings: true },
 };
+const streamValidator = createEffectStreamValidator(recipe, configs);
 
 function settle<A, E>(effect: Effect.Effect<A, E>) {
   return Effect.runSync(
@@ -33,81 +34,9 @@ function settle<A, E>(effect: Effect.Effect<A, E>) {
 }
 
 describe("validate", () => {
-  it("returns the parsed value", () => {
+  it("returns a recipe that includes the required title", () => {
     const outcome = settle(
       validate(recipe, { title: true }, { title: "Pasta", servings: 2 }),
-    );
-    expect(outcome.ok).toBe(true);
-    if (!outcome.ok) return;
-    expect(outcome.value).toEqual({ title: "Pasta", servings: 2 });
-  });
-
-  it("fails with the config name and zod issues", () => {
-    const outcome = settle(validate(recipe, { title: true }, { servings: 2 }));
-    expect(outcome.ok).toBe(false);
-    if (outcome.ok) return;
-    expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
-    expect(outcome.error._tag).toBe("AdaptateValidationError");
-    expect(outcome.error.configName).toBe("config");
-    expect(outcome.error.issues.map((issue) => issue.path)).toEqual([
-      ["title"],
-    ]);
-  });
-
-  it("fails when the schema is not an object", () => {
-    const outcome = settle(validate(z.string(), true, "hi"));
-    expect(outcome.ok).toBe(false);
-    if (outcome.ok) return;
-    expect(outcome.error.issues).toEqual([]);
-    expect(outcome.error.configName).toBe("config");
-  });
-});
-
-describe("validatePartial", () => {
-  it("returns the partial when every named config accepts it", () => {
-    const partial = { title: "Pasta" };
-    const outcome = settle(validatePartial(recipe, configs, partial));
-    expect(outcome).toEqual({ ok: true, value: partial });
-  });
-
-  it("fails with the first config whose present fields are invalid", () => {
-    const outcome = settle(
-      validatePartial(recipe, configs, { servings: "x" as unknown as number }),
-    );
-    expect(outcome.ok).toBe(false);
-    if (outcome.ok) return;
-    expect(outcome.error.configName).toBe("card");
-    expect(outcome.error.issues.map((issue) => issue.path)).toEqual([
-      ["servings"],
-    ]);
-  });
-
-  it("fails when the schema is not an object or array", () => {
-    const outcome = settle(validatePartial(z.string(), { card: true }, "hi"));
-    expect(outcome.ok).toBe(false);
-    if (outcome.ok) return;
-    expect(outcome.error).toMatchObject({
-      _tag: "AdaptateValidationError",
-      configName: "partial",
-      issues: [],
-    });
-  });
-});
-
-describe("createEffectStreamValidator", () => {
-  const streamValidator = createEffectStreamValidator(recipe, configs);
-
-  it("reports partials without failing", () => {
-    const report = Effect.runSync(
-      streamValidator.partial({ title: "Pasta", servings: "x" as unknown as number }),
-    );
-    expect(report.card.valid).toBe(false);
-    expect(report.kitchen.valid).toBe(false);
-  });
-
-  it("parses a final document into the schema output", () => {
-    const outcome = settle(
-      streamValidator.final('{"title":"Pasta","servings":2}'),
     );
     expect(outcome).toEqual({
       ok: true,
@@ -115,36 +44,195 @@ describe("createEffectStreamValidator", () => {
     });
   });
 
-  it("fails the next config when an earlier one accepts the final text", () => {
+  it("fails when the required title is missing", () => {
+    const outcome = settle(validate(recipe, { title: true }, { servings: 2 }));
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error).toMatchObject({
+      _tag: "AdaptateValidationError",
+      configName: "config",
+    });
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({ code: "invalid_type", path: ["title"] }),
+    ]);
+  });
+
+  it("keeps the thrown message when the schema is not an object", () => {
+    const outcome = settle(validate(z.string(), true, "hi"));
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error.configName).toBe("config");
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({
+        code: "custom",
+        message: "The given schema must be a Zod object.",
+      }),
+    ]);
+  });
+});
+
+describe("validatePartial", () => {
+  it("accepts a title when servings is still absent", () => {
+    const partial = { title: "Pasta" };
+    expect(settle(validatePartial(recipe, configs, partial))).toEqual({
+      ok: true,
+      value: partial,
+    });
+  });
+
+  it("rejects a partial when servings is not a number", () => {
+    const outcome = settle(
+      validatePartial(recipe, configs, {
+        servings: "x" as unknown as number,
+      }),
+    );
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error.configName).toBe("card");
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_type",
+        expected: "number",
+        path: ["servings"],
+      }),
+    ]);
+  });
+
+  it("keeps zod issues when partial validation throws a ZodError", () => {
+    const exploding = z.object({
+      title: z.string().check(() => {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["title"],
+            message: "exploded",
+          },
+        ]);
+      }),
+    });
+    const outcome = settle(
+      validatePartial(exploding, { card: { title: true } }, { title: "Pasta" }),
+    );
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error).toMatchObject({
+      _tag: "AdaptateValidationError",
+      configName: "partial",
+      issues: [{ code: "custom", path: ["title"], message: "exploded" }],
+    });
+  });
+
+  it("keeps a thrown non-error as the partial failure message", () => {
+    const exploding = z.object({
+      title: z.string().check(() => {
+        throw "not-an-error";
+      }),
+    });
+    const outcome = settle(
+      validatePartial(exploding, { card: { title: true } }, { title: "Pasta" }),
+    );
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({ code: "custom", message: "not-an-error" }),
+    ]);
+  });
+
+  it("keeps the thrown message when the partial schema is not an object", () => {
+    const outcome = settle(validatePartial(z.string(), { card: true }, "hi"));
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error.configName).toBe("partial");
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({
+        code: "custom",
+        message: "The given schema must be a Zod object or array.",
+      }),
+    ]);
+  });
+});
+
+describe("createEffectStreamValidator", () => {
+  it("final returns the recipe when card and kitchen both accept it", () => {
+    expect(
+      settle(streamValidator.final('{"title":"Pasta","servings":2}')),
+    ).toEqual({
+      ok: true,
+      value: {
+        value: { title: "Pasta", servings: 2 },
+        configs: {
+          card: { valid: true, issues: null },
+          kitchen: { valid: true, issues: null },
+        },
+      },
+    });
+  });
+
+  it("final reports card valid and kitchen invalid for a title-only document", () => {
     const outcome = settle(streamValidator.final('{"title":"Pasta"}'));
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.value).toEqual({ title: "Pasta" });
+    expect(outcome.value.configs.card).toEqual({ valid: true, issues: null });
+    expect(outcome.value.configs.kitchen.valid).toBe(false);
+    expect(outcome.value.configs.kitchen.issues).toEqual([
+      expect.objectContaining({ path: ["servings"] }),
+    ]);
+  });
+
+  it("final with kitchen fails when servings missing", () => {
+    const outcome = settle(streamValidator.final('{"title":"Pasta"}', "kitchen"));
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
     if (!(outcome.error instanceof AdaptateValidationError)) return;
     expect(outcome.error.configName).toBe("kitchen");
-    expect(outcome.error.issues.map((issue) => issue.path)).toEqual([
-      ["servings"],
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({ path: ["servings"] }),
     ]);
   });
 
-  it("fails the first config when the final document misses its fields", () => {
-    const outcome = settle(streamValidator.final("{}"));
+  it("final with an unknown config name fails", () => {
+    const outcome = settle(
+      streamValidator.final('{"title":"Pasta"}', "pantry" as "card"),
+    );
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
     if (!(outcome.error instanceof AdaptateValidationError)) return;
-    expect(outcome.error.configName).toBe("card");
+    expect(outcome.error.configName).toBe("pantry");
+    expect(outcome.error.issues).toEqual([
+      {
+        code: "custom",
+        message: "unknown config",
+        path: [],
+      },
+    ]);
   });
 
-  it("fails with a parse error when the text cannot be parsed", () => {
-    const outcome = settle(streamValidator.final("}"));
+  it("final with card accepts a title-only document", () => {
+    expect(settle(streamValidator.final('{"title":"Pasta"}', "card"))).toEqual({
+      ok: true,
+      value: { title: "Pasta" },
+    });
+  });
+
+  it("final fails the base schema when servings is not a number", () => {
+    const outcome = settle(
+      streamValidator.final('{"title":"Pasta","servings":"x"}'),
+    );
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.error).toBeInstanceOf(AdaptateParseError);
-    expect(outcome.error).toMatchObject({
-      _tag: "AdaptateParseError",
-      text: "}",
-    });
+    expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
+    if (!(outcome.error instanceof AdaptateValidationError)) return;
+    expect(outcome.error.configName).toBe("schema");
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_type",
+        expected: "number",
+        path: ["servings"],
+      }),
+    ]);
   });
 
   it("rejects a truncated final and accepts the completed document", () => {
@@ -161,15 +249,21 @@ describe("createEffectStreamValidator", () => {
       settle(streamValidator.final('{"title":"Pasta","servings":2}')),
     ).toEqual({
       ok: true,
-      value: { title: "Pasta", servings: 2 },
+      value: {
+        value: { title: "Pasta", servings: 2 },
+        configs: {
+          card: { valid: true, issues: null },
+          kitchen: { valid: true, issues: null },
+        },
+      },
     });
   });
 
-  it("validates a final document against the schema when no configs are named", () => {
+  it("final validates only the base schema when no configs are named", () => {
     const bare = createEffectStreamValidator(recipe, {});
     expect(settle(bare.final('{"title":"Pasta"}'))).toEqual({
       ok: true,
-      value: { title: "Pasta" },
+      value: { value: { title: "Pasta" }, configs: {} },
     });
     const invalid = settle(bare.final("null"));
     expect(invalid.ok).toBe(false);
@@ -180,17 +274,42 @@ describe("createEffectStreamValidator", () => {
     });
   });
 
-  it("accepts a final document for a single config", () => {
-    const cardOnly = createEffectStreamValidator(recipe, {
-      card: { title: true },
-    });
-    expect(settle(cardOnly.final('{"title":"Only"}'))).toEqual({
-      ok: true,
-      value: { title: "Only" },
-    });
+  it("final fails when named configs cannot transform the schema", () => {
+    const textOnly = createEffectStreamValidator(z.string(), { card: true });
+    const outcome = settle(textOnly.final('"hi"'));
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
+    if (!(outcome.error instanceof AdaptateValidationError)) return;
+    expect(outcome.error.configName).toBe("schema");
+    expect(outcome.error.issues).toEqual([
+      expect.objectContaining({
+        code: "custom",
+        message: "The given schema must be a Zod object.",
+      }),
+    ]);
   });
 
-  it("accumulates AG-UI deltas", () => {
+  it("partial reports a type error for servings on every consumer", () => {
+    const report = Effect.runSync(
+      streamValidator.partial({
+        title: "Pasta",
+        servings: "x" as unknown as number,
+      }),
+    );
+    expect(report.card.valid).toBe(false);
+    expect(report.card.errors?.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_type",
+        expected: "number",
+        path: ["servings"],
+      }),
+    ]);
+    expect(report.kitchen.valid).toBe(false);
+    expect(report.kitchen.errors?.issues[0]?.path).toEqual(["servings"]);
+  });
+
+  it("accumulates AG-UI deltas per call", () => {
     const fresh = createEffectStreamValidator(recipe, configs);
     expect(Effect.runSync(fresh.agUi({ type: "RUN_STARTED" }))).toBeUndefined();
     const parsed = Effect.runSync(
