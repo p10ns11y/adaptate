@@ -13,7 +13,7 @@ import {
   mergeStringChecksIntoOpenApi,
   schemaIndicatesInteger,
   unwrapOptional,
-} from './openapi-zod-checks';
+} from './openapi-zod-checks.js';
 
 /**
  * Converts an OpenAPI / JSON Schema object to a Zod schema.
@@ -361,7 +361,7 @@ export function zodToOpenAPISchema(zodSchema: z.ZodType): any {
 }
 
 // Re-export the load yaml helper for SSR
-export { getYamlContent } from './load-yaml';
+export { getYamlContent } from './load-yaml.js';
 
 // Keep the other functions (fetch, getDereferenced...) unchanged for compatibility
 export async function fetchYamlContent(webURL: string): Promise<any> {

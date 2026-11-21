@@ -64,5 +64,5 @@ All notable changes to this project will be documented in this file.
 ### Changed — what consumers install
 - `@adaptate/utils` no longer requires `@apidevtools/json-schema-ref-parser` or `js-yaml`. Optional peers are parser 16 and js-yaml 5. Core still has zero runtime dependencies.
 - `@types/js-yaml` dropped; js-yaml 5 ships its own types.
-- TypeScript stays on 6.0.3: TypeScript 7 builds and passes tests, but typescript-eslint cannot load it yet.
+- Dev TypeScript is 7.0.2. Oxlint type-aware lint (`oxlint-tsgolint`) replaces ESLint `@typescript-eslint/no-deprecated`.
 

@@ -2,4 +2,4 @@ export {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
   zodToOpenAPISchema,
-} from './openapi';
+} from './openapi.js';
