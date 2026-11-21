@@ -10,7 +10,50 @@ pnpm add @adaptate/core
 npm install @adaptate/core
 ```
 
-Peer dependency: `zod@^3.23.8 || ^4.0.0`
+Peer dependency: `zod@^3.25.0 || ^4.0.0`
+
+## Entries
+
+```mermaid
+flowchart LR
+  zod["zod peer"]
+  effectPeer["effect optional peer"]
+  core["@adaptate/core"]
+  stream["@adaptate/core/stream"]
+  standard["@adaptate/core/standard"]
+  effect["@adaptate/core/effect"]
+  zod --> core
+  zod --> stream
+  zod --> standard
+  zod --> effect
+  effectPeer --> effect
+```
+
+No `dependencies`. `effect@^4.0.0` is an optional peer and is imported only from `@adaptate/core/effect`.
+
+```ts
+import { Effect } from "effect";
+import { z } from "zod";
+import { createEffectStreamValidator } from "@adaptate/core/effect";
+
+const recipe = z.object({
+  title: z.string().optional(),
+  servings: z.number().optional(),
+});
+const validator = createEffectStreamValidator(recipe, {
+  card: { title: true },
+  kitchen: { servings: true },
+});
+
+const report = Effect.runSync(validator.final('{"title":"Pasta"}'));
+// report.configs.card.valid === true
+// report.configs.kitchen.valid === false
+
+const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
+// { title: "Pasta" }
+```
+
+`final(text)` returns `{ value, configs }` after the base schema passes. `final(text, "card")` returns the value for that config. An unknown `configName` fails with `AdaptateValidationError` and issue `unknown config`.
 
 **Monorepo development:** If you clone the **adaptate** repo to work on source, use **pnpm** at the repo root only — required for the repo’s supply-chain protections ([Development](../../README.md#development) in the root README). The install commands above remain correct when installing **published** packages from npm.
 

@@ -4,13 +4,28 @@ OpenAPI ↔ Zod conversion utilities and YAML spec loading with full `$ref` reso
 
 ## Installation
 
+```sh
 pnpm add @adaptate/utils
 # or
 npm install @adaptate/utils
+```
 
-JSON specs and in-document `$ref` pointers need no extra packages. Install `js-yaml` to parse YAML, and `@apidevtools/json-schema-ref-parser` to resolve remote or file `$ref`s.
+Peer dependency: `zod@^3.25.0 || ^4.0.0`. No required runtime dependencies.
 
-Peer dependency: `zod@^3.23.8 || ^4.0.0`
+```mermaid
+flowchart LR
+  zod["zod peer"]
+  utils["@adaptate/utils"]
+  local["local $ref resolver"]
+  yaml["js-yaml optional peer"]
+  parser["@apidevtools/json-schema-ref-parser optional peer"]
+  zod --> utils
+  local --> utils
+  yaml -.->|YAML only| utils
+  parser -.->|"remote or file $ref"| utils
+```
+
+In-document `$ref` pointers use the local resolver. `js-yaml@^5.5.0` is loaded only for YAML, and a missing package throws `Optional peer dependency "js-yaml" is required to parse YAML`. `@apidevtools/json-schema-ref-parser@^16.0.8` is loaded only for a remote or file `$ref`, and a missing package throws `Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to resolve remote or file $ref pointers`.
 
 **Monorepo development:** If you clone the **adaptate** repo to work on source, use **pnpm** at the repo root only — required for the repo’s supply-chain protections ([Development](../../README.md#development) in the root README). The install commands above remain correct when installing **published** packages from npm.
 

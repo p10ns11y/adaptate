@@ -53,9 +53,75 @@ pnpm add @adaptate/utils
 npm install @adaptate/utils
 ```
 
-JSON specs and in-document `$ref` pointers need no extra packages. Install `js-yaml` to parse YAML, and `@apidevtools/json-schema-ref-parser` to resolve remote or file `$ref`s.
+Peer dependency: `zod@^3.25.0 || ^4.0.0`
 
-Peer dependency: `zod@^3.23.8 || ^4.0.0`
+## 2.4
+
+```mermaid
+flowchart LR
+  zod["zod peer"]
+  effectPeer["effect optional peer"]
+  yaml["js-yaml optional peer"]
+  parser["@apidevtools/json-schema-ref-parser optional peer"]
+  core["@adaptate/core"]
+  stream["@adaptate/core/stream"]
+  standard["@adaptate/core/standard"]
+  effect["@adaptate/core/effect"]
+  utils["@adaptate/utils"]
+  zod --> core
+  zod --> stream
+  zod --> standard
+  zod --> effect
+  zod --> utils
+  effectPeer --> effect
+  yaml -.->|YAML only| utils
+  parser -.->|"remote or file $ref"| utils
+```
+
+`@adaptate/core` publishes four entries and has no `dependencies`. `zod` is the required peer. `effect` is imported only by `@adaptate/core/effect`.
+
+| Entry | What it exports |
+| --- | --- |
+| `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, partial helpers |
+| `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, AG-UI adapter |
+| `@adaptate/core/standard` | Standard Schema validation (`zod`, Valibot, ArkType) |
+| `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator` |
+
+`@adaptate/utils` has no required runtime dependencies. In-document `$ref` pointers use the local resolver. `js-yaml` is imported only when the document is YAML, and a missing package throws `Optional peer dependency "js-yaml" is required to parse YAML`. `@apidevtools/json-schema-ref-parser` is imported only for a remote or file `$ref`, and a missing package throws `Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to resolve remote or file $ref pointers`.
+
+```ts
+import { Effect } from "effect";
+import { z } from "zod";
+import { createEffectStreamValidator } from "@adaptate/core/effect";
+
+const recipe = z.object({
+  title: z.string().optional(),
+  servings: z.number().optional(),
+});
+const validator = createEffectStreamValidator(recipe, {
+  card: { title: true },
+  kitchen: { servings: true },
+});
+
+const report = Effect.runSync(validator.final('{"title":"Pasta"}'));
+// report.configs.card.valid === true
+// report.configs.kitchen.valid === false
+
+const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
+// { title: "Pasta" }
+```
+
+`final(text)` parses with `JSON.parse`, requires the base schema, and returns `{ value, configs }` for every named config. `final(text, "card")` validates only that config and returns the parsed value. A `configName` that is not an own key of `configs` fails with `AdaptateValidationError` and a custom issue `unknown config`. Install `effect@^4.0.0` to import this entry.
+
+### 2.3 → 2.4
+
+- Install `js-yaml@^5.5.0` if you parse YAML, and `@apidevtools/json-schema-ref-parser@^16.0.8` if you resolve remote or file `$ref`s. In 2.3.0 those were dependencies (`js-yaml` 4, parser 15). In-document `$ref`s stay on the local resolver.
+- `@adaptate/core/effect` is new. `final(text)` and `final(text, configName)` are documented above.
+- [#51](https://github.com/p10ns11y/adaptate/pull/51) moved the utils packages to parser 16 and js-yaml 5. `@types/js-yaml` is unused because js-yaml 5 ships its own types. The Zod peer stays `^3.25.0 || ^4.0.0`.
+
+CI compares a pull request with its base and fails when any case is more than 5% slower (`scripts/bench-compare.mjs`, limit `1.05`). The [#53](https://github.com/p10ns11y/adaptate/pull/53) run reported `transformSchema` 1.043, `transformPartialSchema` 1.002, `parsePartialJson` 0.989, `agUiStream` 0.996. A fuller A/B eval versus raw Zod and Valibot is coming in its own section.
+
+`scripts/ts-consumer-check.mjs` typechecks the packed tarballs on TypeScript 7 and 6 for `bundler`, `node16`, and `nodenext`. The CI job is `ts7-consumer`.
 
 ## The Problem
 
