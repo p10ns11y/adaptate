@@ -299,7 +299,7 @@ function writeAgentIndexes(pages) {
   let summary = [
     "# Adaptate",
     "",
-    "> One description. Each screen checks only what it shows. A cut-off reply does not throw.",
+    "> One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.",
     "",
     "Paths are relative to the repository root. There is no deployed documentation site.",
     "",
@@ -309,7 +309,7 @@ function writeAgentIndexes(pages) {
   let full = [
     "# Adaptate",
     "",
-    "> One description. Each screen checks only what it shows. A cut-off reply does not throw.",
+    "> One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.",
     "",
   ];
   let apiSummary = ["", "## API", ""];

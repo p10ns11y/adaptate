@@ -6,7 +6,9 @@
 </p>
 
 <p align="center">
-  <strong>One description. Each screen checks only what it shows. A cut-off reply does not throw.</strong>
+  <strong>One schema. Each part of the app checks only the fields it uses.</strong>
+  <br>
+  A screen, a form, an API client, or a stream.
 </p>
 
 <p align="center">
@@ -32,21 +34,65 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/p10ns11y/adaptate/stargazers"><strong>Star</strong></a>
+  &nbsp;·&nbsp;
+  <a href="examples/react-view"><strong>React view</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/main/examples/streaming-tool-call"><strong>Try the stream in the browser</strong></a>
+</p>
+
+## What it's for
+
+- A React component checks the fields it renders. A Vue, Svelte, or Solid component can call `transformSchema` the same way. The runnable example is [examples/react-view](examples/react-view).
+- A form can require the fields collected so far and leave the rest optional.
+- An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out.
+- A config names the fields each view requires.
+- A chat can check a tool call while the model is still typing.
+
+## Quick start
+
+```sh
+pnpm add @adaptate/core zod
+```
+
+```ts
+import { z } from "zod";
+import { transformSchema } from "@adaptate/core";
+
+const recipe = z.object({ title: z.string(), servings: z.number() });
+const card = transformSchema(recipe.partial(), { title: true });
+card.parse({ title: "Pasta" });
+```
+
+## In a component
+
+`useViewSchema` keeps that check in a hook. `recipeSchema` is the shared recipe with every field optional. The card requires the title. The kitchen component in the same file also requires how many people, so a title alone passes the card and fails the kitchen.
+
+```jsx
+let cardConfig = { title: true };
+
+function useViewSchema(schema, config) {
+  return useMemo(() => transformSchema(schema, config), [schema, config]);
+}
+
+function RecipeCard({ recipe }) {
+  let cardSchema = useViewSchema(recipeSchema, cardConfig);
+  let parsed = cardSchema.safeParse(recipe);
+  if (!parsed.success) return <p>The card is not ready.</p>;
+  return <p>{parsed.data.title}</p>;
+}
+```
+
+## A stream is one case
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/stream-demo-dark.gif">
     <img alt="One recipe feeds a card and a kitchen screen. With only the dish name, the card is ready and the kitchen is not. When the number of servings arrives, the kitchen is ready too." src="assets/stream-demo.gif" width="760">
   </picture>
 </p>
 
-<p align="center">
-  <a href="https://github.com/p10ns11y/adaptate/stargazers"><strong>Star</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/main/examples/streaming-tool-call"><strong>Try it in the browser</strong></a>
-</p>
-
-## The same tool call, two ways
-
-The model has sent `{"title":"Pas` so far.
+One case: a reply that is still arriving. The card checks the dish name. The kitchen also needs how many people. The model has sent `{"title":"Pas` so far.
 
 <table>
 <tr>
@@ -70,50 +116,7 @@ JSON.parse(args);</code></pre>
 </tr>
 </table>
 
-`push` is the three-line quick start below. Run it in [examples/streaming-tool-call](examples/streaming-tool-call).
-
-## What it's for
-
-<table>
-<tr>
-<td width="33%" align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-card-dark.svg">
-    <img alt="" src="assets/icon-card.svg" width="48" height="48">
-  </picture>
-  <br>
-  A card shows the dish name while the kitchen is not ready yet.
-</td>
-<td width="33%" align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-chat-dark.svg">
-    <img alt="" src="assets/icon-chat.svg" width="48" height="48">
-  </picture>
-  <br>
-  A chat checks a tool call while the model is still typing.
-</td>
-<td width="33%" align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-page-dark.svg">
-    <img alt="" src="assets/icon-page.svg" width="48" height="48">
-  </picture>
-  <br>
-  An API write-up becomes those checks, and can be written back out.
-</td>
-</tr>
-</table>
-
-## Quick start
-
-```sh
-pnpm add @adaptate/core zod
-```
-
-```ts
-import { z } from "zod";
-import { createAgUiPartialValidator } from "@adaptate/core/stream";
-const push = createAgUiPartialValidator(z.object({ title: z.string(), servings: z.number() }), { card: { title: true } });
-```
+`push` comes from `@adaptate/core/stream`. Run it in [examples/streaming-tool-call](examples/streaming-tool-call).
 
 ## TypeScript
 

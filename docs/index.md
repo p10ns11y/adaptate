@@ -5,7 +5,9 @@ description: "Where to read about views, streaming, OpenAPI, types, and the gene
 
 # Docs
 
-One description. Each screen checks only what it shows. A cut-off reply does not throw.
+One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.
+
+A React component that checks its own view is [examples/react-view](../examples/react-view). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
 
 The pages below stay in this folder so a later docs site can pick them up. Each page has a `title` and a `description`. [llms.txt](../llms.txt) lists them for agents. [llms-full.txt](../llms-full.txt) contains the page text.
 

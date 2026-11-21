@@ -9,7 +9,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 
 ## Using adaptate
 
-Consumer recipes. Types ship in the packages. The doc map is [docs/index.md](docs/index.md). The agent index is [llms.txt](llms.txt). A runnable stream check is [examples/streaming-tool-call](examples/streaming-tool-call).
+Consumer recipes. Types ship in the packages. The doc map is [docs/index.md](docs/index.md). The agent index is [llms.txt](llms.txt). A runnable React view is [examples/react-view](examples/react-view). A runnable stream check is [examples/streaming-tool-call](examples/streaming-tool-call). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
 
 One schema, and a card that needs the title:
 
