@@ -177,6 +177,20 @@ export function createEffectStreamValidator<
     return Effect.gen(function* () {
       const parsed = yield* parseDocument(text);
       if (configName !== undefined) {
+        if (!Object.hasOwn(configs, configName)) {
+          return yield* Effect.fail(
+            new AdaptateValidationError({
+              configName: String(configName),
+              issues: [
+                {
+                  code: "custom",
+                  message: "unknown config",
+                  path: [],
+                },
+              ],
+            }),
+          );
+        }
         return yield* strictParse(
           schema,
           configs[configName] as Config<z.infer<TSchema>>,

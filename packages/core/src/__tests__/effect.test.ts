@@ -192,6 +192,24 @@ describe("createEffectStreamValidator", () => {
     ]);
   });
 
+  it("final with an unknown config name fails", () => {
+    const outcome = settle(
+      streamValidator.final('{"title":"Pasta"}', "pantry" as "card"),
+    );
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.error).toBeInstanceOf(AdaptateValidationError);
+    if (!(outcome.error instanceof AdaptateValidationError)) return;
+    expect(outcome.error.configName).toBe("pantry");
+    expect(outcome.error.issues).toEqual([
+      {
+        code: "custom",
+        message: "unknown config",
+        path: [],
+      },
+    ]);
+  });
+
   it("final with card accepts a title-only document", () => {
     expect(settle(streamValidator.final('{"title":"Pasta"}', "card"))).toEqual({
       ok: true,
