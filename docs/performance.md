@@ -56,31 +56,31 @@ Where the work is not the same:
 
 The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
 
-Node 24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6 on `10a7b5b3ff11df008c144b128eba4e298bd9c0a6`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44951463938), artifact `ab-eval-results`.
+Node 24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6 on `f23a03962d1a0ec7bd7879568001be81136651f4`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44951753156), artifact `ab-eval-results`.
 
 Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
 
 | Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
 | --- | --- | --- | --- | --- | --- |
-| Import median (ms) | Node v24.22.3 | 50.421 | 52.992 | +2.571 ms (+5.099%) | 6.883 |
-| Import p95 (ms) | Node v24.22.3 | 51.708 | 53.953 | +2.245 ms (+4.342%) | 7.130 |
-| Full document (validations/sec) | Node v24.22.3 | 2,158,691 | 2,025,911 | -132,780 /s (-6.151%) | 424,844 |
-| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.663 | 288.979 | +288.316 µs (+43467.689%) | 1.564 |
-| Parsed partial check (µs/chunk) | Node v24.22.3 | 0.663 | 272.188 | +271.525 µs (+40936.264%) | 1.564 |
-| Heap after GC (bytes) | Node v24.22.3 | 8,292,208 | 8,573,160 | 280,952 B (+3.388%) | 5,205,240 |
-| Heap delta after GC (bytes) | Node v24.22.3 | 356,520 | 524,096 | 167,576 B (+47.003%) | 52,024 |
-| Import median (ms) | Bun 1.4.5 | 27.716 | 28.636 | +0.920 ms (+3.319%) | 12.093 |
-| Import p95 (ms) | Bun 1.4.5 | 32.376 | 32.954 | +0.578 ms (+1.785%) | 12.551 |
-| Full document (validations/sec) | Bun 1.4.5 | 1,040,901 | 1,040,525 | -376 /s (-0.036%) | 1,194,421 |
-| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.803 | 327.797 | +326.993 µs (+40706.549%) | 1.333 |
-| Parsed partial check (µs/chunk) | Bun 1.4.5 | 0.803 | 268.917 | +268.113 µs (+33376.733%) | 1.333 |
-| Heap after GC (bytes) | Bun 1.4.5 | 2,086,861 | 2,361,609 | 274,748 B (+13.166%) | 669,022 |
-| Heap delta after GC (bytes) | Bun 1.4.5 | 603,653 | 795,561 | 191,908 B (+31.791%) | 119,705 |
-| Import median (ms) | Chromium 159.0.8154.6 | 29.200 | 30.600 | +1.400 ms (+4.795%) | 7.400 |
-| Import p95 (ms) | Chromium 159.0.8154.6 | 32.800 | 33.000 | +0.200 ms (+0.610%) | 15.200 |
-| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,035,655 | 1,916,610 | -119,045 /s (-5.848%) | 449,225 |
-| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.833 | 195.902 | +195.069 µs (+23413.680%) | 1.334 |
-| Parsed partial check (µs/chunk) | Chromium 159.0.8154.6 | 0.833 | 180.939 | +180.106 µs (+21617.713%) | 1.334 |
+| Import median (ms) | Node v24.22.3 | 51.930 | 54.384 | +2.454 ms (+4.726%) | 7.318 |
+| Import p95 (ms) | Node v24.22.3 | 55.196 | 63.148 | +7.953 ms (+14.408%) | 8.285 |
+| Full document (validations/sec) | Node v24.22.3 | 2,235,727 | 2,003,243 | -232,483 /s (-10.399%) | 419,311 |
+| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.685 | 297.673 | +296.988 µs (+43336.758%) | 1.558 |
+| Parsed partial check (µs/chunk) | Node v24.22.3 | 0.685 | 290.860 | +290.175 µs (+42342.549%) | 1.558 |
+| Heap after GC (bytes) | Node v24.22.3 | 8,292,232 | 8,572,648 | 280,416 B (+3.382%) | 5,205,240 |
+| Heap delta after GC (bytes) | Node v24.22.3 | 356,512 | 523,648 | 167,136 B (+46.881%) | 52,024 |
+| Import median (ms) | Bun 1.4.5 | 29.076 | 31.349 | +2.273 ms (+7.816%) | 13.209 |
+| Import p95 (ms) | Bun 1.4.5 | 33.840 | 35.488 | +1.648 ms (+4.871%) | 13.694 |
+| Full document (validations/sec) | Bun 1.4.5 | 1,014,413 | 969,934 | -44,479 /s (-4.385%) | 1,146,364 |
+| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.848 | 385.128 | +384.281 µs (+45334.267%) | 1.373 |
+| Parsed partial check (µs/chunk) | Bun 1.4.5 | 0.848 | 344.067 | +343.220 µs (+40490.249%) | 1.373 |
+| Heap after GC (bytes) | Bun 1.4.5 | 2,086,733 | 2,361,609 | 274,876 B (+13.173%) | 670,787 |
+| Heap delta after GC (bytes) | Bun 1.4.5 | 603,557 | 795,561 | 192,004 B (+31.812%) | 122,238 |
+| Import median (ms) | Chromium 159.0.8154.6 | 30.800 | 31.500 | +0.700 ms (+2.273%) | 7.900 |
+| Import p95 (ms) | Chromium 159.0.8154.6 | 34.100 | 34.900 | +0.800 ms (+2.346%) | 15.400 |
+| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,007,665 | 1,913,265 | -94,400 /s (-4.702%) | 452,055 |
+| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.843 | 194.841 | +193.997 µs (+23010.619%) | 1.333 |
+| Parsed partial check (µs/chunk) | Chromium 159.0.8154.6 | 0.843 | 171.320 | +170.477 µs (+20220.831%) | 1.333 |
 | zod-only min / gzip (bytes) | esbuild 0.28.2 | 455,377 / 93,666 | — | — | baseline |
 | `.` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 456,345 / 93,976 | 968 / 310 B (+0.331% gzip) | — |
 | `.` own min / gzip, zod external | esbuild 0.28.2 | — | 2,490 / 1,207 | +2,490 / +1,207 B | — |
