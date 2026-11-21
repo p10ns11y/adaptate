@@ -19,6 +19,7 @@ pnpm typecheck
 
 ```
 ├── .devcontainer/   # Node 24 + pnpm
+├── bench/ab/        # A/B runtime eval
 ├── docs/
 ├── packages/core/   # @adaptate/core
 ├── packages/utils/  # @adaptate/utils
