@@ -1,65 +1,112 @@
-# Adaptate
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img alt="Adaptate" src="assets/logo.svg" width="280">
+  </picture>
+</p>
 
-One Zod schema. A config marks which fields each consumer requires ([`transformSchema`](packages/core/src/__tests__/index.test.ts)). The same document can satisfy `card` and fail `kitchen` ([title-only final](packages/core/src/__tests__/effect.test.ts)). Every parsed prefix of a stream is checked before the JSON is complete ([I1](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
+<p align="center">
+  <strong>One description. Each screen checks only what it shows. A cut-off reply does not throw.</strong>
+</p>
 
-`@adaptate/core` has no `dependencies`. `zod` is the peer. `./` and `./stream` load when `effect` is not installed ([`package.json`](packages/core/package.json), [load test](packages/core/src/__tests__/effect.test.ts)).
+<p align="center">
+  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="npm @adaptate/core" src="https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&logo=npm&color=cb3837"></a>
+  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="downloads per month" src="https://img.shields.io/npm/dm/@adaptate/core?logo=npm&label=downloads%2Fmonth"></a>
+  <a href="https://bundlephobia.com/package/@adaptate/core"><img alt="minzipped size" src="https://img.shields.io/bundlephobia/minzip/@adaptate/core?label=minzipped"></a>
+  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="types included" src="https://img.shields.io/npm/types/@adaptate/core"></a>
+  <a href="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI"></a>
+  <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/@adaptate/core?color=blue"></a>
+  <a href="https://github.com/p10ns11y/adaptate/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github"></a>
+</p>
 
-## Use cases
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/stream-demo-dark.gif">
+    <img alt="One recipe feeds a card and a kitchen screen. With only the dish name, the card is ready and the kitchen is not. When the number of servings arrives, the kitchen is ready too." src="assets/stream-demo.gif" width="760">
+  </picture>
+</p>
 
-- Card requires `title`, kitchen requires `servings`, one schema ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
-- AG-UI `TOOL_CALL_ARGS` are validated on each delta, including a cut-off string ([`stream.test.ts`](packages/core/src/__tests__/stream.test.ts)). `final` agrees with `transformSchema` per config ([I2](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
-- An OpenAPI YAML file loads from disk, and a JSON schema round-trips through Zod ([`openapi.test.ts`](packages/utils/src/__tests__/openapi.test.ts)).
-- A Standard Schema (`~standard.validate`) is checked beside a transformed Zod schema ([`standard.test.ts`](packages/core/src/__tests__/standard.test.ts)).
-- Effect `final(text)` reports every named config; `final(text, "card")` checks that config only ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
+<p align="center">
+  <a href="https://github.com/p10ns11y/adaptate/stargazers"><strong>Star</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/main/examples/streaming-tool-call"><strong>Try it in the browser</strong></a>
+</p>
 
-Published `.d.ts` files are in the npm pack ([`verify-published-types.mjs`](scripts/verify-published-types.mjs), [verify job](.github/workflows/ci.yml)). Packed types are checked on TypeScript 7 and 6 for `bundler`, `node16`, and `nodenext` ([`ts7-consumer`](.github/workflows/ci.yml)). A pull request fails if any bench case is more than 5% slower ([`bench`](.github/workflows/ci.yml)). The [#53](https://github.com/p10ns11y/adaptate/pull/53) run was 0.989–1.043 ([log](https://github.com/p10ns11y/adaptate/actions/runs/44945033877)). On Node 24, Adaptate's import median was 36.886 ms against raw Zod's 35.288 ms, full-document rate 3,302,796/s against 3,512,914/s, parsed-partial 0.667 µs/chunk against 0.433 µs/chunk, and AG-UI 24.084 µs/chunk against 0.433 µs/chunk ([table](docs/performance.md), [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44956631113)).
+## The same tool call, two ways
 
-## Install
+The model has sent `{"title":"Pas` so far.
+
+<table>
+<tr>
+<th width="50%">Without Adaptate</th>
+<th width="50%">With Adaptate</th>
+</tr>
+<tr>
+<td valign="top">
+<pre><code>const args = '{"title":"Pas';
+JSON.parse(args);</code></pre>
+<code>JSON.parse</code> throws. The card stays blank.
+</td>
+<td valign="top">
+<pre><code>const check = push({
+  type: "TOOL_CALL_ARGS",
+  toolCallId: "call-1",
+  delta: '{"title":"Pas',
+});</code></pre>
+<code>check.partial</code> is <code>{ title: "Pas" }</code>. The card check passes.
+</td>
+</tr>
+</table>
+
+`push` is the three-line quick start below. Run it in [examples/streaming-tool-call](examples/streaming-tool-call).
+
+## What it's for
+
+<table>
+<tr>
+<td width="33%" align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-card-dark.svg">
+    <img alt="" src="assets/icon-card.svg" width="48" height="48">
+  </picture>
+  <br>
+  A card shows the dish name while the kitchen is not ready yet.
+</td>
+<td width="33%" align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-chat-dark.svg">
+    <img alt="" src="assets/icon-chat.svg" width="48" height="48">
+  </picture>
+  <br>
+  A chat checks a tool call while the model is still typing.
+</td>
+<td width="33%" align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/icon-page-dark.svg">
+    <img alt="" src="assets/icon-page.svg" width="48" height="48">
+  </picture>
+  <br>
+  An API write-up becomes those checks, and can be written back out.
+</td>
+</tr>
+</table>
+
+## Quick start
 
 ```sh
-pnpm add @adaptate/core
+pnpm add @adaptate/core zod
 ```
-
-Peer: `zod@^3.25.0 || ^4.0.0` ([`package.json`](packages/core/package.json)). OpenAPI helpers: `pnpm add @adaptate/utils` ([`package.json`](packages/utils/package.json)).
 
 ```ts
 import { z } from "zod";
-import { transformSchema } from "@adaptate/core";
-
-const recipe = z.object({
-  title: z.string().optional(),
-  servings: z.number().optional(),
-});
-const card = transformSchema(recipe, { title: true });
-card.parse({ title: "Pasta" });
-card.parse({ servings: 2 }); // throws
+import { createAgUiPartialValidator } from "@adaptate/core/stream";
+const push = createAgUiPartialValidator(z.object({ title: z.string(), servings: z.number() }), { card: { title: true } });
 ```
 
-## Packages
+## Why trust it
 
-```mermaid
-flowchart LR
-  zod["zod"] --> core["@adaptate/core"]
-  zod --> stream["./stream"]
-  zod --> standard["./standard"]
-  zod --> effect["./effect"]
-  zod --> utils["@adaptate/utils"]
-  effectPeer["effect"] -.-> effect
-```
+The lines above are about the check being right. With the schema cached, the streaming check is within about 1.5× of raw Zod per chunk (0.667 µs against 0.433 µs, parsed partial). JSON repair is separate, about 23 µs/chunk. [Performance](docs/performance.md) · [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
 
-## Docs
-
-| Doc | What it holds |
-| --- | --- |
-| [Subpaths](docs/subpaths.md) | Entries and what each one exports |
-| [Transform](docs/transform.md) | `transformSchema` and conditional configs |
-| [Streaming](docs/streaming.md) | Partial JSON and AG-UI |
-| [Effect](docs/effect.md) | `final(text)` and `final(text, configName)` |
-| [OpenAPI](docs/openapi.md) | Spec load and Zod conversion |
-| [Optional peers](docs/optional-peers.md) | `effect`, `js-yaml`, ref parser |
-| [Migration 2.4](docs/migration-2.4.md) | What a 2.3 install changes |
-| [Performance](docs/performance.md) | CI bench |
-| [TypeScript](docs/typescript.md) | Consumer typecheck |
-| [Development](docs/development.md) | pnpm, scripts, layout |
+[Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [Peers and subpaths](docs/subpaths.md)
 
 MIT
