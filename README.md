@@ -1,14 +1,18 @@
 # Adaptate
 
-One Zod schema, many consumer views. A config marks which fields each view requires. Streamed partial JSON can be checked as it arrives.
+One Zod schema. A config marks which fields each consumer requires ([`transformSchema`](packages/core/src/__tests__/index.test.ts)). The same document can satisfy `card` and fail `kitchen` ([title-only final](packages/core/src/__tests__/effect.test.ts)). Every parsed prefix of a stream is checked before the JSON is complete ([I1](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
+
+`@adaptate/core` has no `dependencies`. `zod` is the peer. `./` and `./stream` load when `effect` is not installed ([`package.json`](packages/core/package.json), [load test](packages/core/src/__tests__/effect.test.ts)).
 
 ## Use cases
 
-- One schema for a card view and a detail view, with different required fields.
-- Check streamed tool-call arguments in a chat UI before the JSON is complete.
-- Turn an OpenAPI document into Zod, and Zod back into OpenAPI.
-- Validate a Standard Schema from Zod, Valibot, or ArkType.
-- Run the same checks inside an Effect pipeline.
+- Card requires `title`, kitchen requires `servings`, one schema ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
+- AG-UI `TOOL_CALL_ARGS` are validated on each delta, including a cut-off string ([`stream.test.ts`](packages/core/src/__tests__/stream.test.ts)). `final` agrees with `transformSchema` per config ([I2](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
+- An OpenAPI YAML file loads from disk, and a JSON schema round-trips through Zod ([`openapi.test.ts`](packages/utils/src/__tests__/openapi.test.ts)).
+- A Standard Schema (`~standard.validate`) is checked beside a transformed Zod schema ([`standard.test.ts`](packages/core/src/__tests__/standard.test.ts)).
+- Effect `final(text)` reports every named config; `final(text, "card")` checks that config only ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
+
+Published `.d.ts` files are in the npm pack ([`verify-published-types.mjs`](scripts/verify-published-types.mjs), [verify job](.github/workflows/ci.yml)). Packed types are checked on TypeScript 7 and 6 for `bundler`, `node16`, and `nodenext` ([`ts7-consumer`](.github/workflows/ci.yml)). A pull request fails if any bench case is more than 5% slower ([`bench`](.github/workflows/ci.yml)). The [#53](https://github.com/p10ns11y/adaptate/pull/53) run was 0.989–1.043 ([log](https://github.com/p10ns11y/adaptate/actions/runs/44945033877)).
 
 ## Install
 
@@ -16,7 +20,7 @@ One Zod schema, many consumer views. A config marks which fields each view requi
 pnpm add @adaptate/core
 ```
 
-Peer: `zod@^3.25.0 || ^4.0.0`. OpenAPI helpers: `pnpm add @adaptate/utils`.
+Peer: `zod@^3.25.0 || ^4.0.0` ([`package.json`](packages/core/package.json)). OpenAPI helpers: `pnpm add @adaptate/utils` ([`package.json`](packages/utils/package.json)).
 
 ```ts
 import { z } from "zod";

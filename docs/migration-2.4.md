@@ -10,6 +10,6 @@ Published 2.3.0 of `@adaptate/utils` depended on `@apidevtools/json-schema-ref-p
 
 [#51](https://github.com/p10ns11y/adaptate/pull/51) moved those packages from parser 15 and js-yaml 4 to parser 16 and js-yaml 5, and dropped `@types/js-yaml` because js-yaml 5 ships its types. The Zod peer stays `^3.25.0 || ^4.0.0`. `@adaptate/core` still has no runtime dependencies.
 
-`@adaptate/core/standard` validates a Standard Schema (Zod, Valibot, ArkType) and adds no dependency.
+`@adaptate/core/standard` validates a Standard Schema (`~standard.validate`) and adds no dependency. The test uses a transformed Zod schema and a hand-written schema ([`standard.test.ts`](../packages/core/src/__tests__/standard.test.ts)).
 
 `@adaptate/core/effect` is new. Install `effect@^4.0.0` only if you import it. `final(text)` and `final(text, configName)` are in [Effect](effect.md).
