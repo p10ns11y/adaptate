@@ -10,7 +10,6 @@ import {
 import {
   createAgUiPartialValidator,
   createStreamValidator,
-  parsePartialJson,
   type AgUiDeltaEvent,
 } from "./stream";
 
@@ -109,33 +108,36 @@ export function createEffectStreamValidator<
       z.infer<TSchema>,
       AdaptateParseError | AdaptateValidationError
     > {
-      const parsed = parsePartialJson(text);
-      if (parsed === undefined) {
-        return Effect.fail(new AdaptateParseError({ text }));
-      }
-      const namedConfigs = Object.entries(configs);
-      if (namedConfigs.length === 0) {
-        return strictParse(schema, undefined, "schema", parsed);
-      }
-      const firstNamedConfig = namedConfigs[0];
-      const restConfigs = namedConfigs.slice(1);
-      return Effect.gen(function* () {
-        let validated = yield* strictParse(
-          schema,
-          firstNamedConfig[1] as Config<z.infer<TSchema>>,
-          firstNamedConfig[0],
-          parsed,
-        );
-        for (const [configName, config] of restConfigs) {
-          validated = yield* strictParse(
-            schema,
-            config as Config<z.infer<TSchema>>,
-            configName,
-            parsed,
-          );
-        }
-        return validated;
-      });
+      return Effect.try({
+        try: () => JSON.parse(text) as unknown,
+        catch: () => new AdaptateParseError({ text }),
+      }).pipe(
+        Effect.flatMap((parsed) => {
+          const namedConfigs = Object.entries(configs);
+          if (namedConfigs.length === 0) {
+            return strictParse(schema, undefined, "schema", parsed);
+          }
+          const firstNamedConfig = namedConfigs[0];
+          const restConfigs = namedConfigs.slice(1);
+          return Effect.gen(function* () {
+            let validated = yield* strictParse(
+              schema,
+              firstNamedConfig[1] as Config<z.infer<TSchema>>,
+              firstNamedConfig[0],
+              parsed,
+            );
+            for (const [configName, config] of restConfigs) {
+              validated = yield* strictParse(
+                schema,
+                config as Config<z.infer<TSchema>>,
+                configName,
+                parsed,
+              );
+            }
+            return validated;
+          });
+        }),
+      );
     },
     agUi(event: AgUiDeltaEvent) {
       return Effect.sync(() => pushAgUi(event));

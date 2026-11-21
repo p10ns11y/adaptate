@@ -147,6 +147,24 @@ describe("createEffectStreamValidator", () => {
     });
   });
 
+  it("rejects a truncated final and accepts the completed document", () => {
+    const truncatedText = '{"title":"Pasta","servings":2';
+    const truncated = settle(streamValidator.final(truncatedText));
+    expect(truncated.ok).toBe(false);
+    if (truncated.ok) return;
+    expect(truncated.error).toBeInstanceOf(AdaptateParseError);
+    expect(truncated.error).toMatchObject({
+      _tag: "AdaptateParseError",
+      text: truncatedText,
+    });
+    expect(
+      settle(streamValidator.final('{"title":"Pasta","servings":2}')),
+    ).toEqual({
+      ok: true,
+      value: { title: "Pasta", servings: 2 },
+    });
+  });
+
   it("validates a final document against the schema when no configs are named", () => {
     const bare = createEffectStreamValidator(recipe, {});
     expect(settle(bare.final('{"title":"Pasta"}'))).toEqual({
