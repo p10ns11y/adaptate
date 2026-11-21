@@ -39,15 +39,37 @@ const monoFont = firstExisting(fontCandidates.mono);
 
 const width = 760;
 const height = 440;
-const paper = "0xF4F0E8";
-const ink = "0x1C1917";
-const muted = "0x78716C";
-const line = "0xE7E5E4";
-const white = "0xFFFFFF";
-const green = "0x166534";
-const greenFill = "0xDCFCE7";
-const amber = "0x9A3412";
-const amberFill = "0xFFEDD5";
+
+const themes = [
+  {
+    fileName: "stream-demo.gif",
+    paper: "0xF4F0E8",
+    ink: "0x1C1917",
+    muted: "0x78716C",
+    line: "0xE7E5E4",
+    card: "0xFFFFFF",
+    ready: "0x166534",
+    readyFill: "0xDCFCE7",
+    pending: "0x9A3412",
+    pendingFill: "0xFFEDD5",
+    typing: "0x57534E",
+    typingFill: "0xE7E5E4",
+  },
+  {
+    fileName: "stream-demo-dark.gif",
+    paper: "0x141210",
+    ink: "0xF5F0E8",
+    muted: "0xA8A29E",
+    line: "0x44403C",
+    card: "0x1C1917",
+    ready: "0x86EFAC",
+    readyFill: "0x14532D",
+    pending: "0xFDBA74",
+    pendingFill: "0x7C2D12",
+    typing: "0xD6D3D1",
+    typingFill: "0x292524",
+  },
+];
 
 function box(x, y, boxWidth, boxHeight, fill, border) {
   return [
@@ -61,49 +83,57 @@ function label(textFile, fontFile, size, color, x, y) {
 }
 
 const steps = [
-  { json: '{"title":"Pasta"', card: "ready", kitchen: "waiting", hold: 1.1 },
-  { json: '{"title":"Pasta","serv', card: "ready", kitchen: "waiting", hold: 0.4 },
-  { json: '{"title":"Pasta","servings":', card: "ready", kitchen: "waiting", hold: 0.4 },
-  { json: '{"title":"Pasta","servings":2}', card: "ready", kitchen: "ready", hold: 1.3 },
-  { json: "", card: "waiting", kitchen: "waiting", hold: 0.35 },
-  { json: "{", card: "waiting", kitchen: "waiting", hold: 0.3 },
-  { json: '{"title"', card: "waiting", kitchen: "waiting", hold: 0.3 },
-  { json: '{"title":"Pas', card: "waiting", kitchen: "waiting", hold: 0.35 },
+  { json: '{"title":"Pasta"}', card: "ready", kitchen: "not yet", hold: 1.3 },
+  { json: '{"title":"Pasta","ser', card: "typing", kitchen: "typing", hold: 0.35 },
+  { json: '{"title":"Pasta","servings":', card: "typing", kitchen: "typing", hold: 0.35 },
+  { json: '{"title":"Pasta","servings":2}', card: "ready", kitchen: "ready", hold: 1.4 },
+  { json: '{"ti', card: "typing", kitchen: "typing", hold: 0.3 },
+  { json: '{"title":"Pas', card: "typing", kitchen: "typing", hold: 0.4 },
 ];
 
-function pill(x, y, state) {
-  const ready = state === "ready";
-  const fill = ready ? greenFill : amberFill;
-  const border = ready ? green : amber;
-  const text = ready ? "ready" : "waiting";
-  return { filters: box(x, y, 108, 32, fill, border), text, color: border, x: x + 16, y: y + 6 };
+const pillCopy = {
+  ready: "ready",
+  "not yet": "not yet",
+  typing: "typing",
+};
+
+function pill(theme, x, y, state) {
+  const fill = state === "ready" ? theme.readyFill : state === "not yet" ? theme.pendingFill : theme.typingFill;
+  const border = state === "ready" ? theme.ready : state === "not yet" ? theme.pending : theme.typing;
+  return {
+    filters: box(x, y, 118, 32, fill, border),
+    text: pillCopy[state],
+    color: border,
+    x: x + 16,
+    y: y + 6,
+  };
 }
 
-function frameFilters(workDirectory, step, index) {
-  const cardBorder = step.card === "ready" ? green : line;
-  const kitchenBorder = step.kitchen === "ready" ? green : line;
+function frameFilters(theme, workDirectory, step, index) {
+  const cardBorder = step.card === "ready" ? theme.ready : step.card === "not yet" ? theme.pending : theme.line;
+  const kitchenBorder = step.kitchen === "ready" ? theme.ready : step.kitchen === "not yet" ? theme.pending : theme.line;
   const filters = [
-    ...box(28, 78, 210, 148, white, line),
-    ...box(390, 78, 342, 68, white, cardBorder),
-    ...box(390, 158, 342, 68, white, kitchenBorder),
-    `drawbox=x=248:y=108:w=134:h=4:color=${ink}:t=fill`,
-    `drawbox=x=248:y=188:w=134:h=4:color=${ink}:t=fill`,
-    `drawbox=x=248:y=108:w=4:h=84:color=${ink}:t=fill`,
-    ...box(28, 250, 704, 150, white, line),
+    ...box(28, 78, 210, 148, theme.card, theme.line),
+    ...box(390, 78, 342, 68, theme.card, cardBorder),
+    ...box(390, 158, 342, 68, theme.card, kitchenBorder),
+    `drawbox=x=248:y=108:w=134:h=4:color=${theme.ink}:t=fill`,
+    `drawbox=x=248:y=188:w=134:h=4:color=${theme.ink}:t=fill`,
+    `drawbox=x=248:y=108:w=4:h=84:color=${theme.ink}:t=fill`,
+    ...box(28, 250, 704, 150, theme.card, theme.line),
   ];
   const texts = [
-    ["One recipe. Two screens.", sansBoldFont, 28, ink, 28, 24],
-    ["Recipe", sansBoldFont, 22, ink, 48, 108],
-    ["title, servings", sansFont, 18, muted, 48, 146],
-    ["Card", sansBoldFont, 22, ink, 410, 98],
-    ["the dish name", sansFont, 16, muted, 410, 124],
-    ["Kitchen", sansBoldFont, 22, ink, 410, 178],
-    ["how many people", sansFont, 16, muted, 410, 204],
-    ["Still arriving", sansFont, 16, muted, 48, 268],
-    [`${step.json}▌`, monoFont, 22, ink, 48, 328],
+    ["One recipe. Two screens.", sansBoldFont, 28, theme.ink, 28, 24],
+    ["Recipe", sansBoldFont, 22, theme.ink, 48, 108],
+    ["title, servings", sansFont, 18, theme.muted, 48, 146],
+    ["Card", sansBoldFont, 22, theme.ink, 410, 98],
+    ["the dish name", sansFont, 16, theme.muted, 410, 124],
+    ["Kitchen", sansBoldFont, 22, theme.ink, 410, 178],
+    ["how many people", sansFont, 16, theme.muted, 410, 204],
+    ["Still arriving", sansFont, 16, theme.muted, 48, 268],
+    [`${step.json}▌`, monoFont, 22, theme.ink, 48, 328],
   ];
-  const cardPill = pill(590, 96, step.card);
-  const kitchenPill = pill(590, 176, step.kitchen);
+  const cardPill = pill(theme, 584, 96, step.card);
+  const kitchenPill = pill(theme, 584, 176, step.kitchen);
   filters.push(...cardPill.filters, ...kitchenPill.filters);
   const textJobs = [
     ...texts.map(([text, fontFile, size, color, x, y]) => ({ text, fontFile, size, color, x, y })),
@@ -112,91 +142,67 @@ function frameFilters(workDirectory, step, index) {
   ];
   for (let textIndex = 0; textIndex < textJobs.length; textIndex += 1) {
     const job = textJobs[textIndex];
-    const textPath = join(workDirectory, `frame-${index}-text-${textIndex}.txt`);
+    const textPath = join(workDirectory, `frame-${theme.fileName}-${index}-text-${textIndex}.txt`);
     writeFileSync(textPath, job.text);
     filters.push(label(textPath, job.fontFile, job.size, job.color, job.x, job.y));
   }
   return filters.join(",");
 }
 
-function writeStillSvg() {
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="250" viewBox="0 0 760 250" role="img" aria-label="One recipe description feeds a card and a kitchen screen">
-  <rect width="760" height="250" fill="#F4F0E8"/>
-  <rect x="28" y="48" width="210" height="148" rx="12" fill="#FFFFFF" stroke="#E7E5E4" stroke-width="2"/>
-  <text x="48" y="108" fill="#1C1917" font-family="Inter, DejaVu Sans, sans-serif" font-size="22" font-weight="700">Recipe</text>
-  <text x="48" y="140" fill="#78716C" font-family="Inter, DejaVu Sans, sans-serif" font-size="16">title, servings</text>
-  <rect x="248" y="78" width="4" height="84" fill="#1C1917"/>
-  <rect x="248" y="78" width="134" height="4" fill="#1C1917"/>
-  <rect x="248" y="158" width="134" height="4" fill="#1C1917"/>
-  <rect x="390" y="48" width="342" height="68" rx="12" fill="#FFFFFF" stroke="#166534" stroke-width="2"/>
-  <text x="410" y="78" fill="#1C1917" font-family="Inter, DejaVu Sans, sans-serif" font-size="20" font-weight="700">Card</text>
-  <text x="410" y="100" fill="#78716C" font-family="Inter, DejaVu Sans, sans-serif" font-size="15">the dish name</text>
-  <rect x="600" y="66" width="108" height="32" rx="16" fill="#DCFCE7"/>
-  <text x="628" y="87" fill="#166534" font-family="Inter, DejaVu Sans, sans-serif" font-size="15" font-weight="700">ready</text>
-  <rect x="390" y="128" width="342" height="68" rx="12" fill="#FFFFFF" stroke="#E7E5E4" stroke-width="2"/>
-  <text x="410" y="158" fill="#1C1917" font-family="Inter, DejaVu Sans, sans-serif" font-size="20" font-weight="700">Kitchen</text>
-  <text x="410" y="180" fill="#78716C" font-family="Inter, DejaVu Sans, sans-serif" font-size="15">how many people</text>
-  <rect x="600" y="146" width="108" height="32" rx="16" fill="#FFEDD5"/>
-  <text x="618" y="167" fill="#9A3412" font-family="Inter, DejaVu Sans, sans-serif" font-size="15" font-weight="700">waiting</text>
-</svg>
-`;
-  writeFileSync(join(assetDirectory, "one-schema.svg"), svg);
-}
-
-const workDirectory = mkdtempSync(join(tmpdir(), "adaptate-readme-demo-"));
-mkdirSync(assetDirectory, { recursive: true });
-writeStillSvg();
-
-try {
-  const framePaths = [];
-  for (let index = 0; index < steps.length; index += 1) {
-    const framePath = join(workDirectory, `frame-${String(index).padStart(2, "0")}.png`);
+function renderTheme(theme) {
+  const workDirectory = mkdtempSync(join(tmpdir(), "adaptate-readme-demo-"));
+  try {
+    const framePaths = [];
+    for (let index = 0; index < steps.length; index += 1) {
+      const framePath = join(workDirectory, `frame-${String(index).padStart(2, "0")}.png`);
+      execFileSync(
+        "ffmpeg",
+        [
+          "-y",
+          "-f",
+          "lavfi",
+          "-i",
+          `color=c=${theme.paper}:s=${width}x${height}`,
+          "-frames:v",
+          "1",
+          "-vf",
+          frameFilters(theme, workDirectory, steps[index], index),
+          framePath,
+        ],
+        { stdio: "ignore" },
+      );
+      framePaths.push(framePath);
+    }
+    const concatLines = [];
+    for (let index = 0; index < framePaths.length; index += 1) {
+      concatLines.push(`file '${framePaths[index]}'`);
+      concatLines.push(`duration ${steps[index].hold}`);
+    }
+    concatLines.push(`file '${framePaths[framePaths.length - 1]}'`);
+    const concatPath = join(workDirectory, "frames.txt");
+    writeFileSync(concatPath, `${concatLines.join("\n")}\n`);
     execFileSync(
       "ffmpeg",
       [
         "-y",
         "-f",
-        "lavfi",
+        "concat",
+        "-safe",
+        "0",
         "-i",
-        `color=c=${paper}:s=${width}x${height}`,
-        "-frames:v",
-        "1",
+        concatPath,
         "-vf",
-        frameFilters(workDirectory, steps[index], index),
-        framePath,
+        "fps=10,split[a][b];[a]palettegen=max_colors=64:reserve_transparent=0[p];[b][p]paletteuse=dither=bayer",
+        "-loop",
+        "0",
+        join(assetDirectory, theme.fileName),
       ],
       { stdio: "ignore" },
     );
-    framePaths.push(framePath);
+  } finally {
+    rmSync(workDirectory, { recursive: true, force: true });
   }
-  const concatLines = [];
-  for (let index = 0; index < framePaths.length; index += 1) {
-    concatLines.push(`file '${framePaths[index]}'`);
-    concatLines.push(`duration ${steps[index].hold}`);
-  }
-  concatLines.push(`file '${framePaths[framePaths.length - 1]}'`);
-  const concatPath = join(workDirectory, "frames.txt");
-  writeFileSync(concatPath, `${concatLines.join("\n")}\n`);
-  const gifPath = join(assetDirectory, "stream-demo.gif");
-  execFileSync(
-    "ffmpeg",
-    [
-      "-y",
-      "-f",
-      "concat",
-      "-safe",
-      "0",
-      "-i",
-      concatPath,
-      "-vf",
-      "fps=10,split[a][b];[a]palettegen=max_colors=48:reserve_transparent=0[p];[b][p]paletteuse=dither=bayer",
-      "-loop",
-      "0",
-      gifPath,
-    ],
-    { stdio: "ignore" },
-  );
-} finally {
-  rmSync(workDirectory, { recursive: true, force: true });
 }
+
+mkdirSync(assetDirectory, { recursive: true });
+for (const theme of themes) renderTheme(theme);
