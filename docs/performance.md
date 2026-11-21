@@ -1,6 +1,6 @@
 ---
 title: "Performance"
-description: "Measured cost of import, a full document, and a streaming check against raw Zod."
+description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
 ---
 
 # Performance
@@ -58,8 +58,9 @@ Where the work is not the same:
 - `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
 - Valibot uses its own schemas for the same accept/reject rules.
 - `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
+- Four views per render: card, line items, delivery, and receipt. The schemas are built once. Each timed render parses the grocery order with all four. Zod and Valibot use static schemas for those fields. Adaptate calls `transformSchema` on one partial schema. The rate is renders per second (`viewsPerSec`). [`agree.js`](../bench/ab/agree.js) requires the full order to pass every view, and an empty object or a card-only object to fail. This row is recorded and is not gated. Job [44956631113](https://github.com/p10ns11y/adaptate/actions/runs/44956631113) does not contain it, so the README chart does not draw it.
 
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
 
 On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
 
@@ -100,4 +101,4 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
-These numbers were recorded from `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`. A later docs-only commit does not replace them. Gate on that run: PASS (limit 1.05).
+These numbers were recorded from `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`. A later docs-only commit does not replace them. Gate on that run: PASS (limit 1.05). The README chart is drawn from this job's `node.json` and `bundle.json` by [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs).

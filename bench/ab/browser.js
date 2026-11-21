@@ -149,6 +149,7 @@ export async function measureBrowser() {
         coldMedianMs: median(cold[name]),
         coldP95Ms: percentile(cold[name], 0.95),
         validationsPerSec: work[name].validationsPerSec,
+        viewsPerSec: work[name].viewsPerSec,
         agUiMicros: work[name].agUiMicros,
         partialMicros: work[name].partialMicros,
         heapAfterBytes: null,

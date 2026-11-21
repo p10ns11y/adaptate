@@ -124,6 +124,7 @@ for (const name of names) {
     coldMedianMs: median(cold[name]),
     coldP95Ms: percentile(cold[name], 0.95),
     validationsPerSec: rates[name].validationsPerSec,
+    viewsPerSec: rates[name].viewsPerSec,
     agUiMicros: rates[name].agUiMicros,
     partialMicros: rates[name].partialMicros,
     heapAfterBytes: heap[name].heapAfterBytes,

@@ -14,7 +14,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
 - [Subpaths](docs/subpaths.md): The published entry points, and which peers each one loads.
 - [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
-- [Performance](docs/performance.md): Measured cost of import, a full document, and a streaming check against raw Zod.
+- [Performance](docs/performance.md): Measured cost of import, a full document, four component views, a streaming check, and bundle size.
 - [Proof](docs/proof.md): Each front-page sentence mapped to a test, a script, or a CI job.
 - [Migration 2.4](docs/migration-2.4.md): YAML and the ref parser became optional peers between 2.3 and 2.4.
 - [Development](docs/development.md): Install, test, and build this repository with pnpm.

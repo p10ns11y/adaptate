@@ -20,7 +20,7 @@ The pages below stay in this folder so a later docs site can pick them up. Each 
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
-- [Performance](performance.md): measured cost of import, a full document, and a streaming check.
+- [Performance](performance.md): measured cost of import, a full document, four component views, a streaming check, and bundle size.
 - [Proof](proof.md): each front-page sentence mapped to a test, a script, or a CI job.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
 - [Development](development.md): install, test, and build this repository.

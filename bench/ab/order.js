@@ -10,6 +10,29 @@ export const receiptConfig = {
   },
 };
 
+export const orderCardConfig = {
+  orderId: true,
+  customer: { name: true },
+};
+
+export const orderItemsConfig = {
+  items: { "*": { sku: true, qty: true } },
+};
+
+export const orderDeliveryConfig = {
+  fulfillment: {
+    method: true,
+    address: { city: true, postalCode: true },
+  },
+};
+
+export const orderViewConfigs = [
+  orderCardConfig,
+  orderItemsConfig,
+  orderDeliveryConfig,
+  receiptConfig,
+];
+
 export const deltaCharacters = 24;
 
 export const orderDocument = {

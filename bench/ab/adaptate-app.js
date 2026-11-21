@@ -1,4 +1,9 @@
-import { orderDocument, orderSchema, receiptConfig } from "./order.js";
+import {
+  orderDocument,
+  orderSchema,
+  orderViewConfigs,
+  receiptConfig,
+} from "./order.js";
 
 const configs = { receipt: receiptConfig };
 const toolCallId = "call_order";
@@ -6,11 +11,21 @@ const toolCallId = "call_order";
 export function createAdaptateApp(zod, adaptateCore, adaptateStream) {
   const base = orderSchema(zod, "partial");
   const strict = adaptateCore.transformSchema(base, receiptConfig);
+  const viewSchemas = orderViewConfigs.map((viewConfig) =>
+    adaptateCore.transformSchema(base, viewConfig),
+  );
   const validator = adaptateStream.createStreamValidator(base, configs);
   return {
     name: "adaptate",
     validateFull(document = orderDocument) {
       return strict.safeParse(document).success;
+    },
+    validateViews(document = orderDocument) {
+      let readyViews = 0;
+      for (const viewSchema of viewSchemas) {
+        if (viewSchema.safeParse(document).success) readyViews += 1;
+      }
+      return readyViews === viewSchemas.length;
     },
     validatePartial(document) {
       if (document === undefined) return undefined;
