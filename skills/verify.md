@@ -19,11 +19,11 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
    ```
    Both `@adaptate/core` and `@adaptate/utils` must pass `tsc --noEmit`.
 
-2. **Lint** (Oxlint + ESLint deprecations):
+2. **Lint** (Oxlint type-aware, including `typescript/no-deprecated`):
    ```
    pnpm lint
    ```
-   Or: `npx oxlint -c .oxlintrc.json ./packages/core/src ./packages/utils/src` and `pnpm run lint:deprecation` for ad-hoc runs from the repo root.
+   Or: `pnpm run lint:deprecation` from the repo root for the deprecation rule.
 
 3. **Run tests with coverage**:
    ```
@@ -39,7 +39,7 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
 
 5. **Review results**:
    - Type errors → fix TypeScript issues
-   - Lint failures → fix Oxlint findings or deprecated APIs reported by ESLint
+   - Lint failures → fix Oxlint findings, including deprecated APIs reported by `typescript/no-deprecated`
    - Test failures → investigate and fix (see `fix-bug.md`)
    - Build failures → check Vite config and external dependencies
    - Coverage drop → add missing tests (see `add-test.md`)
