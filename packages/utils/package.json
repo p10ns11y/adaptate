@@ -53,27 +53,27 @@
   ],
   "exports": {
     ".": {
-      "types": "./src/index",
+      "types": "./build/index.d.ts",
       "import": "./build/index.es.js",
       "default": "./build/index.es.js"
     },
     "./openapi": {
-      "types": "./src/openapi.ts",
+      "types": "./build/openapi.d.ts",
       "import": "./ssr-build/openapi.js",
       "default": "./ssr-build/openapi.js"
     },
     "./*": {
-      "types": "./src/*.ts",
+      "types": "./build/*.d.ts",
       "import": "./build/*.es.js",
       "default": "./build/*.es.js"
     },
     "./ssr": {
-      "types": "./src/index",
+      "types": "./build/index.d.ts",
       "import": "./ssr-build/index.js",
       "default": "./ssr-build/index.js"
     },
     "./ssr/*": {
-      "types": "./src/index",
+      "types": "./build/index.d.ts",
       "import": "./ssr-build/*.js",
       "default": "./ssr-build/*.js"
     }

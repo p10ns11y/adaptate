@@ -45,12 +45,12 @@
   },
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
+      "types": "./build/index.d.ts",
       "import": "./build/index.es.js",
       "default": "./build/index.es.js"
     },
     "./*": {
-      "types": "./src/*.ts",
+      "types": "./build/*.d.ts",
       "default": "./build/*.es.js"
     }
   },
