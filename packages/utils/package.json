@@ -32,11 +32,10 @@
     "test:pkg:watch": "vitest --config ../../vitest.config.ts src/__tests__"
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^15.3.5",
-    "js-yaml": "^4.1.1"
+    "@apidevtools/json-schema-ref-parser": "^16.0.8",
+    "js-yaml": "^5.5.0"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "terser": "^5.51.2",
     "typescript": "6.0.3",
     "vite": "^8.3.8",
