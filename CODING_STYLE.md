@@ -41,7 +41,7 @@
 ## Dependencies
 - Minimal. Audit before adding.
 - `zod`: peer dependency (never bundled).
-- `@apidevtools/json-schema-ref-parser`, `js-yaml`: utils runtime deps.
+- `@apidevtools/json-schema-ref-parser`, `js-yaml`: optional peers of `@adaptate/utils` (YAML and remote/file `$ref`s).
 - Dev tooling: Vitest, Vite, Turborepo, TypeScript.
 
 Follow for all future edits.

@@ -27,22 +27,30 @@
     "prepublishOnly": "node ../../scripts/verify-published-types.mjs packages/utils",
     "build:ssr": "vite build --ssr",
     "check-types": "tsc --noEmit",
-    "lint": "oxlint -c ../../.oxlintrc.json ./src && eslint --config ../../eslint.config.js \"src/**/*.ts\"",
+    "lint": "oxlint --type-aware -c ../../.oxlintrc.json ./src",
     "test:pkg": "vitest run --config ../../vitest.config.ts src/__tests__",
     "test:pkg:watch": "vitest --config ../../vitest.config.ts src/__tests__"
   },
-  "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^16.0.8",
-    "js-yaml": "^5.5.0"
-  },
   "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^16.0.8",
+    "js-yaml": "^5.5.0",
     "terser": "^5.51.2",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "^8.3.8",
     "zod": "^4.6.7"
   },
   "peerDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^16.0.8",
+    "js-yaml": "^5.5.0",
     "zod": "^3.25.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@apidevtools/json-schema-ref-parser": {
+      "optional": true
+    },
+    "js-yaml": {
+      "optional": true
+    }
   },
   "files": [
     "build",

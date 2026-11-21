@@ -363,11 +363,17 @@ describe("core without effect", () => {
                 missing.code = "ERR_MODULE_NOT_FOUND";
                 throw missing;
               }
-              if (
-                (specifier.startsWith("./") || specifier.startsWith("../")) &&
-                !/\\.(?:[cm]?js|[cm]?ts|json)$/.test(specifier)
-              ) {
-                return nextResolve(specifier + ".ts", context);
+              if (specifier.startsWith("./") || specifier.startsWith("../")) {
+                if (specifier.endsWith(".js")) {
+                  try {
+                    return nextResolve(specifier.slice(0, -3) + ".ts", context);
+                  } catch {
+                    return nextResolve(specifier, context);
+                  }
+                }
+                if (!/\\.(?:[cm]?js|[cm]?ts|json)$/.test(specifier)) {
+                  return nextResolve(specifier + ".ts", context);
+                }
               }
               return nextResolve(specifier, context);
             },

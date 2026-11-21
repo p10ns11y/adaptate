@@ -18,8 +18,8 @@ Configuration lives in [`.devcontainer/devcontainer.json`](.devcontainer/devcont
 - Build: `pnpm build` (runs Turborepo pipeline: check-types → test → build)
 - Test: `npx vitest run --coverage` (single run) or `pnpm test` (watch mode)
 - Typecheck: `npx turbo run check-types`
-- **Lint:** `pnpm lint` — **Oxlint** (correctness / general fast lint, see `.oxlintrc.json`) then **ESLint** deprecation-only (`@typescript-eslint/no-deprecated`, see `eslint.config.js`). Per-package: `pnpm turbo run lint`.
-- **Lint fixes (Oxlint auto-fix where supported):** `pnpm run lint:fix` then address any remaining ESLint deprecation findings by hand or codemod.
+- **Lint:** `pnpm lint` — **Oxlint** type-aware (`oxlint --type-aware` with `oxlint-tsgolint`, see `.oxlintrc.json`): correctness plus `typescript/no-deprecated`, `typescript/no-floating-promises`, and `typescript/no-misused-promises`. Per-package: `pnpm turbo run lint`. Deprecations only: `pnpm run lint:deprecation`.
+- **Lint fixes (Oxlint auto-fix where supported):** `pnpm run lint:fix`. Deprecated call sites usually need a hand edit or codemod; the deprecation rule does not rewrite them.
 - Coverage badge: `pnpm run coveragebadge`
 
 ## Coding Style
@@ -61,7 +61,7 @@ Operational guides for common tasks live in [`skills/`](skills/README.md). Any c
 
 ## Rules
 - Run `npx turbo run check-types` after TypeScript changes
-- Run `pnpm lint` to run Oxlint and ESLint (deprecation) on package sources (also enforced in GitHub Actions: `.github/workflows/ci.yml` runs lint, then `pnpm test`, then `turbo run build`)
+- Run `pnpm lint` to run Oxlint type-aware rules, including `typescript/no-deprecated`, on package sources (also enforced in GitHub Actions: `.github/workflows/ci.yml` runs lint, then `pnpm test`, then `turbo run build`)
 - Run `npx vitest run --coverage` to verify tests pass
 - Build pipeline order: `check-types` → `test` → `build` (enforced by `turbo.json`)
 - No force pushes to `main`
@@ -93,15 +93,14 @@ This is a **TypeScript library monorepo** (pnpm workspaces + Turborepo) with two
 
 | Tool | Role |
 |------|------|
-| **Oxlint** (`.oxlintrc.json`) | Fast lint; default **correctness** category for CI. Expand categories locally if desired (many style rules warn loudly on tests). |
-| **ESLint** (`eslint.config.js`) | **Deprecation detection only:** `@typescript-eslint/no-deprecated` (requires types from dependencies). |
+| **Oxlint** (`.oxlintrc.json`) | Correctness lint plus type-aware rules via `oxlint-tsgolint` (`typescript/no-deprecated`, `typescript/no-floating-promises`, `typescript/no-misused-promises`). Expand categories locally if desired (many style rules warn loudly on tests). |
 
-- **TypeScript** is a workspace `devDependency` (`typescript@6.0.3` at the repo root and in `@adaptate/core` / `@adaptate/utils`) so `tsc` is available from each package’s `node_modules/.bin` after `pnpm install`. No global `typescript` install is required.
+- **TypeScript** is a workspace `devDependency` (`typescript@7.0.2` at the repo root and in `@adaptate/core` / `@adaptate/utils`) so `tsc` is available from each package’s `node_modules/.bin` after `pnpm install`. No global `typescript` install is required. Type-aware lint uses `oxlint-tsgolint` (typescript-go), not the workspace `typescript` package.
 - The `turbo.json` build task depends on `^test`, which depends on `check-types`. Running `pnpm build` triggers the full pipeline: check-types → test → build.
 - There is a single `tsconfig.json` at the root used by both packages; individual packages do not have their own tsconfigs.
 - Tests use Vitest (not Jest), despite `@types/jest` being present in root devDependencies.
-- No legacy ESLint config beyond **`eslint.config.js`** (flat config). Deprecation-only rules; general lint is Oxlint.
 - The `jest.config.mjs` at the root is legacy and non-functional (references missing `tsconfig.jest.json`); ignore it.
+- CI job `ts7-consumer` builds the packages, packs `@adaptate/core` and `@adaptate/utils`, and runs `tsc --noEmit` in a temp project on TypeScript 7 and 6 (`scripts/ts-consumer-check.mjs`). Import specifiers come from built `.d.ts` files. `moduleResolution` is checked for `bundler`, `node16`, and `nodenext`.
 - `packages/utils` builds both a browser bundle (`build/`) and an SSR bundle (`ssr-build/`). Node builtins are externalized in both.
 - **Bundler:** Both packages use **Vite 8** (`vite@^8.0.10` in each package; lockfile pins `vite@8.0.10`). Production `vite build` uses **Rolldown** (Vite’s default bundler in v8). There is no `rolldown-vite` dependency alias and no `pnpm.overrides` entry for Vite—stay on plain `vite` from the registry.
 - After a Vite major bump, run `pnpm build` and spot-check `packages/core/build/`, `packages/utils/build/`, and `packages/utils/ssr-build/` (entry files, chunk names, `.map` files) before releasing.

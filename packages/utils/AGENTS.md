@@ -13,7 +13,7 @@ Utilities for converting between OpenAPI schemas and Zod schemas, and loading Op
 ## Key Patterns
 - `openAPISchemaToZod`: Converts JSON Schema / OpenAPI schema objects to Zod schemas (handles `$ref`, `allOf`, `oneOf`, `anyOf`, nested objects, arrays, enums)
 - `zodToOpenAPISchema`: Reverse conversion (basic, not 1:1 complete)
-- `getDereferencedOpenAPIDocument`: Loads and fully dereferences an OpenAPI spec (uses `@apidevtools/json-schema-ref-parser`)
+- `getDereferencedOpenAPIDocument`: Loads an OpenAPI spec and dereferences `$ref` pointers. In-document JSON pointers use the local resolver. Remote and file `$ref`s use optional `@apidevtools/json-schema-ref-parser`. YAML parsing uses optional `js-yaml`.
 - `getYamlContent`: Dynamic import of `load-yaml.ts` for Node-only YAML file reading (split for browser compat)
 
 ## Build
@@ -23,6 +23,6 @@ Utilities for converting between OpenAPI schemas and Zod schemas, and loading Op
 
 ## Rules
 - `zod` is a peer dependency — never bundle it
-- `@apidevtools/json-schema-ref-parser` and `js-yaml` are runtime dependencies
+- `@apidevtools/json-schema-ref-parser` and `js-yaml` are optional peer dependencies (also devDependencies for tests). JSON specs with only local `$ref`s need neither.
 - Tests may hit the network (Google Books OpenAPI URL) — wrapped in try/catch
 - Run vitest from workspace root (no per-package test script)

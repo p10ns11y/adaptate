@@ -32,9 +32,6 @@
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
         "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-          "source.fixAll.eslint": "explicit"
-        },
         "typescript.tsdk": "node_modules/typescript/lib",
         "typescript.enablePromptUseWorkspaceTsdk": true,
         "npm.packageManager": "pnpm",
@@ -48,7 +45,6 @@
         }
       },
       "extensions": [
-        "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "yoavbls.pretty-ts-errors",
         "usernamehw.errorlens",

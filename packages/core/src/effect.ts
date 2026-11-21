@@ -1,17 +1,17 @@
 import { Data, Effect, Stream } from "effect";
 import { z } from "zod";
 
-import { transformSchema, type Config } from "./index";
+import { transformSchema, type Config } from "./index.js";
 import {
   validatePartialAgainstConfigs,
   type DeepPartial,
   type PartialValidationResult,
-} from "./partial";
+} from "./partial.js";
 import {
   createAgUiPartialValidator,
   createStreamValidator,
   type AgUiDeltaEvent,
-} from "./stream";
+} from "./stream.js";
 
 export class AdaptateValidationError extends Data.TaggedError(
   "AdaptateValidationError",

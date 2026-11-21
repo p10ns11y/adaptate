@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Config } from "./index";
+import type { Config } from "./index.js";
 
 export type DeepPartial<T> = T extends readonly (infer U)[]
   ? DeepPartial<U>[]

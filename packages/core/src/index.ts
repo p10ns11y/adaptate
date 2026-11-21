@@ -177,4 +177,4 @@ export {
   makeStreamingConditionalTransformer,
   type DeepPartial,
   type PartialValidationResult,
-} from "./partial";
+} from "./partial.js";

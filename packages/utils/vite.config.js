@@ -8,6 +8,9 @@ export default defineConfig(({ isSsrBuild }) => {
     console.log('Building for SSR');
 
     return {
+      ssr: {
+        external: ['js-yaml', '@apidevtools/json-schema-ref-parser'],
+      },
       build: {
         target: 'esnext',
         ssr: 'src/index.ts',
@@ -16,7 +19,12 @@ export default defineConfig(({ isSsrBuild }) => {
         sourcemap: true,
         rollupOptions: {
           input: ['src/index.ts', 'src/openapi.ts'],
-          external: ['zod', ...builtinModules],
+          external: [
+            'zod',
+            'js-yaml',
+            '@apidevtools/json-schema-ref-parser',
+            ...builtinModules,
+          ],
         },
       },
     };
@@ -38,7 +46,12 @@ export default defineConfig(({ isSsrBuild }) => {
         types: 'src/index.d.ts',
       },
       rollupOptions: {
-        external: ['zod', ...builtinModules],
+        external: [
+          'zod',
+          'js-yaml',
+          '@apidevtools/json-schema-ref-parser',
+          ...builtinModules,
+        ],
       },
     },
   };

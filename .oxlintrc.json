@@ -4,7 +4,14 @@
   "categories": {
     "correctness": "error"
   },
-  "rules": {},
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "typescript/no-deprecated": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error"
+  },
   "env": {
     "builtin": true
   },

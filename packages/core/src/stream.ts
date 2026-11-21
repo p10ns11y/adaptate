@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { transformSchema, type Config } from "./index";
+import { transformSchema, type Config } from "./index.js";
 import {
   validatePartialAgainstConfigs,
   type DeepPartial,
   type PartialValidationResult,
-} from "./partial";
+} from "./partial.js";
 
 type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
 

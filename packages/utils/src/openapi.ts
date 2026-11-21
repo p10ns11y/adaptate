@@ -1,5 +1,7 @@
-import { load } from 'js-yaml';
 import { z, globalRegistry } from 'zod';
+
+import { dereferenceOpenApiDocument } from './dereference-local.js';
+import { parseSpecDocumentText } from './parse-spec-document.js';
 
 import {
   coalesceZodObjectShape,
@@ -11,7 +13,7 @@ import {
   mergeStringChecksIntoOpenApi,
   schemaIndicatesInteger,
   unwrapOptional,
-} from './openapi-zod-checks';
+} from './openapi-zod-checks.js';
 
 /**
  * Converts an OpenAPI / JSON Schema object to a Zod schema.
@@ -359,16 +361,15 @@ export function zodToOpenAPISchema(zodSchema: z.ZodType): any {
 }
 
 // Re-export the load yaml helper for SSR
-export { getYamlContent } from './load-yaml';
+export { getYamlContent } from './load-yaml.js';
 
 // Keep the other functions (fetch, getDereferenced...) unchanged for compatibility
-export async function fetchYamlContent(webURL: string) {
+export async function fetchYamlContent(webURL: string): Promise<any> {
   let response = await globalThis.fetch(webURL, {
     headers: { 'Content-Type': 'text/yaml' },
     mode: 'cors',
   });
-  let openapiDocument = load(await response.text());
-  return openapiDocument;
+  return parseSpecDocumentText(await response.text());
 }
 
 export type ServerOpenAPISpecParams = {
@@ -393,16 +394,14 @@ export async function getDereferencedOpenAPIDocument(params: OpenAPISpecParams) 
     if (params.location === 'web') {
       openapiDocument = await fetchYamlContent(params.webURL);
     } else if (params.location === 'filesystem' || isNodeEnvDetected) {
-      let { getYamlContent } = await import('./load-yaml.ts');
+      let { getYamlContent } = await import('./load-yaml.js');
       openapiDocument = await getYamlContent(
         params.callSiteURL,
         params.relativePathToSpecFile
       );
     }
 
-    let SwaggerParser = await import('@apidevtools/json-schema-ref-parser');
-    let dereferenced = await SwaggerParser.default.dereference(openapiDocument);
-    return dereferenced;
+    return await dereferenceOpenApiDocument(openapiDocument);
   } catch (error: any) {
     throw new Error(`Error reading OpenAPI document: ${error?.message || ''}`);
   }
