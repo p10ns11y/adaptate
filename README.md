@@ -29,7 +29,7 @@
 <p align="center">
   <a href="https://github.com/p10ns11y/adaptate/stargazers"><strong>Star</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/cursor/readme-appeal/examples/streaming-tool-call"><strong>Try it in the browser</strong></a>
+  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/main/examples/streaming-tool-call"><strong>Try it in the browser</strong></a>
 </p>
 
 ## The same tool call, two ways
