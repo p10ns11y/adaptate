@@ -24,6 +24,24 @@ export class AdaptateParseError extends Data.TaggedError("AdaptateParseError")<{
   readonly text: string;
 }> {}
 
+export type ConfigReport = {
+  readonly valid: boolean;
+  readonly issues: ReadonlyArray<z.core.$ZodIssue> | null;
+};
+
+export type FinalReport<TValue, TConfigs> = {
+  readonly value: TValue;
+  readonly configs: { [K in keyof TConfigs]: ConfigReport };
+};
+
+function issuesFromCause(cause: unknown): ReadonlyArray<z.core.$ZodIssue> {
+  if (cause instanceof z.ZodError) {
+    return cause.issues;
+  }
+  const message = cause instanceof Error ? cause.message : String(cause);
+  return [{ code: "custom", message, path: [] }];
+}
+
 function strictParse<TSchema extends z.ZodType>(
   schema: TSchema,
   config: Config<z.infer<TSchema>> | undefined,
@@ -39,7 +57,49 @@ function strictParse<TSchema extends z.ZodType>(
     catch: (cause) =>
       new AdaptateValidationError({
         configName,
-        issues: cause instanceof z.ZodError ? cause.issues : [],
+        issues: issuesFromCause(cause),
+      }),
+  });
+}
+
+function parseDocument(text: string): Effect.Effect<unknown, AdaptateParseError> {
+  return Effect.try({
+    try: () => JSON.parse(text) as unknown,
+    catch: () => new AdaptateParseError({ text }),
+  });
+}
+
+function reportsForConfigs<
+  TSchema extends z.ZodType,
+  TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
+>(
+  schema: TSchema,
+  configs: TConfigs,
+  parsed: unknown,
+): Effect.Effect<
+  { [K in keyof TConfigs]: ConfigReport },
+  AdaptateValidationError
+> {
+  return Effect.try({
+    try: () => {
+      const entries = Object.entries(configs).map(([configName, config]) => {
+        const result = transformSchema(
+          schema,
+          config as Config<z.infer<TSchema>>,
+        ).safeParse(parsed);
+        const report: ConfigReport = result.success
+          ? { valid: true, issues: null }
+          : { valid: false, issues: result.error.issues };
+        return [configName, report] as const;
+      });
+      return Object.fromEntries(entries) as {
+        [K in keyof TConfigs]: ConfigReport;
+      };
+    },
+    catch: (cause) =>
+      new AdaptateValidationError({
+        configName: "schema",
+        issues: issuesFromCause(cause),
       }),
   });
 }
@@ -65,10 +125,10 @@ export function validatePartial<
 ): Effect.Effect<DeepPartial<z.infer<TSchema>>, AdaptateValidationError> {
   return Effect.try({
     try: () => validatePartialAgainstConfigs(schema, partial, configs),
-    catch: () =>
+    catch: (cause) =>
       new AdaptateValidationError({
         configName: "partial",
-        issues: [],
+        issues: issuesFromCause(cause),
       }),
   }).pipe(
     Effect.flatMap((results) => {
@@ -93,6 +153,42 @@ export function createEffectStreamValidator<
 >(schema: TSchema, configs: TConfigs) {
   const validator = createStreamValidator(schema, configs);
   const pushAgUi = createAgUiPartialValidator(schema, configs);
+  function final(
+    text: string,
+  ): Effect.Effect<
+    FinalReport<z.infer<TSchema>, TConfigs>,
+    AdaptateParseError | AdaptateValidationError
+  >;
+  function final(
+    text: string,
+    configName: keyof TConfigs,
+  ): Effect.Effect<
+    z.infer<TSchema>,
+    AdaptateParseError | AdaptateValidationError
+  >;
+  function final(
+    text: string,
+    configName?: keyof TConfigs,
+  ): Effect.Effect<
+    | z.infer<TSchema>
+    | FinalReport<z.infer<TSchema>, TConfigs>,
+    AdaptateParseError | AdaptateValidationError
+  > {
+    return Effect.gen(function* () {
+      const parsed = yield* parseDocument(text);
+      if (configName !== undefined) {
+        return yield* strictParse(
+          schema,
+          configs[configName] as Config<z.infer<TSchema>>,
+          String(configName),
+          parsed,
+        );
+      }
+      const value = yield* strictParse(schema, undefined, "schema", parsed);
+      const namedReports = yield* reportsForConfigs(schema, configs, parsed);
+      return { value, configs: namedReports };
+    });
+  }
   return {
     partial(
       value: DeepPartial<z.infer<TSchema>>,
@@ -102,43 +198,7 @@ export function createEffectStreamValidator<
     > {
       return Effect.succeed(validator.partial(value));
     },
-    final(
-      text: string,
-    ): Effect.Effect<
-      z.infer<TSchema>,
-      AdaptateParseError | AdaptateValidationError
-    > {
-      return Effect.try({
-        try: () => JSON.parse(text) as unknown,
-        catch: () => new AdaptateParseError({ text }),
-      }).pipe(
-        Effect.flatMap((parsed) => {
-          const namedConfigs = Object.entries(configs);
-          if (namedConfigs.length === 0) {
-            return strictParse(schema, undefined, "schema", parsed);
-          }
-          const firstNamedConfig = namedConfigs[0];
-          const restConfigs = namedConfigs.slice(1);
-          return Effect.gen(function* () {
-            let validated = yield* strictParse(
-              schema,
-              firstNamedConfig[1] as Config<z.infer<TSchema>>,
-              firstNamedConfig[0],
-              parsed,
-            );
-            for (const [configName, config] of restConfigs) {
-              validated = yield* strictParse(
-                schema,
-                config as Config<z.infer<TSchema>>,
-                configName,
-                parsed,
-              );
-            }
-            return validated;
-          });
-        }),
-      );
-    },
+    final,
     agUi(event: AgUiDeltaEvent) {
       return Effect.sync(() => pushAgUi(event));
     },

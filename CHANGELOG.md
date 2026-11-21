@@ -56,6 +56,9 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
 - Validation is pure, so this integration does not retry.
 
+### Changed
+- `final(text)` parses strict JSON, requires the base schema, and returns `{ value, configs }` for every named config. `final(text, configName)` validates that one config. `validatePartial` keeps issues from a thrown `ZodError`.
+
 ### Changed — what consumers install
 - `@adaptate/utils` now installs `@apidevtools/json-schema-ref-parser` 16 (was 15) and `js-yaml` 5 (was 4). Core still has zero runtime dependencies.
 - `@types/js-yaml` dropped; js-yaml 5 ships its own types.
