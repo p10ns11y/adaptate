@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'build',
     sourcemap: true,
     lib: {
-      entry: ['src/index.ts'],
+      entry: ['src/index.ts', 'src/stream.ts'],
       formats: ['es'],
       fileName: (format, entryName) => `${entryName}.${format}.js`,
     },
