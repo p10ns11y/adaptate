@@ -1,13 +1,14 @@
 import { describe, it, expect, expectTypeOf } from "vitest";
 import { z } from "zod";
 
+import { transformSchema, type Config, type DeepPartial } from "../";
 import {
   transformPartialSchema,
   validatePartialAgainstConfigs,
   makeStreamingConditionalTransformer,
-  type Config,
-  type DeepPartial,
-} from "../";
+  cacheLenientSchema,
+  schemasForConfigs,
+} from "../partial.js";
 
 const person = z.object({
   name: z.string(),
@@ -107,6 +108,25 @@ describe("transformPartialSchema", () => {
   });
 });
 
+describe("schemasForConfigs", () => {
+  it("builds one schema per config at the call and skips a config that cannot transform", () => {
+    const baseSchema = z.object({ name: z.string().optional() });
+    const built = schemasForConfigs(
+      baseSchema,
+      { card: { name: true }, text: true },
+      transformSchema,
+    );
+    expect(built.card?.safeParse({}).success).toBe(false);
+    expect(built.card?.safeParse({ name: "Ada" }).success).toBe(true);
+    const textOnly = schemasForConfigs(
+      z.string(),
+      { card: true },
+      transformSchema,
+    );
+    expect(textOnly.card).toBeUndefined();
+  });
+});
+
 describe("validatePartialAgainstConfigs", () => {
   it("returns one result per consumer config", () => {
     const results = validatePartialAgainstConfigs(
@@ -115,14 +135,58 @@ describe("validatePartialAgainstConfigs", () => {
       { form: { name: true }, preview: { age: false } },
     );
     expect(results.form.valid).toBe(false);
-    expect(results.form.errors).not.toBeNull();
+    expect(results.form.errors?.issues[0]?.path).toEqual(["email"]);
     expect(results.preview.valid).toBe(false);
+    expect(results.preview.errors?.issues[0]?.path).toEqual(["email"]);
     const clean = validatePartialAgainstConfigs(
       person,
       { name: "Ada" },
       { form: { name: true } },
     );
     expect(clean.form).toEqual({ valid: true, errors: null });
+  });
+});
+
+describe("cacheLenientSchema", () => {
+  it("does not parse the source object or array while building the lenient schema", () => {
+    const child = z.object({ name: z.string() });
+    const items = z.array(z.string());
+    const root = z.object({ child: child.optional(), items });
+    let rootParses = 0;
+    let childParses = 0;
+    let itemParses = 0;
+    const parseRoot = root.safeParse.bind(root);
+    const parseChild = child.safeParse.bind(child);
+    const parseItems = items.safeParse.bind(items);
+    root.safeParse = (value) => {
+      rootParses += 1;
+      return parseRoot(value);
+    };
+    child.safeParse = (value) => {
+      childParses += 1;
+      return parseChild(value);
+    };
+    items.safeParse = (value) => {
+      itemParses += 1;
+      return parseItems(value);
+    };
+    cacheLenientSchema(root);
+    cacheLenientSchema(items);
+    cacheLenientSchema(z.string());
+    expect(rootParses).toBe(0);
+    expect(childParses).toBe(0);
+    expect(itemParses).toBe(0);
+    const empty = validatePartialAgainstConfigs(root, {}, { card: true });
+    expect(empty.card).toEqual({ valid: true, errors: null });
+    const wrong = validatePartialAgainstConfigs(
+      root,
+      { child: { name: 1 } } as unknown as { child: { name: string } },
+      { card: true },
+    );
+    expect(wrong.card.valid).toBe(false);
+    expect(rootParses).toBe(0);
+    expect(childParses).toBe(0);
+    expect(itemParses).toBe(0);
   });
 });
 

@@ -192,7 +192,7 @@ rows.push(
 );
 rows.push(
   judge(
-    "adaptate partial us/chunk",
+    "adaptate cached partial us/chunk",
     () =>
       pair(
         () =>
