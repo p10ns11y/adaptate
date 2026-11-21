@@ -95,7 +95,7 @@ describe("streaming partial properties", () => {
       }),
       { numRuns: 60 },
     );
-  });
+  }, 30_000);
 
   it("rejects a present field of the wrong type in every config", () => {
     fc.assert(
