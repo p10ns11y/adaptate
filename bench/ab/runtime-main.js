@@ -127,6 +127,7 @@ for (const name of names) {
     viewsPerSec: rates[name].viewsPerSec,
     agUiMicros: rates[name].agUiMicros,
     partialMicros: rates[name].partialMicros,
+    repairMicros: rates[name].repairMicros,
     heapAfterBytes: heap[name].heapAfterBytes,
     heapDeltaBytes: heap[name].heapDeltaBytes,
     heapCollector: heap[name].collector,

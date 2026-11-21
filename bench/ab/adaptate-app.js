@@ -43,6 +43,14 @@ export function createAdaptateApp(zod, adaptateCore, adaptateStream) {
         return outcome.results.receipt.valid;
       };
     },
+    repairStream() {
+      const buffers = new Map();
+      return (delta) => {
+        const text = (buffers.get(toolCallId) ?? "") + delta;
+        buffers.set(toolCallId, text);
+        return adaptateStream.parsePartialJson(text);
+      };
+    },
     readStream() {
       const push = adaptateStream.createAgUiPartialValidator(base, configs);
       return (delta) =>

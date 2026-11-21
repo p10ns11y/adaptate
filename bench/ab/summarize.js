@@ -95,6 +95,18 @@ export function renderSummary(directory) {
       );
     }
     push("AG-UI stream (µs/chunk)", "agUiMicros", 3, "µs");
+    if (typeof adaptate.repairMicros === "number") {
+      lines.push(
+        metricRow(
+          "JSON repair (µs/chunk)",
+          label,
+          "no repair: needs complete JSON",
+          formatValue(adaptate.repairMicros, 3),
+          "no repair: needs complete JSON",
+          "n/a",
+        ),
+      );
+    }
     push(
       "Parsed partial check, cached schema (µs/chunk)",
       "partialMicros",
@@ -149,7 +161,7 @@ export function renderSummary(directory) {
   }
   lines.push("");
   lines.push(
-    "Gated on pull request, Node only, head build versus the base commit on the same runner, fail above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and each entry's min and gzip bytes (full bundle and zod-external bundle). Not gated: four views per render, import p95, heap, the raw-zod rows, Bun, and Chromium.",
+    "Gated on pull request, Node only, head build versus the base commit on the same runner, fail above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and each entry's min and gzip bytes (full bundle and zod-external bundle). Not gated: JSON repair, four views per render, import p95, heap, the raw-zod rows, Bun, and Chromium.",
   );
   if (gate) {
     lines.push("");

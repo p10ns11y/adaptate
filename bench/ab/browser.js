@@ -152,6 +152,7 @@ export async function measureBrowser() {
         viewsPerSec: work[name].viewsPerSec,
         agUiMicros: work[name].agUiMicros,
         partialMicros: work[name].partialMicros,
+        repairMicros: work[name].repairMicros,
         heapAfterBytes: null,
         heapDeltaBytes: null,
         heapCollector: null,
