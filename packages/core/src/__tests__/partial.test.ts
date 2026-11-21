@@ -171,6 +171,8 @@ describe("cacheLenientSchema", () => {
       return parseItems(value);
     };
     cacheLenientSchema(root);
+    cacheLenientSchema(items);
+    cacheLenientSchema(z.string());
     expect(rootParses).toBe(0);
     expect(childParses).toBe(0);
     expect(itemParses).toBe(0);

@@ -25,7 +25,7 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 // { title: "Pasta" }
 ```
 
-`createEffectStreamValidator` builds the cached partial schema and the per-config `transformSchema` results when the validator is created, and `final(text)` reuses them. A schema that cannot be transformed, such as `z.string()`, still fails inside `final` with `configName: "schema"`. Config objects are read at creation. `final(text, configName)` calls `transformSchema` for that config.
+`createEffectStreamValidator` builds the per-config `transformSchema` results when the validator is created, and `final(text)` reuses them. The lenient partial schema is cached on the base schema at the first partial check. A schema that cannot be transformed, such as `z.string()`, still fails inside `final` with `configName: "schema"`. Config objects are read at creation. `final(text, configName)` calls `transformSchema` for that config.
 
 `final(text)` parses with `JSON.parse`. Bad or truncated text fails with `AdaptateParseError`. The base schema is then parsed; that failure is `AdaptateValidationError` with `configName: "schema"`. On success the effect succeeds with `{ value, configs }`. Each named config is `{ valid, issues }`. An unmet config does not fail the effect. A mutated config is read by value on the next `final`.
 

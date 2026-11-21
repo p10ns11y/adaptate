@@ -106,6 +106,32 @@ describe("createStreamValidator", () => {
   });
 });
 
+describe("createStreamValidator construction", () => {
+  it("does not parse the source schema again while checking a partial", () => {
+    const schema = z.object({
+      title: z.string(),
+      steps: z.array(z.object({ minutes: z.number() })),
+    });
+    let sourceParses = 0;
+    const parseSource = schema.safeParse.bind(schema);
+    schema.safeParse = (value) => {
+      sourceParses += 1;
+      return parseSource(value);
+    };
+    const validator = createStreamValidator(schema, { card: { title: true } });
+    const parsesAfterCreate = sourceParses;
+    expect(validator.partial({}).card.valid).toBe(true);
+    expect(
+      validator.partial({ title: 1 } as unknown as { title: string }).card
+        .valid,
+    ).toBe(false);
+    expect(sourceParses).toBe(parsesAfterCreate);
+    expect(
+      validator.final({ title: "Pasta", steps: [{ minutes: 4 }] }).card.valid,
+    ).toBe(true);
+  });
+});
+
 describe("validateStructuredOutput", () => {
   it("maps a TanStack useChat partial and final", () => {
     expect(

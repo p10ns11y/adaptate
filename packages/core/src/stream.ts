@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { transformSchema, type Config } from "./index.js";
 import {
-  cacheLenientSchema,
   schemasForConfigs,
   validatePartialAgainstConfigs,
   type DeepPartial,
@@ -47,7 +46,6 @@ export function createStreamValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
-  cacheLenientSchema(schema);
   const prepared = schemasForConfigs(schema, configs, transformSchema);
   return {
     partial(value: DeepPartial<z.infer<TSchema>>): Results<TConfigs> {
