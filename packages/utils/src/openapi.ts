@@ -1,4 +1,4 @@
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 import { z, globalRegistry } from 'zod';
 
 import {
@@ -367,7 +367,7 @@ export async function fetchYamlContent(webURL: string) {
     headers: { 'Content-Type': 'text/yaml' },
     mode: 'cors',
   });
-  let openapiDocument = yaml.load(await response.text());
+  let openapiDocument = load(await response.text());
   return openapiDocument;
 }
 
