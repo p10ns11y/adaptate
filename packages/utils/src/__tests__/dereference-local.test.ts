@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { describe, expect, it, vi } from 'vitest';
 
-import { dereferenceLocalDocument, dereferenceOpenApiDocument } from '../dereference-local.ts';
-import { getDereferencedOpenAPIDocument } from '../openapi.ts';
+import { dereferenceLocalDocument, dereferenceOpenApiDocument } from '../dereference-local.js';
+import { getDereferencedOpenAPIDocument } from '../openapi.js';
 
 function describeGraph(value: unknown, seen = new Map<object, string>(), pointer = '$'): string {
   if (isContainer(value)) {

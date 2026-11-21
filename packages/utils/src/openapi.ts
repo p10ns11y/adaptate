@@ -1,7 +1,7 @@
 import { z, globalRegistry } from 'zod';
 
-import { dereferenceOpenApiDocument } from './dereference-local.ts';
-import { parseSpecDocumentText } from './parse-spec-document.ts';
+import { dereferenceOpenApiDocument } from './dereference-local.js';
+import { parseSpecDocumentText } from './parse-spec-document.js';
 
 import {
   coalesceZodObjectShape,
@@ -394,7 +394,7 @@ export async function getDereferencedOpenAPIDocument(params: OpenAPISpecParams) 
     if (params.location === 'web') {
       openapiDocument = await fetchYamlContent(params.webURL);
     } else if (params.location === 'filesystem' || isNodeEnvDetected) {
-      let { getYamlContent } = await import('./load-yaml.ts');
+      let { getYamlContent } = await import('./load-yaml.js');
       openapiDocument = await getYamlContent(
         params.callSiteURL,
         params.relativePathToSpecFile

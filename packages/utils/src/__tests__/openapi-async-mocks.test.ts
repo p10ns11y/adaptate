@@ -30,7 +30,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.doUnmock('@apidevtools/json-schema-ref-parser');
   vi.doUnmock('js-yaml');
-  vi.doUnmock('../load-yaml.ts');
+  vi.doUnmock('../load-yaml.js');
   vi.resetModules();
   vi.restoreAllMocks();
 });
@@ -43,7 +43,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
         dereference: vi.fn(() => Promise.reject(new Error('parser boom'))),
       },
     }));
-    let { getDereferencedOpenAPIDocument } = await import('../openapi.ts');
+    let { getDereferencedOpenAPIDocument } = await import('../openapi.js');
 
     await expect(
       getDereferencedOpenAPIDocument({
@@ -61,7 +61,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
         dereference: vi.fn(() => Promise.reject('non-error rejection')),
       },
     }));
-    let { getDereferencedOpenAPIDocument } = await import('../openapi.ts');
+    let { getDereferencedOpenAPIDocument } = await import('../openapi.js');
 
     await expect(
       getDereferencedOpenAPIDocument({
@@ -84,7 +84,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
         }),
       },
     }));
-    let { getDereferencedOpenAPIDocument } = await import('../openapi.ts');
+    let { getDereferencedOpenAPIDocument } = await import('../openapi.js');
 
     let result = (await getDereferencedOpenAPIDocument({
       location: 'unknown-runtime' as never,
@@ -103,7 +103,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
         dereference: vi.fn(async () => ({ fromParser: true })),
       },
     }));
-    let { dereferenceOpenApiDocument } = await import('../dereference-local.ts');
+    let { dereferenceOpenApiDocument } = await import('../dereference-local.js');
 
     let httpsDocument = await dereferenceOpenApiDocument({
       schema: { $ref: 'https://example.com/widget.json' },
@@ -124,7 +124,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
     vi.doMock('@apidevtools/json-schema-ref-parser', () => {
       throw new Error("Cannot find package '@apidevtools/json-schema-ref-parser'");
     });
-    let { getDereferencedOpenAPIDocument, fetchYamlContent } = await import('../openapi.ts');
+    let { getDereferencedOpenAPIDocument, fetchYamlContent } = await import('../openapi.js');
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       text: async () =>
@@ -170,7 +170,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
     vi.doMock('js-yaml', () => {
       throw new Error("Cannot find package 'js-yaml'");
     });
-    let { fetchYamlContent, getDereferencedOpenAPIDocument } = await import('../openapi.ts');
+    let { fetchYamlContent, getDereferencedOpenAPIDocument } = await import('../openapi.js');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       text: async () => 'openapi: 3.0.0\ninfo:\n  title: Mock\n  version: "1"\n',
     } as Response);
@@ -192,7 +192,7 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
     vi.doMock('@apidevtools/json-schema-ref-parser', () => {
       throw new Error("Cannot find package '@apidevtools/json-schema-ref-parser'");
     });
-    let { getDereferencedOpenAPIDocument } = await import('../openapi.ts');
+    let { getDereferencedOpenAPIDocument } = await import('../openapi.js');
 
     await expect(
       getDereferencedOpenAPIDocument({
@@ -209,8 +209,8 @@ describe('getDereferencedOpenAPIDocument (async module isolation)', () => {
     vi.resetModules();
     vi.doMock('js-yaml', () => ({ load: undefined }));
     vi.doMock('@apidevtools/json-schema-ref-parser', () => ({ default: {} }));
-    let { parseSpecDocumentText } = await import('../parse-spec-document.ts');
-    let { dereferenceOpenApiDocument } = await import('../dereference-local.ts');
+    let { parseSpecDocumentText } = await import('../parse-spec-document.js');
+    let { dereferenceOpenApiDocument } = await import('../dereference-local.js');
 
     await expect(parseSpecDocumentText('title: Mock\n')).rejects.toThrow(
       /Optional peer dependency "js-yaml"/,

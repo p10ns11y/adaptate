@@ -1,4 +1,4 @@
-import { parseSpecDocumentText } from './parse-spec-document.ts';
+import { parseSpecDocumentText } from './parse-spec-document.js';
 
 export async function getYamlContent(fileURL: string, relativePath: string): Promise<any> {
   let fs = await import('node:fs/promises');
