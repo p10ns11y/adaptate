@@ -78,4 +78,15 @@ if (!packedFilePaths.has(typesRelativePath)) {
   process.exit(1);
 }
 
-console.log(`${packageJson.name}: publish tarball includes ${typesField}`);
+const exportTypePaths = Object.values(packageJson.exports ?? {})
+  .map((exportEntry) => (typeof exportEntry === 'object' && exportEntry !== null ? exportEntry.types : undefined))
+  .filter((exportTypes) => typeof exportTypes === 'string' && !exportTypes.includes('*'))
+  .map((exportTypes) => exportTypes.replace(/^\.\//, ''));
+for (const exportTypesPath of exportTypePaths) {
+  if (!packedFilePaths.has(exportTypesPath)) {
+    console.error(`${packageJson.name}: exports types ${exportTypesPath} is not in the publish tarball`);
+    process.exit(1);
+  }
+}
+
+console.log(`${packageJson.name}: publish tarball includes ${typesField} and all exports types`);
