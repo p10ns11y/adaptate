@@ -1,4 +1,4 @@
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 /**
  * Loads a YAML file and returns its content.
@@ -14,5 +14,5 @@ export async function getYamlContent(fileURL: string, relativePath: string): Pro
   const yamlFilePath = path.resolve(callerDirectoryName, relativePath);
 
   const fileContent = await fs.readFile(yamlFilePath, 'utf8');
-  return yaml.load(fileContent);
+  return load(fileContent);
 }

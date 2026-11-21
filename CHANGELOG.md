@@ -49,3 +49,13 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
 - CI job on the latest zod.
 
+## Unreleased 2.4.0 — Runtime majors and Standard Schema
+
+### Added
+- `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
+
+### Changed — what consumers install
+- `@adaptate/utils` now installs `@apidevtools/json-schema-ref-parser` 16 (was 15) and `js-yaml` 5 (was 4). Core still has zero runtime dependencies.
+- `@types/js-yaml` dropped; js-yaml 5 ships its own types.
+- TypeScript stays on 6.0.3: TypeScript 7 builds and passes tests, but typescript-eslint cannot load it yet.
+
