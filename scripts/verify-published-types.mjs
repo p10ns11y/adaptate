@@ -89,4 +89,35 @@ for (const exportTypesPath of exportTypePaths) {
   }
 }
 
+const effectSourcePath = join(packageDirectory, 'src', 'effect.ts');
+if (existsSync(effectSourcePath)) {
+  const effectTypesRelativePath = 'build/effect.d.ts';
+  const effectBundleRelativePath = 'build/effect.es.js';
+  for (const relativePath of [effectTypesRelativePath, effectBundleRelativePath]) {
+    if (!existsSync(join(packageDirectory, relativePath))) {
+      console.error(`${packageJson.name}: ${relativePath} is missing on disk`);
+      process.exit(1);
+    }
+    if (!packedFilePaths.has(relativePath)) {
+      console.error(`${packageJson.name}: ${relativePath} is not in the publish tarball`);
+      process.exit(1);
+    }
+  }
+  const effectBundle = readFileSync(join(packageDirectory, effectBundleRelativePath), 'utf8');
+  if (!/from ["']effect["']/.test(effectBundle)) {
+    console.error(`${packageJson.name}: ${effectBundleRelativePath} does not externalize effect`);
+    process.exit(1);
+  }
+  const buildDirectory = join(packageDirectory, 'build');
+  for (const fileName of readdirSync(buildDirectory)) {
+    if (!fileName.endsWith('.js') || fileName === 'effect.es.js') continue;
+    const bundleSource = readFileSync(join(buildDirectory, fileName), 'utf8');
+    if (/from ["']effect["']/.test(bundleSource) || /require\(["']effect["']\)/.test(bundleSource)) {
+      console.error(`${packageJson.name}: build/${fileName} imports effect`);
+      process.exit(1);
+    }
+  }
+  console.log(`${packageJson.name}: publish tarball includes ${effectTypesRelativePath}`);
+}
+
 console.log(`${packageJson.name}: publish tarball includes ${typesField} and all exports types`);

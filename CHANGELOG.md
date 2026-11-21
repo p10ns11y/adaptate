@@ -45,7 +45,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased 2.4.0
 
 - `@adaptate/utils` resolves in-document `$ref` pointers locally and has no required runtime dependencies.
-- Install optional `js-yaml` to parse YAML, and `@apidevtools/json-schema-ref-parser` to resolve remote or file `$ref`s.
+- Install optional `js-yaml` 5 to parse YAML, and `@apidevtools/json-schema-ref-parser` 16 to resolve remote or file `$ref`s.
 
 ## Unreleased 2.3.0 — Streaming partial validation (RFC-001)
 
@@ -53,4 +53,16 @@ All notable changes to this project will be documented in this file.
 - `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `DeepPartial`.
 - `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
 - CI job on the latest zod.
+
+## Unreleased 2.4.0 — Runtime majors and Standard Schema
+
+### Added
+- `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
+- `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
+- Validation is pure, so this integration does not retry.
+
+### Changed — what consumers install
+- `@adaptate/utils` no longer requires `@apidevtools/json-schema-ref-parser` or `js-yaml`. Optional peers are parser 16 and js-yaml 5. Core still has zero runtime dependencies.
+- `@types/js-yaml` dropped; js-yaml 5 ships its own types.
+- TypeScript stays on 6.0.3: TypeScript 7 builds and passes tests, but typescript-eslint cannot load it yet.
 

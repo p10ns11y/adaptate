@@ -7,12 +7,12 @@ export default defineConfig({
     outDir: 'build',
     sourcemap: true,
     lib: {
-      entry: ['src/index.ts', 'src/stream.ts'],
+      entry: ['src/index.ts', 'src/stream.ts', 'src/standard.ts', 'src/effect.ts'],
       formats: ['es'],
       fileName: (format, entryName) => `${entryName}.${format}.js`,
     },
     rollupOptions: {
-      external: ['zod'],
+      external: ['zod', 'effect'],
     },
   },
 });

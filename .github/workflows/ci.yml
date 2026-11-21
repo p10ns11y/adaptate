@@ -66,3 +66,37 @@ jobs:
 
       - name: Test on latest zod
         run: pnpm test
+
+  bench:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@e8d4307400f9427dba7cb98e488d6ab85f1cec5f
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@363be39a57dfa5801e05c6e0c549d622a376cf15
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Build head and base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.1.1 --activate
+          pnpm install --frozen-lockfile --ignore-scripts
+          npx turbo run build --filter=@adaptate/core
+          git worktree add ../base "$BASE_SHA"
+          cd ../base
+          pnpm install --frozen-lockfile --ignore-scripts
+          npx turbo run build --filter=@adaptate/core
+
+      - name: Compare (fail if any case is more than 5% slower)
+        run: node scripts/bench-compare.mjs ../base . 1.05
