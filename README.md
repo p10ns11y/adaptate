@@ -1,26 +1,28 @@
 # Adaptate
 
-One Zod schema. A config marks which fields each consumer requires ([`transformSchema`](packages/core/src/__tests__/index.test.ts)). The same document can satisfy `card` and fail `kitchen` ([title-only final](packages/core/src/__tests__/effect.test.ts)). Every parsed prefix of a stream is checked before the JSON is complete ([I1](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
+[![npm: @adaptate/core](https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&logo=npm&color=cb3837)](https://www.npmjs.com/package/@adaptate/core)
+[![downloads / month](https://img.shields.io/npm/dm/@adaptate/core?logo=npm&label=downloads%2Fmonth)](https://www.npmjs.com/package/@adaptate/core)
+[![minzipped](https://img.shields.io/bundlephobia/minzip/@adaptate/core?label=minzipped)](https://bundlephobia.com/package/@adaptate/core)
+[![types: included](https://img.shields.io/npm/types/@adaptate/core)](https://www.npmjs.com/package/@adaptate/core)
+[![CI](https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI)](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/npm/l/@adaptate/core?color=blue)](./LICENSE)
+[![Stars](https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github)](https://github.com/p10ns11y/adaptate/stargazers)
 
-`@adaptate/core` has no `dependencies`. `zod` is the peer. `./` and `./stream` load when `effect` is not installed ([`package.json`](packages/core/package.json), [load test](packages/core/src/__tests__/effect.test.ts)).
+**See which screen can use an AI reply before the model finishes typing.**
 
-## Use cases
+- You describe the data once. Every screen shares that description.
+- Each screen asks only for the fields it actually shows.
+- While the reply is still arriving, a screen turns ready as soon as it has enough.
 
-- Card requires `title`, kitchen requires `servings`, one schema ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
-- AG-UI `TOOL_CALL_ARGS` are validated on each delta, including a cut-off string ([`stream.test.ts`](packages/core/src/__tests__/stream.test.ts)). `final` agrees with `transformSchema` per config ([I2](packages/core/src/__tests__/partial-stream.invariants.property.test.ts)).
-- An OpenAPI YAML file loads from disk, and a JSON schema round-trips through Zod ([`openapi.test.ts`](packages/utils/src/__tests__/openapi.test.ts)).
-- A Standard Schema (`~standard.validate`) is checked beside a transformed Zod schema ([`standard.test.ts`](packages/core/src/__tests__/standard.test.ts)).
-- Effect `final(text)` reports every named config; `final(text, "card")` checks that config only ([`effect.test.ts`](packages/core/src/__tests__/effect.test.ts)).
+![One recipe splits into a card and a kitchen screen. The card turns ready when the title arrives. The kitchen turns ready when the number of servings arrives.](assets/stream-demo.gif)
 
-Published `.d.ts` files are in the npm pack ([`verify-published-types.mjs`](scripts/verify-published-types.mjs), [verify job](.github/workflows/ci.yml)). Packed types are checked on TypeScript 7 and 6 for `bundler`, `node16`, and `nodenext` ([`ts7-consumer`](.github/workflows/ci.yml)). A pull request fails if any bench case is more than 5% slower ([`bench`](.github/workflows/ci.yml)). The [#53](https://github.com/p10ns11y/adaptate/pull/53) run was 0.989–1.043 ([log](https://github.com/p10ns11y/adaptate/actions/runs/44945033877)).
+![The same recipe feeds a card that is ready and a kitchen that is still waiting.](assets/one-schema.svg)
 
-## Install
+## Try it
 
 ```sh
 pnpm add @adaptate/core
 ```
-
-Peer: `zod@^3.25.0 || ^4.0.0` ([`package.json`](packages/core/package.json)). OpenAPI helpers: `pnpm add @adaptate/utils` ([`package.json`](packages/utils/package.json)).
 
 ```ts
 import { z } from "zod";
@@ -32,34 +34,17 @@ const recipe = z.object({
 });
 const card = transformSchema(recipe, { title: true });
 card.parse({ title: "Pasta" });
-card.parse({ servings: 2 }); // throws
 ```
 
-## Packages
+## Where it helps
 
-```mermaid
-flowchart LR
-  zod["zod"] --> core["@adaptate/core"]
-  zod --> stream["./stream"]
-  zod --> standard["./standard"]
-  zod --> effect["./effect"]
-  zod --> utils["@adaptate/utils"]
-  effectPeer["effect"] -.-> effect
-```
+- A card can show the dish name while the kitchen still waits for how many people it serves.
+- A chat can check a tool call while the model is still typing.
+- An API write-up can become those checks, and the checks can be written back out.
+- The same checks run in ordinary code or in an Effect pipeline.
 
-## Docs
+[Proof](docs/proof.md)
 
-| Doc | What it holds |
-| --- | --- |
-| [Subpaths](docs/subpaths.md) | Entries and what each one exports |
-| [Transform](docs/transform.md) | `transformSchema` and conditional configs |
-| [Streaming](docs/streaming.md) | Partial JSON and AG-UI |
-| [Effect](docs/effect.md) | `final(text)` and `final(text, configName)` |
-| [OpenAPI](docs/openapi.md) | Spec load and Zod conversion |
-| [Optional peers](docs/optional-peers.md) | `effect`, `js-yaml`, ref parser |
-| [Migration 2.4](docs/migration-2.4.md) | What a 2.3 install changes |
-| [Performance](docs/performance.md) | CI bench |
-| [TypeScript](docs/typescript.md) | Consumer typecheck |
-| [Development](docs/development.md) | pnpm, scripts, layout |
+[Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [Peers and subpaths](docs/subpaths.md)
 
 MIT
