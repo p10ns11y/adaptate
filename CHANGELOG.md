@@ -53,6 +53,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
+- `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
+- Validation is pure, so this integration does not retry.
 
 ### Changed — what consumers install
 - `@adaptate/utils` now installs `@apidevtools/json-schema-ref-parser` 16 (was 15) and `js-yaml` 5 (was 4). Core still has zero runtime dependencies.
