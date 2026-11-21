@@ -2,6 +2,22 @@ import { z } from "zod";
 
 import type { Config } from "./index.js";
 
+export function schemasForConfigs<TSchema extends z.ZodType>(
+  schema: TSchema,
+  configs: Record<string, unknown>,
+  build: (schema: TSchema, config: Config<z.infer<TSchema>>) => TSchema,
+): Record<string, TSchema | undefined> {
+  return Object.fromEntries(
+    Object.entries(configs).map(([name, config]) => {
+      try {
+        return [name, build(schema, config as Config<z.infer<TSchema>>)];
+      } catch {
+        return [name, undefined];
+      }
+    }),
+  );
+}
+
 export type DeepPartial<T> = T extends readonly (infer U)[]
   ? DeepPartial<U>[]
   : T extends object
@@ -23,6 +39,39 @@ function unwrapOptional(schema: z.ZodType): z.ZodType {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const lenientSchemaCache = new WeakMap<z.ZodType, z.ZodType>();
+
+function lenientSchema(schema: z.ZodType): z.ZodType {
+  const cached = lenientSchemaCache.get(schema);
+  if (cached) return cached;
+  const inner = unwrapOptional(schema);
+  let built: z.ZodType;
+  if (inner instanceof z.ZodObject) {
+    const shape = Object.fromEntries(
+      Object.entries(inner.shape as Record<string, z.ZodType>).map(
+        ([fieldKey, fieldSchema]) => [
+          fieldKey,
+          lenientSchema(fieldSchema).optional(),
+        ],
+      ),
+    );
+    built = z.object(shape);
+  } else if (inner instanceof z.ZodArray) {
+    built = z.array(lenientSchema(inner.element as z.ZodType));
+  } else {
+    built = inner;
+  }
+  lenientSchemaCache.set(schema, built);
+  if (inner !== schema) lenientSchemaCache.set(inner, built);
+  return built;
+}
+
+export function cacheLenientSchema(schema: z.ZodType): void {
+  if (schema instanceof z.ZodObject || schema instanceof z.ZodArray) {
+    lenientSchema(schema);
+  }
 }
 
 function partialSchemaFor(
@@ -81,17 +130,14 @@ export function validatePartialAgainstConfigs<
   partial: DeepPartial<z.infer<TSchema>>,
   configs: TConfigs,
 ): { [K in keyof TConfigs]: PartialValidationResult } {
+  if (!(schema instanceof z.ZodObject) && !(schema instanceof z.ZodArray)) {
+    throw new Error("The given schema must be a Zod object or array.");
+  }
+  const parsed = lenientSchema(schema).safeParse(partial);
+  const valid = parsed.success;
+  const errors = parsed.success ? null : parsed.error;
   return Object.fromEntries(
-    Object.entries(configs).map(([name, config]) => {
-      const result = transformPartialSchema(
-        schema,
-        config,
-      )(partial).safeParse(partial);
-      return [
-        name,
-        { valid: result.success, errors: result.success ? null : result.error },
-      ];
-    }),
+    Object.keys(configs).map((name) => [name, { valid, errors }]),
   ) as { [K in keyof TConfigs]: PartialValidationResult };
 }
 

@@ -1,13 +1,13 @@
 import { describe, it, expect, expectTypeOf } from "vitest";
 import { z } from "zod";
 
+import { transformSchema, type Config, type DeepPartial } from "../";
 import {
   transformPartialSchema,
   validatePartialAgainstConfigs,
   makeStreamingConditionalTransformer,
-  type Config,
-  type DeepPartial,
-} from "../";
+  schemasForConfigs,
+} from "../partial.js";
 
 const person = z.object({
   name: z.string(),
@@ -107,6 +107,25 @@ describe("transformPartialSchema", () => {
   });
 });
 
+describe("schemasForConfigs", () => {
+  it("builds one schema per config at the call and skips a config that cannot transform", () => {
+    const baseSchema = z.object({ name: z.string().optional() });
+    const built = schemasForConfigs(
+      baseSchema,
+      { card: { name: true }, text: true },
+      transformSchema,
+    );
+    expect(built.card?.safeParse({}).success).toBe(false);
+    expect(built.card?.safeParse({ name: "Ada" }).success).toBe(true);
+    const textOnly = schemasForConfigs(
+      z.string(),
+      { card: true },
+      transformSchema,
+    );
+    expect(textOnly.card).toBeUndefined();
+  });
+});
+
 describe("validatePartialAgainstConfigs", () => {
   it("returns one result per consumer config", () => {
     const results = validatePartialAgainstConfigs(
@@ -115,8 +134,9 @@ describe("validatePartialAgainstConfigs", () => {
       { form: { name: true }, preview: { age: false } },
     );
     expect(results.form.valid).toBe(false);
-    expect(results.form.errors).not.toBeNull();
+    expect(results.form.errors?.issues[0]?.path).toEqual(["email"]);
     expect(results.preview.valid).toBe(false);
+    expect(results.preview.errors?.issues[0]?.path).toEqual(["email"]);
     const clean = validatePartialAgainstConfigs(
       person,
       { name: "Ada" },

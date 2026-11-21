@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { transformSchema, type Config } from "./index.js";
 import {
+  cacheLenientSchema,
+  schemasForConfigs,
   validatePartialAgainstConfigs,
   type DeepPartial,
   type PartialValidationResult,
@@ -40,10 +42,13 @@ export function parsePartialJson(text: string): unknown {
   return undefined;
 }
 
+
 export function createStreamValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
+  cacheLenientSchema(schema);
+  const prepared = schemasForConfigs(schema, configs, transformSchema);
   return {
     partial(value: DeepPartial<z.infer<TSchema>>): Results<TConfigs> {
       return validatePartialAgainstConfigs(schema, value, configs);
@@ -51,10 +56,10 @@ export function createStreamValidator<
     final(value: unknown): Results<TConfigs> {
       return Object.fromEntries(
         Object.entries(configs).map(([name, config]) => {
-          const result = transformSchema(
-            schema,
-            config as Config<z.infer<TSchema>>,
-          ).safeParse(value);
+          const transformed =
+            prepared[name] ??
+            transformSchema(schema, config as Config<z.infer<TSchema>>);
+          const result = transformed.safeParse(value);
           return [
             name,
             {

@@ -25,9 +25,11 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 // { title: "Pasta" }
 ```
 
-`final(text)` parses with `JSON.parse`. Bad or truncated text fails with `AdaptateParseError`. The base schema is then parsed; that failure is `AdaptateValidationError` with `configName: "schema"`. On success the effect succeeds with `{ value, configs }`. Each named config is `{ valid, issues }`. An unmet config does not fail the effect.
+`createEffectStreamValidator` builds the cached partial schema and the per-config `transformSchema` results when the validator is created, and `final(text)` reuses them. A schema that cannot be transformed, such as `z.string()`, still fails inside `final` with `configName: "schema"`. Config objects are read at creation. `final(text, configName)` calls `transformSchema` for that config.
 
-`final(text, configName)` parses, then validates with `transformSchema(schema, configs[configName])`. Failure is `AdaptateValidationError` with that `configName`. Success is the parsed value. `configName` is typed as `keyof` the configs object. If the runtime name is not an own key of `configs`, the effect fails with `AdaptateValidationError` and one custom issue, `unknown config`, instead of validating the base schema.
+`final(text)` parses with `JSON.parse`. Bad or truncated text fails with `AdaptateParseError`. The base schema is then parsed; that failure is `AdaptateValidationError` with `configName: "schema"`. On success the effect succeeds with `{ value, configs }`. Each named config is `{ valid, issues }`. An unmet config does not fail the effect. A mutated config is read by value on the next `final`.
+
+`final(text, configName)` parses, then validates with `transformSchema(schema, configs[configName])`. Failure is `AdaptateValidationError` with that `configName`. Success is the parsed value. `configName` is typed as `keyof` the configs object. If the runtime name is not an own key of `configs`, the effect fails with `AdaptateValidationError` and one custom issue, `unknown config`, instead of validating the base schema. A mutated config is read on this path, because this path calls `transformSchema` again.
 
 `validate(schema, config, value)` is `transformSchema(schema, config).parse`, failing as `AdaptateValidationError` with `configName: "config"`.
 

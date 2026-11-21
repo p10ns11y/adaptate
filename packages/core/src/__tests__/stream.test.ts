@@ -39,6 +39,54 @@ describe("parsePartialJson", () => {
 });
 
 describe("createStreamValidator", () => {
+  it("accepts a later partial whose present keys differ from the first", () => {
+    const validator = createStreamValidator(recipe, configs);
+    expect(validator.partial({ title: "Pasta" }).card.valid).toBe(true);
+    expect(validator.partial({ steps: [{ text: "boil" }] }).timer.valid).toBe(
+      true,
+    );
+    expect(
+      validator.partial({
+        steps: [{ text: "boil", minutes: "x" as unknown as number }],
+      }).timer.valid,
+    ).toBe(false);
+  });
+
+  it("final keeps the schemas built when the validator was created", () => {
+    const config = { title: false as boolean };
+    const validator = createStreamValidator(recipe, { card: config });
+    const payload = {
+      servings: 2,
+      steps: [{ text: "boil", minutes: 1 }],
+    };
+    expect(validator.final(payload).card.valid).toBe(true);
+    config.title = true;
+    expect(validator.final(payload).card.valid).toBe(true);
+  });
+
+  it("checks an array with one cached schema and defers a transform failure to final", () => {
+    const list = z.array(z.object({ id: z.number(), title: z.string() }));
+    const cached = createStreamValidator(list, {
+      card: { "*": { title: true } },
+    });
+    expect(cached.partial([{ title: "x" }]).card.valid).toBe(true);
+    expect(
+      cached.partial([{ title: 1 as unknown as string }]).card.valid,
+    ).toBe(false);
+    const deferred = createStreamValidator(list, { card: true });
+    expect(deferred.partial([]).card.valid).toBe(true);
+    expect(() => deferred.final([])).toThrow(
+      "The given schema must be a Zod object.",
+    );
+  });
+
+  it("reports a non-object schema from final", () => {
+    const validator = createStreamValidator(z.string(), { card: true });
+    expect(() => validator.final("hi")).toThrow(
+      "The given schema must be a Zod object.",
+    );
+  });
+
   it("validates partials leniently and finals strictly per consumer", () => {
     const validator = createStreamValidator(recipe, configs);
     expect(validator.partial({ title: "Pasta" }).card.valid).toBe(true);
@@ -84,6 +132,40 @@ describe("validateStructuredOutput", () => {
 });
 
 describe("createAgUiPartialValidator", () => {
+  it("matches parsePartialJson for one-character deltas", () => {
+    const samples = [
+      '{"title":"Pa',
+      '{"title":"Pasta","serv',
+      '{"steps":[{"text":"boil"},',
+      '{"servings":4,',
+      '{"title":"a\\',
+      '{"title":"a\\"b"}',
+      '{"ok":tr',
+      "[1,2",
+      "[1]",
+      "}",
+      "",
+    ];
+    for (const text of samples) {
+      const push = createAgUiPartialValidator(recipe, configs);
+      let buffer = "";
+      for (const character of text) {
+        buffer += character;
+        const outcome = push({
+          type: "TOOL_CALL_ARGS",
+          toolCallId: "t",
+          delta: character,
+        });
+        const expected = parsePartialJson(buffer);
+        if (expected === undefined) {
+          expect(outcome).toBeUndefined();
+        } else {
+          expect(outcome?.partial).toEqual(expected);
+        }
+      }
+    }
+  });
+
   it("accumulates tool call args and text deltas per id", () => {
     const push = createAgUiPartialValidator(recipe, configs);
     expect(push({ type: "RUN_STARTED" })).toBeUndefined();

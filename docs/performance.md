@@ -48,13 +48,15 @@ pnpm --filter @adaptate/core build && node bench/ab/run.js
 
 Where the work is not the same:
 
-- AG-UI: B appends the delta, repairs JSON, builds a schema, then `safeParse`s. A and C `safeParse` a partial that was already parsed. For A and C that number is the parsed-partial number.
-- Parsed partial: the same value. B builds a Zod schema on every call. A and C reuse one static all-optional schema.
+- AG-UI: B appends the delta, repairs JSON with `parsePartialJson` on the whole buffer, then `safeParse`s a lenient schema cached on the base schema. A and C `safeParse` a partial that was already parsed. For A and C that number is the parsed-partial number. JSON repair is the AG-UI row minus the parsed-partial row. That difference is two medians, not a separate clock, and it is not gated.
+- Parsed partial: the same value. B reuses one lenient schema per base schema (`WeakMap`) and `safeParse`s it. A and C reuse one static all-optional schema. The `ab-eval` gate names this row `adaptate cached partial us/chunk` and fails when head is more than 5% slower than base.
 - `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
 - Valibot uses its own schemas for the same accept/reject rules.
-- `createStreamValidator.final()` is not the full-document row. It rebuilds a schema per document.
+- `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
 
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+
+The table below is the measurement before the schema cache, on `a804cdb5df11a48820b40dd75b8751622bc2cd9e`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44952593670).
 
 Node 24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6 on `a804cdb5df11a48820b40dd75b8751622bc2cd9e`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44952593670), artifact `ab-eval-results`.
 
