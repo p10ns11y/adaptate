@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: StandardIssue"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # Type Alias: StandardIssue

@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: AgUiDeltaEvent"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/stream."
 ---
 
 # Type Alias: AgUiDeltaEvent

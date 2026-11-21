@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: FinalReport\\<TValue, TConfigs\\>"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Type Alias: FinalReport\<TValue, TConfigs\>

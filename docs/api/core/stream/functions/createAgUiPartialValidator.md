@@ -1,6 +1,6 @@
 ---
 title: "Function: createAgUiPartialValidator()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/stream."
 ---
 
 # Function: createAgUiPartialValidator()

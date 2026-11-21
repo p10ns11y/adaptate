@@ -1,6 +1,6 @@
 ---
 title: "Function: fetchYamlContent()"
-description: "Exported from @adaptate/utils."
+description: "Exported from @adaptate/utils/openapi."
 ---
 
 # Function: fetchYamlContent()

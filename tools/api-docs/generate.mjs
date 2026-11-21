@@ -133,7 +133,12 @@ function isProse(text) {
   if (trimmed.length < 12) {
     return false;
   }
-  if (trimmed.startsWith("`") || trimmed.startsWith("*") || trimmed.startsWith(">") || trimmed.startsWith("Published declarations")) {
+  if (
+    trimmed.startsWith("`") ||
+    trimmed.startsWith("*") ||
+    trimmed.startsWith(">") ||
+    trimmed.startsWith("Published declarations")
+  ) {
     return false;
   }
   return /[A-Za-z]{3,}\s+[A-Za-z]/.test(trimmed);
@@ -155,7 +160,11 @@ function pageDescription(markdown, fallbackDescription) {
 function withFrontmatter(markdown, fallbackTitle, fallbackDescription) {
   let parsed = parseFrontmatter(markdown);
   let title = pageTitle(markdown, fallbackTitle);
-  let description = pageDescription(markdown, fallbackDescription);
+  let existingDescription = typeof parsed.frontmatter.description === "string" ? parsed.frontmatter.description.trim() : "";
+  let markdownForDescription = existingDescription.startsWith("Exported from ")
+    ? markdown.replace(/^description:.*$/m, 'description: ""')
+    : markdown;
+  let description = pageDescription(markdownForDescription, fallbackDescription);
   let body = parsed.body.replace(/^\n+/, "");
   body = body.replace(/\n+\*\*?Generated (?:using|by) TypeDoc[\s\S]*$/i, "\n");
   return `---\ntitle: ${yamlQuote(title)}\ndescription: ${yamlQuote(description)}\n---\n\n${body.trim()}\n`;
@@ -172,6 +181,19 @@ function walkMarkdown(directory) {
     }
   }
   return files;
+}
+
+function importSpecifier(packageName, markdownPath) {
+  let relativePath = relative(apiDirectory, markdownPath).replaceAll("\\", "/");
+  let segments = relativePath.split("/");
+  let moduleName = segments[1] ?? "";
+  if (moduleName.endsWith(".md")) {
+    moduleName = moduleName.slice(0, -".md".length);
+  }
+  if (moduleName.length === 0 || moduleName === "index") {
+    return packageName;
+  }
+  return `${packageName}/${moduleName}`;
 }
 
 function requireDeclaration(filePath) {
@@ -223,7 +245,7 @@ async function documentPackage(packageInfo) {
     let rewritten = withFrontmatter(
       markdown,
       fallbackTitle,
-      `Exported from ${packageInfo.name}.`,
+      `Exported from ${importSpecifier(packageInfo.name, markdownPath)}.`,
     );
     writeFileSync(markdownPath, rewritten);
   }
@@ -338,6 +360,7 @@ for (let packageInfo of packagesToDocument) {
 }
 
 let apiPages = walkMarkdown(apiDirectory)
+  .filter((filePath) => relative(apiDirectory, filePath) !== "index.md")
   .map((filePath) => {
     let path = relative(repositoryRoot, filePath).replaceAll("\\", "/");
     let markdown = readText(filePath);

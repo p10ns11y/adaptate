@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: ConfigReport"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Type Alias: ConfigReport

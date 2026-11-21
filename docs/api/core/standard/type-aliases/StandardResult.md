@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: StandardResult\\<Output\\>"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # Type Alias: StandardResult\<Output\>

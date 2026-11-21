@@ -1,6 +1,6 @@
 ---
 title: "standard"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # standard

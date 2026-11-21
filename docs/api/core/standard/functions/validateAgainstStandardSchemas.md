@@ -1,6 +1,6 @@
 ---
 title: "Function: validateAgainstStandardSchemas()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # Function: validateAgainstStandardSchemas()

@@ -1,6 +1,6 @@
 ---
 title: "stream"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/stream."
 ---
 
 # stream

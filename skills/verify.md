@@ -47,7 +47,7 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
    ```
    pnpm docs:api
    ```
-   Rewrites `docs/api/`, `llms.txt`, and `llms-full.txt` from the built `.d.ts` files and the docs pages. CI fails if the committed files differ.
+   Rewrites `docs/api/`, `llms.txt`, and `llms-full.txt` from the built `.d.ts` files and the docs pages. Then `node --test tools/api-docs/specifier-check.mjs` checks each documented import against the built package. CI fails if the committed files differ.
 
 7. **Review results**:
    - Type errors → fix TypeScript issues
@@ -63,6 +63,7 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
 - [ ] `pnpm build` exits 0 (when running full verification)
 - [ ] `pnpm --filter adaptate-react-view test` exits 0 after `@adaptate/core` is built
 - [ ] `pnpm docs:api` leaves `docs/api/`, `llms.txt`, and `llms-full.txt` unchanged when declarations and docs pages did not change
+- [ ] `node --test tools/api-docs/specifier-check.mjs` exits 0 after the build and `pnpm docs:api`
 - [ ] No uncommitted debugging code remains
 
 ## Rules

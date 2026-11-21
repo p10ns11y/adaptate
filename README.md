@@ -22,19 +22,18 @@
 <p align="center">
   <a href="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI"></a>
   <a href="./coverage"><img alt="coverage" src="./coverage-badge.svg"></a>
-  <a href="https://socket.dev/npm/package/adaptate/overview"><img alt="Socket.dev supply chain" src="https://img.shields.io/badge/socket.dev-supply%20chain-1f6feb"></a>
   <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/@adaptate/core?color=blue"></a>
   <a href="./tsconfig.json"><img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white"></a>
   <a href="https://nodejs.org"><img alt="Node.js version" src="https://img.shields.io/node/v/@adaptate/core?logo=node.js&logoColor=white"></a>
   <a href="https://zod.dev"><img alt="zod peer" src="https://img.shields.io/badge/zod-%5E3.25.0%20%7C%7C%20%5E4.0.0-3b82f6?logo=zod&logoColor=white"></a>
   <a href="https://github.com/p10ns11y/adaptate/commits/main"><img alt="last commit" src="https://img.shields.io/github/last-commit/p10ns11y/adaptate?logo=github"></a>
   <a href="https://github.com/p10ns11y/adaptate/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/p10ns11y/adaptate?logo=github"></a>
-  <a href="https://github.com/p10ns11y/adaptate/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github"></a>
+  <a href="https://github.com/p10ns11y/adaptate"><img alt="GitHub stars" src="https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github"></a>
   <a href="./.devcontainer/README.md"><img alt="dev container" src="https://img.shields.io/badge/dev%20container-ready-2496ED?logo=docker&logoColor=white"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/p10ns11y/adaptate/stargazers"><strong>Star</strong></a>
+  <a href="https://github.com/p10ns11y/adaptate"><strong>Star</strong></a>
   &nbsp;·&nbsp;
   <a href="examples/react-view"><strong>React view</strong></a>
   &nbsp;·&nbsp;
@@ -48,6 +47,17 @@
 - An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out.
 - A config names the fields each view requires.
 - A chat can check a tool call while the model is still typing.
+
+## Measured
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
+    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 3,512,914, Adaptate 3,302,796, Valibot 694,396. Import median milliseconds: 35.288, 36.886, 5.209. Heap after GC bytes: 8,292,224, 8,424,424, 5,204,896. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,927, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.433, 0.667, 0.926. AG-UI microseconds per chunk: 0.433, 24.084, 0.926." src="assets/perf.svg" width="960">
+  </picture>
+</p>
+
+Node v24.22.3 on the GitHub Actions runner. Commit [`233b1ef`](https://github.com/p10ns11y/adaptate/commit/233b1ef17f994088cc5687c0c5ea61ff7a7751a9). Run [ab-eval 44956631113](https://github.com/p10ns11y/adaptate/actions/runs/44956631113). [Performance](docs/performance.md)
 
 ## Quick start
 
@@ -132,18 +142,7 @@ const card = { title: true } satisfies Config<Recipe>;
 const cardSchema = transformSchema(recipe.partial(), card);
 ```
 
-CI checks those published types on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md)
-
-## Measured
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 3,512,914, Adaptate 3,302,796, Valibot 694,396. Import median milliseconds: 35.288, 36.886, 5.209. Heap after GC bytes: 8,292,224, 8,424,424, 5,204,896. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,927, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.433, 0.667, 0.926. AG-UI microseconds per chunk: 0.433, 24.084, 0.926." src="assets/perf.svg" width="960">
-  </picture>
-</p>
-
-Node v24.22.3 on the GitHub Actions runner. Commit [`233b1ef`](https://github.com/p10ns11y/adaptate/commit/233b1ef17f994088cc5687c0c5ea61ff7a7751a9). Run [ab-eval 44956631113](https://github.com/p10ns11y/adaptate/actions/runs/44956631113). [Performance](docs/performance.md)
+CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md)
 
 ## Why trust it
 

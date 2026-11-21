@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: OpenAPISpecParams"
-description: "Exported from @adaptate/utils."
+description: "Exported from @adaptate/utils/openapi."
 ---
 
 # Type Alias: OpenAPISpecParams

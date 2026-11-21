@@ -1,6 +1,6 @@
 ---
 title: "Function: validate()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Function: validate()

@@ -1,6 +1,6 @@
 ---
 title: "Function: validatePartial()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Function: validatePartial()

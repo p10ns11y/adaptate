@@ -1,6 +1,6 @@
 ---
 title: "Function: createStreamValidator()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/stream."
 ---
 
 # Function: createStreamValidator()

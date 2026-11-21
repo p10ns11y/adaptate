@@ -47,6 +47,7 @@ jobs:
       - name: API docs match the published declarations
         run: |
           pnpm docs:api
+          node --test tools/api-docs/specifier-check.mjs
           if [ -n "$(git status --porcelain -- docs/api llms.txt llms-full.txt)" ]; then
             git status --porcelain -- docs/api llms.txt llms-full.txt
             git diff -- docs/api llms.txt llms-full.txt

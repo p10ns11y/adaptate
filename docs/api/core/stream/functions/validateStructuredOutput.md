@@ -1,6 +1,6 @@
 ---
 title: "Function: validateStructuredOutput()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/stream."
 ---
 
 # Function: validateStructuredOutput()

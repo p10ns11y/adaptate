@@ -1,6 +1,6 @@
 ---
 title: "Class: AdaptateValidationError"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Class: AdaptateValidationError

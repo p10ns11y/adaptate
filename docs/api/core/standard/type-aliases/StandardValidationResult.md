@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: StandardValidationResult\\<Output\\>"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # Type Alias: StandardValidationResult\<Output\>

@@ -1,6 +1,6 @@
 ---
 title: "Function: createEffectStreamValidator()"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Function: createEffectStreamValidator()

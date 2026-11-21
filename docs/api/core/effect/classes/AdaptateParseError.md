@@ -1,6 +1,6 @@
 ---
 title: "Class: AdaptateParseError"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/effect."
 ---
 
 # Class: AdaptateParseError

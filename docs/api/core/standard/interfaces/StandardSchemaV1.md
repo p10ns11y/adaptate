@@ -1,6 +1,6 @@
 ---
 title: "Interface: StandardSchemaV1\\<Input, Output\\>"
-description: "Exported from @adaptate/core."
+description: "Exported from @adaptate/core/standard."
 ---
 
 # Interface: StandardSchemaV1\<Input, Output\>
