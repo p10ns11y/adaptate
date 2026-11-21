@@ -105,7 +105,7 @@ const push = createAgUiPartialValidator(z.object({ title: z.string(), servings: 
 
 ## Why trust it
 
-The lines above are about the check being right. What the check costs is in [Performance](docs/performance.md). [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
+The lines above are about the check being right. With the schema cached, the streaming check is within about 1.5× of raw Zod per chunk (0.667 µs against 0.433 µs, parsed partial). JSON repair is separate, about 23 µs/chunk. [Performance](docs/performance.md) · [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
 
 [Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [Peers and subpaths](docs/subpaths.md)
 

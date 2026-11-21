@@ -69,39 +69,20 @@ function parseDocument(text: string): Effect.Effect<unknown, AdaptateParseError>
   });
 }
 
-function reportsForConfigs<
-  TSchema extends z.ZodType,
-  TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
->(
-  schema: TSchema,
-  configs: TConfigs,
-  parsed: unknown,
-): Effect.Effect<
-  { [K in keyof TConfigs]: ConfigReport },
-  AdaptateValidationError
-> {
-  return Effect.try({
-    try: () => {
-      const entries = Object.entries(configs).map(([configName, config]) => {
-        const result = transformSchema(
-          schema,
-          config as Config<z.infer<TSchema>>,
-        ).safeParse(parsed);
-        const report: ConfigReport = result.success
-          ? { valid: true, issues: null }
-          : { valid: false, issues: result.error.issues };
-        return [configName, report] as const;
-      });
-      return Object.fromEntries(entries) as {
-        [K in keyof TConfigs]: ConfigReport;
-      };
-    },
-    catch: (cause) =>
-      new AdaptateValidationError({
-        configName: "schema",
-        issues: issuesFromCause(cause),
-      }),
-  });
+function reportsFromFinal<TConfigs extends Record<string, ConfigReport>>(
+  results: {
+    [K in keyof TConfigs]: { valid: boolean; errors: z.ZodError | null };
+  },
+): { [K in keyof TConfigs]: ConfigReport } {
+  return Object.fromEntries(
+    Object.entries(results).map(([configName, result]) => {
+      const report = result as { valid: boolean; errors: z.ZodError | null };
+      const named: ConfigReport = report.errors
+        ? { valid: false, issues: report.errors.issues }
+        : { valid: true, issues: null };
+      return [configName, named];
+    }),
+  ) as { [K in keyof TConfigs]: ConfigReport };
 }
 
 export function validate<
@@ -199,7 +180,17 @@ export function createEffectStreamValidator<
         );
       }
       const value = yield* strictParse(schema, undefined, "schema", parsed);
-      const namedReports = yield* reportsForConfigs(schema, configs, parsed);
+      const namedReports = yield* Effect.try({
+        try: () =>
+          reportsFromFinal(validator.final(parsed)) as {
+            [K in keyof TConfigs]: ConfigReport;
+          },
+        catch: (cause) =>
+          new AdaptateValidationError({
+            configName: "schema",
+            issues: issuesFromCause(cause),
+          }),
+      });
       return { value, configs: namedReports };
     });
   }

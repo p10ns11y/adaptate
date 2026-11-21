@@ -85,7 +85,12 @@ export function renderSummary(directory) {
     push("Import p95 (ms)", "coldP95Ms", 3, "ms");
     push("Full document (validations/sec)", "validationsPerSec", null, "/s");
     push("AG-UI stream (µs/chunk)", "agUiMicros", 3, "µs");
-    push("Parsed partial check (µs/chunk)", "partialMicros", 3, "µs");
+    push(
+      "Parsed partial check, cached schema (µs/chunk)",
+      "partialMicros",
+      3,
+      "µs",
+    );
     if (runtime.heapTrials) {
       push("Heap after GC (bytes)", "heapAfterBytes", null, "B");
       push("Heap delta after GC (bytes)", "heapDeltaBytes", null, "B");
