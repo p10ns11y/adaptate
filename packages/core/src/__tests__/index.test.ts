@@ -1,16 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-import { z } from 'zod';
+import { z } from "zod";
 
 import {
   getDereferencedOpenAPIDocument,
   openAPISchemaToZod,
-} from '#utils/openapi';
+} from "#utils/openapi";
 
-import { transformSchema, makeConditionalSchemaTransformer } from '../';
+import { transformSchema, makeConditionalSchemaTransformer } from "../";
 
-describe('transformSchema', () => {
-  it('should make properties required based on the config', async () => {
+describe("transformSchema", () => {
+  it("should make properties required based on the config", async () => {
     let baseSchema = z.object({
       category: z
         .object({
@@ -22,7 +22,7 @@ describe('transformSchema', () => {
                   name: z.string().optional(),
                   items: z.array(z.string()).optional(),
                 })
-                .optional()
+                .optional(),
             )
             .optional(),
         })
@@ -35,7 +35,7 @@ describe('transformSchema', () => {
       category: {
         name: true,
         subcategories: {
-          '*': {
+          "*": {
             name: true,
             items: true,
           },
@@ -48,53 +48,53 @@ describe('transformSchema', () => {
 
     let validData = {
       category: {
-        name: 'Electronics',
+        name: "Electronics",
         subcategories: [
           {
-            name: 'Phones',
-            items: ['iPhone', 'Samsung Galaxy', 'Google Pixel'],
+            name: "Phones",
+            items: ["iPhone", "Samsung Galaxy", "Google Pixel"],
           },
         ],
       },
-      type: 'electronics',
+      type: "electronics",
     };
 
     let invalidDataMissingCategoryName = {
       category: {
         subcategories: [
           {
-            name: 'Phones',
-            items: ['iPhone', 'Samsung Galaxy', 'Google Pixel'],
+            name: "Phones",
+            items: ["iPhone", "Samsung Galaxy", "Google Pixel"],
           },
         ],
       },
-      type: 'electronics',
+      type: "electronics",
     };
 
     let invalidDataMissingSubCategoryName = {
       category: {
-        subcategories: [{ items: ['iPhone', 'Samsung Galaxy'] }],
+        subcategories: [{ items: ["iPhone", "Samsung Galaxy"] }],
       },
-      type: 'electronics',
+      type: "electronics",
     };
 
     let invalidDataItems = {
       category: {
         subcategories: [
           {
-            name: 'Phones',
-            items: '',
+            name: "Phones",
+            items: "",
           },
         ],
       },
-      type: 'electronics',
-      warrantyPeriod: '2 years',
+      type: "electronics",
+      warrantyPeriod: "2 years",
     };
 
     expect(() => transformedSchema.parse(validData)).not.toThrow();
 
     expect(() =>
-      baseSchema.parse(invalidDataMissingSubCategoryName)
+      baseSchema.parse(invalidDataMissingSubCategoryName),
     ).not.toThrow();
 
     expect(() => transformedSchema.parse(invalidDataMissingSubCategoryName))
@@ -152,8 +152,8 @@ describe('transformSchema', () => {
     expect(() =>
       reReTransformedSchema.parse({
         ...invalidDataMissingCategoryName,
-        warrantyPeriod: '2 years',
-      })
+        warrantyPeriod: "2 years",
+      }),
     ).not.toThrow();
 
     expect(() => baseSchema.parse({})).not.toThrow();
@@ -162,7 +162,7 @@ describe('transformSchema', () => {
         category: {
           subcategories: [{ items: [] }],
         },
-      })
+      }),
     ).not.toThrow();
     expect(() => baseSchema.parse(invalidDataItems)).toThrow();
     expect(() => transformedSchema.parse(invalidDataItems))
@@ -194,33 +194,33 @@ describe('transformSchema', () => {
     let anotherValidData = [
       {
         category: {
-          name: 'Electronics',
+          name: "Electronics",
           subcategories: [
-            { name: 'Phones', items: ['iPhone', 'Samsung Galaxy'] },
+            { name: "Phones", items: ["iPhone", "Samsung Galaxy"] },
           ],
         },
-        type: 'electronics',
-        warrantyPeriod: '2 years',
+        type: "electronics",
+        warrantyPeriod: "2 years",
       },
     ];
 
     let anotherInValidData = [
       {
         category: {
-          name: 'Electronics',
-          subcategories: [{ name: 'Phones' }],
+          name: "Electronics",
+          subcategories: [{ name: "Phones" }],
         },
-        type: 'electronics',
-        warrantyPeriod: '2 years',
+        type: "electronics",
+        warrantyPeriod: "2 years",
       },
     ];
 
     let anotherConfig = {
-      '*': {
+      "*": {
         category: {
           name: true,
           subcategories: {
-            '*': {
+            "*": {
               name: true,
               items: true,
             },
@@ -232,67 +232,67 @@ describe('transformSchema', () => {
 
     let anotherTransformedSchema = transformSchema(
       z.array(baseSchema),
-      anotherConfig
+      anotherConfig,
     );
 
     expect(() =>
-      anotherTransformedSchema.parse(anotherValidData)
+      anotherTransformedSchema.parse(anotherValidData),
     ).not.toThrow();
 
     expect(() => anotherTransformedSchema.parse(anotherInValidData)).toThrow();
 
     let dereferencedOpenAPIDocument = await getDereferencedOpenAPIDocument({
-      location: 'filesystem',
+      location: "filesystem",
       callSiteURL: import.meta.url,
-      relativePathToSpecFile: '../fixtures/base-schema.yml',
+      relativePathToSpecFile: "../fixtures/base-schema.yml",
     });
 
     let dataZodSchema = openAPISchemaToZod(
       // @ts-ignore
-      dereferencedOpenAPIDocument['components']['schemas']['Category']
+      dereferencedOpenAPIDocument["components"]["schemas"]["Category"],
     );
 
     let yetAnotherTransformedSchema = transformSchema(dataZodSchema, config);
 
     expect(() =>
-      yetAnotherTransformedSchema.parse(validData['category'])
+      yetAnotherTransformedSchema.parse(validData["category"]),
     ).not.toThrow();
 
     expect(() =>
       yetAnotherTransformedSchema.parse(
-        invalidDataMissingSubCategoryName['category']
-      )
+        invalidDataMissingSubCategoryName["category"],
+      ),
     ).toThrow();
 
     expect(() =>
-      yetAnotherTransformedSchema.parse(invalidDataItems['category'])
+      yetAnotherTransformedSchema.parse(invalidDataItems["category"]),
     ).toThrow();
   });
 
-  it('should handle array of objects at top level', () => {
+  it("should handle array of objects at top level", () => {
     const baseSchema = z.array(
       z.object({
         name: z.string().optional(),
         age: z.number().optional(),
-      })
+      }),
     );
 
     const config = {
-      '*': {
+      "*": {
         name: true,
       },
     };
 
     const transformedSchema = transformSchema(baseSchema, config);
 
-    const validData = [{ name: 'John', age: 30 }];
+    const validData = [{ name: "John", age: 30 }];
     const invalidData = [{ age: 30 }];
 
     expect(() => transformedSchema.parse(validData)).not.toThrow();
     expect(() => transformedSchema.parse(invalidData)).toThrow();
   });
 
-  it('should handle nested objects with arrays', () => {
+  it("should handle nested objects with arrays", () => {
     const baseSchema = z.object({
       category: z
         .object({
@@ -304,7 +304,7 @@ describe('transformSchema', () => {
                   name: z.string().optional(),
                   items: z.array(z.string()).optional(),
                 })
-                .optional()
+                .optional(),
             )
             .optional(),
         })
@@ -314,7 +314,7 @@ describe('transformSchema', () => {
     const config = {
       category: {
         subcategories: {
-          '*': {
+          "*": {
             items: true,
           },
         },
@@ -327,7 +327,7 @@ describe('transformSchema', () => {
       category: {
         subcategories: [
           {
-            items: ['item1', 'item2'],
+            items: ["item1", "item2"],
           },
         ],
       },
@@ -337,7 +337,7 @@ describe('transformSchema', () => {
       category: {
         subcategories: [
           {
-            name: 'subcategory1',
+            name: "subcategory1",
           },
         ],
       },
@@ -347,18 +347,18 @@ describe('transformSchema', () => {
     expect(() => transformedSchema.parse(invalidData)).toThrow();
   });
 
-  it('should handle invalid schema type', () => {
+  it("should handle invalid schema type", () => {
     const invalidSchema = z.string();
     const config = false;
 
     expect(() =>
-      transformSchema(invalidSchema, config)
+      transformSchema(invalidSchema, config),
     ).toThrowErrorMatchingInlineSnapshot(
-      `[Error: The given schema must be a Zod object.]`
+      `[Error: The given schema must be a Zod object.]`,
     );
   });
 
-  it('should return the schema as it is when config is not an object', () => {
+  it("should return the schema as it is when config is not an object", () => {
     const baseSchema = z.object({
       name: z.string().optional(),
     });
@@ -374,8 +374,8 @@ describe('transformSchema', () => {
   });
 });
 
-describe('makeConditionalSchemaTransformer', () => {
-  it('should apply conditional requirements based on the config', () => {
+describe("makeConditionalSchemaTransformer", () => {
+  it("should apply conditional requirements based on the config", () => {
     const schema = z.object({
       firstName: z.string().optional(),
       secondName: z.string().optional(),
@@ -399,19 +399,19 @@ describe('makeConditionalSchemaTransformer', () => {
     };
 
     let firstNameRequiredData = {
-      firstName: 'Mario',
+      firstName: "Mario",
       age: 17,
     };
     let secondNameRequiredData = {
-      firstName: 'Peram',
+      firstName: "Peram",
       age: 24,
     };
 
     expect(() =>
       makeConditionalSchemaTransformer(firstNameRequiredData)(
         schema,
-        config
-      ).run()
+        config,
+      ).run(),
     ).toThrowErrorMatchingInlineSnapshot(`
       [ZodError: [
         {
@@ -436,8 +436,8 @@ describe('makeConditionalSchemaTransformer', () => {
     expect(() =>
       makeConditionalSchemaTransformer(secondNameRequiredData)(
         schema,
-        config
-      ).run()
+        config,
+      ).run(),
     ).toThrowErrorMatchingInlineSnapshot(`
       [ZodError: [
         {
@@ -454,12 +454,12 @@ describe('makeConditionalSchemaTransformer', () => {
       makeConditionalSchemaTransformer({
         ...secondNameRequiredData,
         age: 37,
-        secondName: 'Sathyam',
-      })(schema, config).run()
+        secondName: "Sathyam",
+      })(schema, config).run(),
     ).not.toThrow();
   });
 
-  it('should handle non-object schema', () => {
+  it("should handle non-object schema", () => {
     const schema = z.string();
     const config = {};
     const data = {};
@@ -469,12 +469,12 @@ describe('makeConditionalSchemaTransformer', () => {
     expect(result.schema).toBe(schema);
   });
 
-  it('should parse primitive schema through the initial runner', () => {
-    let transformer = makeConditionalSchemaTransformer('hello')(z.string(), {});
-    expect(transformer.run()).toBe('hello');
+  it("should parse primitive schema through the initial runner", () => {
+    let transformer = makeConditionalSchemaTransformer("hello")(z.string(), {});
+    expect(transformer.run()).toBe("hello");
   });
 
-  it('should returns a result with updatedSchema, runner, staticConfig', () => {
+  it("should returns a result with updatedSchema, runner, staticConfig", () => {
     const schema = z.object({
       name: z.string().optional(),
       age: z.number().optional(),
@@ -488,161 +488,22 @@ describe('makeConditionalSchemaTransformer', () => {
       },
     };
     const data = {
-      name: 'Peram',
+      name: "Peram",
       age: 37,
     };
 
     const result = makeConditionalSchemaTransformer(data)(schema, config);
 
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "run": [Function],
-        "schema": ZodObject {
-          "decode": [Function],
-          "decodeAsync": [Function],
-          "def": {
-            "shape": {
-              "age": ZodOptional {
-                "decode": [Function],
-                "decodeAsync": [Function],
-                "def": {
-                  "innerType": ZodNumber {
-                    "decode": [Function],
-                    "decodeAsync": [Function],
-                    "def": {
-                      "checks": [],
-                      "type": "number",
-                    },
-                    "encode": [Function],
-                    "encodeAsync": [Function],
-                    "format": null,
-                    "isFinite": true,
-                    "isInt": false,
-                    "maxValue": Infinity,
-                    "minValue": -Infinity,
-                    "optional": [Function],
-                    "parse": [Function],
-                    "parseAsync": [Function],
-                    "safeDecode": [Function],
-                    "safeDecodeAsync": [Function],
-                    "safeEncode": [Function],
-                    "safeEncodeAsync": [Function],
-                    "safeParse": [Function],
-                    "safeParseAsync": [Function],
-                    "spa": [Function],
-                    "toJSONSchema": [Function],
-                    "type": "number",
-                  },
-                  "type": "optional",
-                },
-                "encode": [Function],
-                "encodeAsync": [Function],
-                "parse": [Function],
-                "parseAsync": [Function],
-                "safeDecode": [Function],
-                "safeDecodeAsync": [Function],
-                "safeEncode": [Function],
-                "safeEncodeAsync": [Function],
-                "safeParse": [Function],
-                "safeParseAsync": [Function],
-                "spa": [Function],
-                "toJSONSchema": [Function],
-                "type": "optional",
-                "unwrap": [Function],
-              },
-              "canBuyAlcohol": ZodBoolean {
-                "decode": [Function],
-                "decodeAsync": [Function],
-                "def": {
-                  "type": "boolean",
-                },
-                "encode": [Function],
-                "encodeAsync": [Function],
-                "optional": [Function],
-                "parse": [Function],
-                "parseAsync": [Function],
-                "safeDecode": [Function],
-                "safeDecodeAsync": [Function],
-                "safeEncode": [Function],
-                "safeEncodeAsync": [Function],
-                "safeParse": [Function],
-                "safeParseAsync": [Function],
-                "spa": [Function],
-                "toJSONSchema": [Function],
-                "type": "boolean",
-              },
-              "name": ZodString {
-                "base64": [Function],
-                "base64url": [Function],
-                "cidrv4": [Function],
-                "cidrv6": [Function],
-                "cuid": [Function],
-                "cuid2": [Function],
-                "date": [Function],
-                "datetime": [Function],
-                "decode": [Function],
-                "decodeAsync": [Function],
-                "def": {
-                  "type": "string",
-                },
-                "duration": [Function],
-                "e164": [Function],
-                "email": [Function],
-                "emoji": [Function],
-                "encode": [Function],
-                "encodeAsync": [Function],
-                "format": null,
-                "guid": [Function],
-                "ipv4": [Function],
-                "ipv6": [Function],
-                "jwt": [Function],
-                "ksuid": [Function],
-                "maxLength": null,
-                "minLength": null,
-                "nanoid": [Function],
-                "optional": [Function],
-                "parse": [Function],
-                "parseAsync": [Function],
-                "safeDecode": [Function],
-                "safeDecodeAsync": [Function],
-                "safeEncode": [Function],
-                "safeEncodeAsync": [Function],
-                "safeParse": [Function],
-                "safeParseAsync": [Function],
-                "spa": [Function],
-                "time": [Function],
-                "toJSONSchema": [Function],
-                "type": "string",
-                "ulid": [Function],
-                "url": [Function],
-                "uuid": [Function],
-                "uuidv4": [Function],
-                "uuidv6": [Function],
-                "uuidv7": [Function],
-                "xid": [Function],
-              },
-            },
-            "type": "object",
-          },
-          "encode": [Function],
-          "encodeAsync": [Function],
-          "parse": [Function],
-          "parseAsync": [Function],
-          "safeDecode": [Function],
-          "safeDecodeAsync": [Function],
-          "safeEncode": [Function],
-          "safeEncodeAsync": [Function],
-          "safeParse": [Function],
-          "safeParseAsync": [Function],
-          "spa": [Function],
-          "toJSONSchema": [Function],
-          "type": "object",
-        },
-        "staticConfig": {
-          "name": true,
-        },
-      }
-    `);
+    expect(result.run).toBeTypeOf("function");
+    expect(result.schema).toBeInstanceOf(z.ZodObject);
+    const missing = result.schema.safeParse({ age: 37 });
+    expect(missing.error?.issues.map((issue) => issue.path)).toEqual([
+      ["name"],
+      ["canBuyAlcohol"],
+    ]);
+    expect(
+      result.schema.safeParse({ ...data, canBuyAlcohol: true }).success,
+    ).toBe(true);
 
     expect(result.staticConfig).toMatchInlineSnapshot(`
       {
@@ -651,7 +512,7 @@ describe('makeConditionalSchemaTransformer', () => {
     `);
   });
 
-  it('should handle non-object config', () => {
+  it("should handle non-object config", () => {
     const schema = z.object({
       name: z.string().optional(),
     });
