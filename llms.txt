@@ -1,0 +1,68 @@
+# Adaptate
+
+> One description. Each screen checks only what it shows. A cut-off reply does not throw.
+
+Paths are relative to the repository root. There is no deployed documentation site.
+
+## Docs
+
+- [Docs](docs/index.md): Where to read about views, streaming, OpenAPI, types, and the generated API.
+- [Transform](docs/transform.md): One Zod schema, and a config that marks which fields each screen requires.
+- [Streaming](docs/streaming.md): Check a tool call while the JSON is still arriving.
+- [OpenAPI](docs/openapi.md): Turn an OpenAPI schema into Zod, and write a Zod schema back out.
+- [Effect](docs/effect.md): Run the same checks in an Effect pipeline. Effect is an optional peer.
+- [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
+- [Subpaths](docs/subpaths.md): The published entry points, and which peers each one loads.
+- [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
+- [Performance](docs/performance.md): Measured cost of import, a full document, and a streaming check against raw Zod.
+- [Proof](docs/proof.md): Each front-page sentence mapped to a test, a script, or a CI job.
+- [Migration 2.4](docs/migration-2.4.md): YAML and the ref parser became optional peers between 2.3 and 2.4.
+- [Development](docs/development.md): Install, test, and build this repository with pnpm.
+
+## API
+
+- [Class: AdaptateParseError](docs/api/core/effect/classes/AdaptateParseError.md): Exported from @adaptate/core.
+- [Class: AdaptateValidationError](docs/api/core/effect/classes/AdaptateValidationError.md): Exported from @adaptate/core.
+- [Function: createEffectStreamValidator()](docs/api/core/effect/functions/createEffectStreamValidator.md): Exported from @adaptate/core.
+- [Function: validate()](docs/api/core/effect/functions/validate.md): Exported from @adaptate/core.
+- [Function: validatePartial()](docs/api/core/effect/functions/validatePartial.md): Exported from @adaptate/core.
+- [effect](docs/api/core/effect/index.md): Exported from @adaptate/core.
+- [Type Alias: ConfigReport](docs/api/core/effect/type-aliases/ConfigReport.md): Exported from @adaptate/core.
+- [Type Alias: FinalReport\<TValue, TConfigs\>](docs/api/core/effect/type-aliases/FinalReport.md): Exported from @adaptate/core.
+- [@adaptate/core](docs/api/core/index.md): Exported from @adaptate/core.
+- [Function: makeConditionalSchemaTransformer()](docs/api/core/index/functions/makeConditionalSchemaTransformer.md): Exported from @adaptate/core.
+- [Function: makeStreamingConditionalTransformer()](docs/api/core/index/functions/makeStreamingConditionalTransformer.md): Exported from @adaptate/core.
+- [Function: transformPartialSchema()](docs/api/core/index/functions/transformPartialSchema.md): Exported from @adaptate/core.
+- [Function: transformSchema()](docs/api/core/index/functions/transformSchema.md): Make fields required/optional based on config. Returns a properly typed Zod schema.
+- [Function: validatePartialAgainstConfigs()](docs/api/core/index/functions/validatePartialAgainstConfigs.md): Exported from @adaptate/core.
+- [index](docs/api/core/index/index.md): Exported from @adaptate/core.
+- [Type Alias: Config\<T\>](docs/api/core/index/type-aliases/Config.md): Type-safe configuration for `transformSchema` and conditional transformers.
+- [Type Alias: DeepPartial\<T\>](docs/api/core/index/type-aliases/DeepPartial.md): Exported from @adaptate/core.
+- [Type Alias: PartialValidationResult](docs/api/core/index/type-aliases/PartialValidationResult.md): Exported from @adaptate/core.
+- [Function: isStandardSchema()](docs/api/core/standard/functions/isStandardSchema.md): Exported from @adaptate/core.
+- [Function: validateAgainstStandardSchemas()](docs/api/core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core.
+- [Function: validateStandard()](docs/api/core/standard/functions/validateStandard.md): Exported from @adaptate/core.
+- [standard](docs/api/core/standard/index.md): Exported from @adaptate/core.
+- [Interface: StandardSchemaV1\<Input, Output\>](docs/api/core/standard/interfaces/StandardSchemaV1.md): Exported from @adaptate/core.
+- [Type Alias: StandardIssue](docs/api/core/standard/type-aliases/StandardIssue.md): Exported from @adaptate/core.
+- [Type Alias: StandardResult\<Output\>](docs/api/core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core.
+- [Type Alias: StandardValidationResult\<Output\>](docs/api/core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core.
+- [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core.
+- [Function: createStreamValidator()](docs/api/core/stream/functions/createStreamValidator.md): Exported from @adaptate/core.
+- [Function: parsePartialJson()](docs/api/core/stream/functions/parsePartialJson.md): Exported from @adaptate/core.
+- [Function: validateStructuredOutput()](docs/api/core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core.
+- [stream](docs/api/core/stream/index.md): Exported from @adaptate/core.
+- [Type Alias: AgUiDeltaEvent](docs/api/core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core.
+- [API](docs/api/index.md): API reference generated from the published declaration files.
+- [API](docs/api/index.md): API reference generated from the published declaration files.
+- [@adaptate/utils](docs/api/utils/index.md): Exported from @adaptate/utils.
+- [index](docs/api/utils/index/index.md): Exported from @adaptate/utils.
+- [Function: fetchYamlContent()](docs/api/utils/openapi/functions/fetchYamlContent.md): Exported from @adaptate/utils.
+- [Function: getDereferencedOpenAPIDocument()](docs/api/utils/openapi/functions/getDereferencedOpenAPIDocument.md): Exported from @adaptate/utils.
+- [Function: getYamlContent()](docs/api/utils/openapi/functions/getYamlContent.md): Exported from @adaptate/utils.
+- [Function: openAPISchemaToZod()](docs/api/utils/openapi/functions/openAPISchemaToZod.md): Converts an OpenAPI / JSON Schema object to a Zod schema. Supports a wide range of features for feature-completeness: - Primitives: string, number, integer, boolean - Complex: o...
+- [Function: zodToOpenAPISchema()](docs/api/utils/openapi/functions/zodToOpenAPISchema.md): Converts a Zod schema to an OpenAPI / JSON Schema compatible object. Now feature-complete with: - Proper `required` array for objects (excludes .optional() fields) - Support for...
+- [openapi](docs/api/utils/openapi/index.md): Exported from @adaptate/utils.
+- [Type Alias: BrowserOpenAPISpecParams](docs/api/utils/openapi/type-aliases/BrowserOpenAPISpecParams.md): Exported from @adaptate/utils.
+- [Type Alias: OpenAPISpecParams](docs/api/utils/openapi/type-aliases/OpenAPISpecParams.md): Exported from @adaptate/utils.
+- [Type Alias: ServerOpenAPISpecParams](docs/api/utils/openapi/type-aliases/ServerOpenAPISpecParams.md): Exported from @adaptate/utils.

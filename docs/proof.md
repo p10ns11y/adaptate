@@ -1,3 +1,8 @@
+---
+title: "Proof"
+description: "Each front-page sentence mapped to a test, a script, or a CI job."
+---
+
 # Proof
 
 Each sentence on the front page maps to something in the repo.
@@ -14,7 +19,8 @@ Each sentence on the front page maps to something in the repo.
 | The same checks run in plain code or in an Effect pipeline | [`final(text)` reports every named config; `final(text, "card")` checks that one](../packages/core/src/__tests__/effect.test.ts). `final` agrees with `transformSchema` per config ([I2](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts)) |
 | Core ships without extra runtime libraries | [`@adaptate/core` `package.json` has no `dependencies`; `zod` is the peer](../packages/core/package.json). [The main entry and `./stream` load when `effect` is missing](../packages/core/src/__tests__/effect.test.ts) |
 | The published types match the build | [`verify-published-types.mjs`](../scripts/verify-published-types.mjs) in the [verify job](../.github/workflows/ci.yml) |
-| Types work on current and previous TypeScript | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` |
+| The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
+| CI checks those published types on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
 | With the schema cached, the streaming check is within about 1.5× of raw Zod per chunk | On Node 24, parsed partial with a cached schema is 0.667 µs/chunk against raw Zod's 0.433 µs/chunk. JSON repair is separate: AG-UI 24.084 µs/chunk minus parsed partial 0.667 µs/chunk is 23.417 µs/chunk. Import median is +4.528% (36.886 ms against 35.288 ms). Full-document rate is −5.981% (3,302,796/s against 3,512,914/s). Method and table: [Performance](performance.md). Job: [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44956631113) |
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).

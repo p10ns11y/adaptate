@@ -1,3 +1,8 @@
+---
+title: "Performance"
+description: "Measured cost of import, a full document, and a streaming check against raw Zod."
+---
+
 # Performance
 
 CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`.

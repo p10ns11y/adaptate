@@ -37,7 +37,13 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
    ```
    This runs the entire Turborepo graph: check-types → test → build for all packages.
 
-5. **Review results**:
+5. **API docs** (after the build, when declarations or docs pages changed):
+   ```
+   pnpm docs:api
+   ```
+   Rewrites `docs/api/`, `llms.txt`, and `llms-full.txt` from the built `.d.ts` files and the docs pages. CI fails if the committed files differ.
+
+6. **Review results**:
    - Type errors → fix TypeScript issues
    - Lint failures → fix Oxlint findings, including deprecated APIs reported by `typescript/no-deprecated`
    - Test failures → investigate and fix (see `fix-bug.md`)
@@ -49,6 +55,7 @@ Install dependencies with **`pnpm install`** in this monorepo only. **`npm insta
 - [ ] `pnpm lint` exits 0
 - [ ] `npx vitest run --coverage` exits 0 with all tests passing
 - [ ] `pnpm build` exits 0 (when running full verification)
+- [ ] `pnpm docs:api` leaves `docs/api/`, `llms.txt`, and `llms-full.txt` unchanged when declarations and docs pages did not change
 - [ ] No uncommitted debugging code remains
 
 ## Rules

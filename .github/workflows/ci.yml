@@ -41,6 +41,15 @@ jobs:
           node scripts/verify-published-types.mjs packages/core
           node scripts/verify-published-types.mjs packages/utils
 
+      - name: API docs match the published declarations
+        run: |
+          pnpm docs:api
+          if [ -n "$(git status --porcelain -- docs/api llms.txt llms-full.txt)" ]; then
+            git status --porcelain -- docs/api llms.txt llms-full.txt
+            git diff -- docs/api llms.txt llms-full.txt
+            exit 1
+          fi
+
   zod-latest:
     runs-on: ubuntu-latest
     permissions:
