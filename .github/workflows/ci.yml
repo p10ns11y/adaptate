@@ -36,5 +36,7 @@ jobs:
       - name: Build
         run: npx turbo run build
 
-      - name: Verify @adaptate/core publish types
-        run: node scripts/verify-published-types.mjs packages/core
+      - name: Verify @adaptate/core and @adaptate/utils publish types
+        run: |
+          node scripts/verify-published-types.mjs packages/core
+          node scripts/verify-published-types.mjs packages/utils
