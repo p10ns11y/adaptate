@@ -57,6 +57,7 @@ Operational guides for common tasks live in [`skills/`](skills/README.md). Any c
 | [`skills/add-test.md`](skills/add-test.md) | Writing new tests |
 | [`skills/refactor.md`](skills/refactor.md) | Restructuring code without changing behavior |
 | [`skills/release.md`](skills/release.md) | Preparing a version bump for publishing |
+| [`.cursor/skills/formal-verification/SKILL.md`](.cursor/skills/formal-verification/SKILL.md) | Re-checking partial and stream invariants I1 and I2 |
 
 ## Rules
 - Run `npx turbo run check-types` after TypeScript changes
