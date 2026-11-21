@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/core",
-  "version": "2.2.3-beta.1",
+  "version": "2.2.3",
   "author": {
     "name": "Peramanathan Sathyamoorthy",
     "url": "https://github.com/p10ns11y/adaptate.git"
@@ -19,7 +19,8 @@
   "main": "./build/index.es.js",
   "types": "./build/index.d.ts",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "prepublishOnly": "node ../../scripts/verify-published-types.mjs packages/core",
     "check-types": "tsc --noEmit",
     "lint": "oxlint -c ../../.oxlintrc.json ./src && eslint --config ../../eslint.config.js \"src/**/*.ts\"",
     "test:pkg": "vitest run --config ../../vitest.config.ts src/__tests__",
