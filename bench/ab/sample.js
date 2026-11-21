@@ -1,0 +1,66 @@
+import { microsPerChunk, operationsPerSecond } from "./loops.js";
+import { orderDocument } from "./order.js";
+import { median } from "./stats.js";
+
+export function measureOnce(app, deltas, partials, budgetMs, nowNs, part = "all") {
+  let checksum = 0;
+  let validationsPerSec = 0;
+  let partialMicros = 0;
+  let agUiMicros = 0;
+  if (part === "all" || part === "rate") {
+    validationsPerSec = operationsPerSecond(() => {
+      if (app.validateFull(orderDocument)) checksum += 1;
+    }, budgetMs, nowNs);
+  }
+  if (
+    part === "all" ||
+    part === "partial" ||
+    (part === "agui" && typeof app.openStream !== "function")
+  ) {
+    partialMicros = microsPerChunk(() => {
+      for (const partial of partials) {
+        if (app.validatePartial(partial) === true) checksum += 1;
+      }
+    }, partials.length, budgetMs, nowNs);
+    agUiMicros = partialMicros;
+  }
+  if ((part === "all" || part === "agui") && typeof app.openStream === "function") {
+    agUiMicros = microsPerChunk(() => {
+      const push = app.openStream();
+      for (const delta of deltas) {
+        if (push(delta) === true) checksum += 1;
+      }
+    }, deltas.length, budgetMs, nowNs);
+  }
+  if (checksum === 0) throw new Error(`${app.name} ${part} measured only failures`);
+  return { validationsPerSec, agUiMicros, partialMicros, checksum };
+}
+
+export function measurePhases(app, deltas, partials, rounds, budgetMs, nowNs) {
+  const rates = [];
+  const partialSamples = [];
+  for (let round = 0; round < rounds; round += 1) {
+    rates.push(
+      measureOnce(app, deltas, partials, budgetMs, nowNs, "rate").validationsPerSec,
+    );
+  }
+  for (let round = 0; round < rounds; round += 1) {
+    partialSamples.push(
+      measureOnce(app, deltas, partials, budgetMs, nowNs, "partial").partialMicros,
+    );
+  }
+  let agUiSamples = partialSamples;
+  if (typeof app.openStream === "function") {
+    agUiSamples = [];
+    for (let round = 0; round < rounds; round += 1) {
+      agUiSamples.push(
+        measureOnce(app, deltas, partials, budgetMs, nowNs, "agui").agUiMicros,
+      );
+    }
+  }
+  return {
+    validationsPerSec: median(rates),
+    partialMicros: median(partialSamples),
+    agUiMicros: median(agUiSamples),
+  };
+}

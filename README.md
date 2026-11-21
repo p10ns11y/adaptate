@@ -203,6 +203,34 @@ See [`@adaptate/utils` README](packages/utils/README.md) for full documentation.
 - Performance characteristics and trade-offs
 - Comparison with alternative approaches
 
+## Performance
+
+```mermaid
+flowchart LR
+  doc[Grocery order]
+  deltas[TOOL_CALL_ARGS deltas]
+  doc --> raw[A raw zod]
+  doc --> adaptate[B zod plus adaptate]
+  doc --> valibot[C valibot]
+  deltas --> raw
+  deltas --> adaptate
+  deltas --> valibot
+  raw --> node[Node 24, gated against base]
+  adaptate --> node
+  valibot --> node
+  raw --> recorded[Bun and Chromium, recorded]
+  adaptate --> recorded
+  valibot --> recorded
+```
+
+Full documents are one `safeParse` of a schema built once. B's schema is one `transformSchema`. The AG-UI row is different work: B appends each delta, repairs JSON, and builds a schema per chunk, while A and C `safeParse` a partial parsed outside the timer. `./standard` and `./effect` are size rows only, and `effect` stays an external optional peer. Same accept/reject rules, and where the work is not the same: [`bench/ab/README.md`](bench/ab/README.md).
+
+Reproduce: `pnpm --filter @adaptate/core build && node bench/ab/run.js`
+
+The table is the `ab-eval` job on this commit. A positive time in B vs A is slower. A negative validations/sec is slower. Bun and Chromium are in that job and are not gated. The gate fails when the head build is more than 5% slower than the base commit on the same runner, for the Node timings and the bundle bytes.
+
+<!-- AB_RESULTS -->
+
 ## Development
 
 This is a pnpm monorepo orchestrated with Turborepo.
@@ -223,6 +251,7 @@ npx turbo run check-types  # TypeScript type checking
 
 ```
 ├── .devcontainer/     # optional Dev Container (Node 24 + pnpm)
+├── bench/ab/          # A/B runtime eval
 ├── packages/
 │   ├── core/         # @adaptate/core — schema transformation
 │   └── utils/        # @adaptate/utils — OpenAPI utilities
