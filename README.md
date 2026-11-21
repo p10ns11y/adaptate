@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>Update a screen while the model is still typing.</strong>
+  <strong>One description. Each screen checks only what it shows. A cut-off reply does not throw.</strong>
 </p>
 
 <p align="center">
@@ -105,7 +105,7 @@ const push = createAgUiPartialValidator(z.object({ title: z.string(), servings: 
 
 ## Why trust it
 
-Every claim on this page maps to a test. CI runs those tests, and the bench fails if a hot path gets more than 5% slower. [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml) · [Bench](https://github.com/p10ns11y/adaptate/actions/runs/44945033877)
+The lines above are about the check being right. What the check costs is in [Performance](docs/performance.md). [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
 
 [Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [Peers and subpaths](docs/subpaths.md)
 
