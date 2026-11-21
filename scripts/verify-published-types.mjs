@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,26 +38,42 @@ if (!existsSync(typesAbsolutePath)) {
   process.exit(1);
 }
 
-let packResults;
-try {
-  packResults = JSON.parse(
-    execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-      cwd: packageDirectory,
-      encoding: 'utf8',
-    }),
-  );
-} catch {
-  console.error(`${packageJson.name}: npm pack --dry-run failed`);
-  process.exit(1);
-}
-
-const packedFilePaths = new Set(
-  packResults[0].files.map((packedFile) => packedFile.path),
+const cleanEnvironment = Object.fromEntries(
+  Object.entries(process.env).filter(
+    ([variableName]) => !variableName.toLowerCase().startsWith('npm_'),
+  ),
 );
+const packDirectory = mkdtempSync(join(tmpdir(), 'verify-types-'));
+let packedFilePaths;
+try {
+  execFileSync(
+    'npm',
+    ['pack', '--ignore-scripts', '--silent', '--pack-destination', packDirectory],
+    { cwd: packageDirectory, env: cleanEnvironment, stdio: ['ignore', 'ignore', 'inherit'] },
+  );
+  const tarballs = readdirSync(packDirectory).filter((fileName) => fileName.endsWith('.tgz'));
+  if (tarballs.length !== 1) {
+    throw new Error(`expected one tarball, found ${tarballs.length}`);
+  }
+  const listing = execFileSync('tar', ['-tzf', join(packDirectory, tarballs[0])], {
+    encoding: 'utf8',
+  });
+  packedFilePaths = new Set(
+    listing
+      .split('\n')
+      .filter((entry) => entry.length > 0)
+      .map((entry) => entry.replace(/^package\//, '')),
+  );
+} catch (error) {
+  console.error(`${packageJson.name}: npm pack failed: ${error.message}`);
+  process.exit(1);
+} finally {
+  rmSync(packDirectory, { recursive: true, force: true });
+}
 
 if (!packedFilePaths.has(typesRelativePath)) {
   console.error(
-    `${packageJson.name}: ${typesField} is not in the publish tarball (npm pack --dry-run)`,
+    `${packageJson.name}: ${typesField} is not in the publish tarball`,
   );
   process.exit(1);
 }
