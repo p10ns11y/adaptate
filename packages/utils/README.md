@@ -8,6 +8,8 @@ pnpm add @adaptate/utils
 # or
 npm install @adaptate/utils
 
+JSON specs and in-document `$ref` pointers need no extra packages. Install `js-yaml` to parse YAML, and `@apidevtools/json-schema-ref-parser` to resolve remote or file `$ref`s.
+
 Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 **Monorepo development:** If you clone the **adaptate** repo to work on source, use **pnpm** at the repo root only — required for the repo’s supply-chain protections ([Development](../../README.md#development) in the root README). The install commands above remain correct when installing **published** packages from npm.
@@ -16,7 +18,7 @@ Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 ### `getDereferencedOpenAPIDocument(options)`
 
-Loads an OpenAPI spec (YAML or JSON) and resolves all `$ref` pointers, returning a fully dereferenced document.
+Loads an OpenAPI spec (YAML or JSON) and resolves `$ref` pointers. In-document JSON pointers are resolved locally. Remote and file `$ref`s need the optional `@apidevtools/json-schema-ref-parser` peer.
 
 ```ts
 import { getDereferencedOpenAPIDocument } from '@adaptate/utils';

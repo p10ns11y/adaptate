@@ -42,6 +42,11 @@ All notable changes to this project will be documented in this file.
 
 **Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
 
+## Unreleased 2.4.0
+
+- `@adaptate/utils` resolves in-document `$ref` pointers locally and has no required runtime dependencies.
+- Install optional `js-yaml` 5 to parse YAML, and `@apidevtools/json-schema-ref-parser` 16 to resolve remote or file `$ref`s.
+
 ## Unreleased 2.3.0 — Streaming partial validation (RFC-001)
 
 ### Added
@@ -57,7 +62,7 @@ All notable changes to this project will be documented in this file.
 - Validation is pure, so this integration does not retry.
 
 ### Changed — what consumers install
-- `@adaptate/utils` now installs `@apidevtools/json-schema-ref-parser` 16 (was 15) and `js-yaml` 5 (was 4). Core still has zero runtime dependencies.
+- `@adaptate/utils` no longer requires `@apidevtools/json-schema-ref-parser` or `js-yaml`. Optional peers are parser 16 and js-yaml 5. Core still has zero runtime dependencies.
 - `@types/js-yaml` dropped; js-yaml 5 ships its own types.
 - Dev TypeScript is 7.0.2. Oxlint type-aware lint (`oxlint-tsgolint`) replaces ESLint `@typescript-eslint/no-deprecated`.
 

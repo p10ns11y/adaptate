@@ -53,6 +53,8 @@ pnpm add @adaptate/utils
 npm install @adaptate/utils
 ```
 
+JSON specs and in-document `$ref` pointers need no extra packages. Install `js-yaml` to parse YAML, and `@apidevtools/json-schema-ref-parser` to resolve remote or file `$ref`s.
+
 Peer dependency: `zod@^3.23.8 || ^4.0.0`
 
 ## The Problem

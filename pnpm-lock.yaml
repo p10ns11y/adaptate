@@ -52,14 +52,13 @@ importers:
         version: 4.6.7
 
   packages/utils:
-    dependencies:
+    devDependencies:
       '@apidevtools/json-schema-ref-parser':
         specifier: ^16.0.8
         version: 16.0.8(@types/json-schema@7.0.15)
       js-yaml:
         specifier: ^5.5.0
         version: 5.5.0
-    devDependencies:
       terser:
         specifier: ^5.51.2
         version: 5.51.2
