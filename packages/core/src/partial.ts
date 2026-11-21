@@ -32,6 +32,7 @@ export type PartialValidationResult = {
 type ConfigNode = boolean | { [key: string]: ConfigNode | undefined };
 
 function unwrapOptional(schema: z.ZodType): z.ZodType {
+  if (schema instanceof z.ZodObject || schema instanceof z.ZodArray) return schema;
   return schema.safeParse(undefined).success && "unwrap" in schema
     ? unwrapOptional((schema as unknown as z.ZodOptional<z.ZodType>).unwrap())
     : schema;

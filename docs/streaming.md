@@ -6,7 +6,7 @@
 
 `createStreamValidator(schema, configs)` builds the schemas it can at creation:
 
-- `partial(value)` checks the value with one lenient schema cached on the base schema object (`WeakMap`). Absent fields stay optional. Present fields are still type-checked. Every named config receives that same check. Editing a config does not change `partial`, because a missing field stays optional for every config.
+- `partial(value)` checks the value with one lenient schema cached on the base schema object (`WeakMap`). Absent fields stay optional. Present fields are still type-checked. Every named config receives that same check. Editing a config does not change `partial`, because a missing field stays optional for every config. Building that lenient schema does not parse the source object or array, so a strict schema that shares those fields keeps Zod's fast object parser.
 - `final(value)` runs `transformSchema(schema, config).safeParse(value)` for every named config and returns `{ valid, errors }` per name. This `final` takes a value, not text. Those transformed schemas are built when the validator is created and then reused. The lenient partial schema is cached on the base schema object with a `WeakMap`, so it is collected with that schema. Config objects are read at creation: editing one afterward leaves the schema that was already built. A config that cannot be transformed fails inside `final`, not while the validator is constructed. `transformSchema` itself still builds a schema on every direct call.
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.

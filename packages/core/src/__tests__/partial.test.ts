@@ -6,6 +6,7 @@ import {
   transformPartialSchema,
   validatePartialAgainstConfigs,
   makeStreamingConditionalTransformer,
+  cacheLenientSchema,
   schemasForConfigs,
 } from "../partial.js";
 
@@ -143,6 +144,47 @@ describe("validatePartialAgainstConfigs", () => {
       { form: { name: true } },
     );
     expect(clean.form).toEqual({ valid: true, errors: null });
+  });
+});
+
+describe("cacheLenientSchema", () => {
+  it("does not parse the source object or array while building the lenient schema", () => {
+    const child = z.object({ name: z.string() });
+    const items = z.array(z.string());
+    const root = z.object({ child: child.optional(), items });
+    let rootParses = 0;
+    let childParses = 0;
+    let itemParses = 0;
+    const parseRoot = root.safeParse.bind(root);
+    const parseChild = child.safeParse.bind(child);
+    const parseItems = items.safeParse.bind(items);
+    root.safeParse = (value) => {
+      rootParses += 1;
+      return parseRoot(value);
+    };
+    child.safeParse = (value) => {
+      childParses += 1;
+      return parseChild(value);
+    };
+    items.safeParse = (value) => {
+      itemParses += 1;
+      return parseItems(value);
+    };
+    cacheLenientSchema(root);
+    expect(rootParses).toBe(0);
+    expect(childParses).toBe(0);
+    expect(itemParses).toBe(0);
+    const empty = validatePartialAgainstConfigs(root, {}, { card: true });
+    expect(empty.card).toEqual({ valid: true, errors: null });
+    const wrong = validatePartialAgainstConfigs(
+      root,
+      { child: { name: 1 } } as unknown as { child: { name: string } },
+      { card: true },
+    );
+    expect(wrong.card.valid).toBe(false);
+    expect(rootParses).toBe(0);
+    expect(childParses).toBe(0);
+    expect(itemParses).toBe(0);
   });
 });
 
