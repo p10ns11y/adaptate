@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Whether this schema layer makes input optional (e.g. `ZodOptional`), i.e.
@@ -32,10 +32,10 @@ export type Config<T = unknown> =
       ? {
           [key: string]: Config<unknown> | undefined;
         } & {
-          '*'?: Config<unknown>;
+          "*"?: Config<unknown>;
         }
       : T extends readonly (infer U)[]
-        ? { '*'?: Config<U> }
+        ? { "*"?: Config<U> }
         : T extends object
           ? { [K in keyof T]?: Config<T[K]> }
           : never);
@@ -46,15 +46,12 @@ export type Config<T = unknown> =
  */
 export function transformSchema<
   TSchema extends z.ZodType,
-  TConfig extends Config<z.infer<TSchema>>
->(
-  schema: TSchema,
-  config: TConfig
-): TSchema {
+  TConfig extends Config<z.infer<TSchema>>,
+>(schema: TSchema, config: TConfig): TSchema {
   // Runtime implementation (existing logic)
   function extendSchema(
     partialSchema: z.ZodObject<any>,
-    partialConfig: any
+    partialConfig: any,
   ): z.ZodObject<any> {
     const unwrappedPartialSchema = isOptional(partialSchema)
       ? (partialSchema as any).unwrap()
@@ -62,7 +59,7 @@ export function transformSchema<
 
     if (
       unwrappedPartialSchema instanceof z.ZodObject &&
-      typeof partialConfig === 'object' &&
+      typeof partialConfig === "object" &&
       !Array.isArray(partialConfig)
     ) {
       const shape = unwrappedPartialSchema.shape;
@@ -73,11 +70,11 @@ export function transformSchema<
             return [key, unwrappedValue];
           } else if (partialConfig[key] === false) {
             return [key, unwrappedValue.optional()];
-          } else if (typeof partialConfig[key] === 'object') {
+          } else if (typeof partialConfig[key] === "object") {
             return [key, extendSchema(value, partialConfig[key])];
           }
           return [key, value];
-        })
+        }),
       );
 
       let updatedPartialSchema = z.object(newShape);
@@ -88,10 +85,10 @@ export function transformSchema<
       });
     }
 
-    if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig['*']) {
+    if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig["*"]) {
       const elementSchema = unwrappedPartialSchema.element as z.ZodObject<any>;
       let updatedPartialSchema = z.array(
-        extendSchema(elementSchema, partialConfig['*'])
+        extendSchema(elementSchema, partialConfig["*"]),
       );
       return updatedPartialSchema as any;
     }
@@ -100,23 +97,23 @@ export function transformSchema<
 
   if (
     !(schema instanceof z.ZodObject) &&
-    !(schema instanceof z.ZodArray && (config as Record<string, unknown>)['*'])
+    !(schema instanceof z.ZodArray && (config as Record<string, unknown>)["*"])
   ) {
-    throw new Error('The given schema must be a Zod object.');
+    throw new Error("The given schema must be a Zod object.");
   }
 
   let updatedSchema: z.ZodType = schema;
 
-  if (schema instanceof z.ZodArray && (config as any)['*']) {
+  if (schema instanceof z.ZodArray && (config as any)["*"]) {
     let transformedElement = transformSchema(
       schema.element as z.ZodType,
-      (config as any)['*']
+      (config as any)["*"],
     );
     updatedSchema = z.array(
       z.object({
         ...(schema.element as z.ZodObject<any>).shape,
         ...(transformedElement as z.ZodObject<any>).shape,
-      })
+      }),
     );
   } else {
     // Guard above ensures this is a `ZodObject` whenever the array branch is not taken.
@@ -132,10 +129,7 @@ export function transformSchema<
 }
 
 export function makeConditionalSchemaTransformer(data: any) {
-  return function conditionalSchemaTransformer(
-    schema: z.ZodType,
-    config: any
-  ) {
+  return function conditionalSchemaTransformer(schema: z.ZodType, config: any) {
     let transformer = {
       run: () => schema.parse(data),
       schema: schema,
@@ -143,7 +137,7 @@ export function makeConditionalSchemaTransformer(data: any) {
     };
     if (
       schema instanceof z.ZodObject &&
-      typeof config === 'object' &&
+      typeof config === "object" &&
       !Array.isArray(config)
     ) {
       const shape = schema.shape;
@@ -151,22 +145,22 @@ export function makeConditionalSchemaTransformer(data: any) {
         Object.entries(shape).map(([key, value]: [string, any]) => {
           if (
             config[key] &&
-            (config[key].requiredIf || typeof config[key] === 'function')
+            (config[key].requiredIf || typeof config[key] === "function")
           ) {
             const condition = config[key].requiredIf ?? config[key];
-            if (typeof condition === 'function' && condition(data)) {
+            if (typeof condition === "function" && condition(data)) {
               return [key, value.unwrap()];
             }
           } else if (config[key]) {
             transformer.staticConfig[key] = config[key];
           }
           return [key, value];
-        })
+        }),
       );
 
       let updatedSchema = transformSchema(
         z.object(newShape),
-        transformer.staticConfig
+        transformer.staticConfig,
       );
 
       transformer.run = () => updatedSchema.parse(data);
@@ -176,3 +170,11 @@ export function makeConditionalSchemaTransformer(data: any) {
     return transformer;
   };
 }
+
+export {
+  transformPartialSchema,
+  validatePartialAgainstConfigs,
+  makeStreamingConditionalTransformer,
+  type DeepPartial,
+  type PartialValidationResult,
+} from "./partial";
