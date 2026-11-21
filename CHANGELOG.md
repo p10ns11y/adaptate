@@ -41,3 +41,11 @@ All notable changes to this project will be documented in this file.
 - Full documentation update (READMEs, AGENTS.md, `.deepPartial()` examples)
 
 **Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
+
+## Unreleased 2.3.0 — Streaming partial validation (RFC-001)
+
+### Added
+- `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `DeepPartial`.
+- `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
+- CI job on the latest zod.
+
