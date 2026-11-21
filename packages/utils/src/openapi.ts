@@ -1,5 +1,7 @@
-import yaml from 'js-yaml';
 import { z, globalRegistry } from 'zod';
+
+import { dereferenceOpenApiDocument } from './dereference-local.ts';
+import { parseSpecDocumentText } from './parse-spec-document.ts';
 
 import {
   coalesceZodObjectShape,
@@ -362,13 +364,12 @@ export function zodToOpenAPISchema(zodSchema: z.ZodType): any {
 export { getYamlContent } from './load-yaml';
 
 // Keep the other functions (fetch, getDereferenced...) unchanged for compatibility
-export async function fetchYamlContent(webURL: string) {
+export async function fetchYamlContent(webURL: string): Promise<any> {
   let response = await globalThis.fetch(webURL, {
     headers: { 'Content-Type': 'text/yaml' },
     mode: 'cors',
   });
-  let openapiDocument = yaml.load(await response.text());
-  return openapiDocument;
+  return parseSpecDocumentText(await response.text());
 }
 
 export type ServerOpenAPISpecParams = {
@@ -400,9 +401,7 @@ export async function getDereferencedOpenAPIDocument(params: OpenAPISpecParams) 
       );
     }
 
-    let SwaggerParser = await import('@apidevtools/json-schema-ref-parser');
-    let dereferenced = await SwaggerParser.default.dereference(openapiDocument);
-    return dereferenced;
+    return await dereferenceOpenApiDocument(openapiDocument);
   } catch (error: any) {
     throw new Error(`Error reading OpenAPI document: ${error?.message || ''}`);
   }

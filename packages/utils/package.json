@@ -31,19 +31,27 @@
     "test:pkg": "vitest run --config ../../vitest.config.ts src/__tests__",
     "test:pkg:watch": "vitest --config ../../vitest.config.ts src/__tests__"
   },
-  "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^15.3.5",
-    "js-yaml": "^4.1.1"
-  },
   "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^15.3.5",
     "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.1",
     "terser": "^5.51.2",
     "typescript": "6.0.3",
     "vite": "^8.3.8",
     "zod": "^4.6.7"
   },
   "peerDependencies": {
+    "@apidevtools/json-schema-ref-parser": "^15.3.5",
+    "js-yaml": "^4.1.1",
     "zod": "^3.25.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@apidevtools/json-schema-ref-parser": {
+      "optional": true
+    },
+    "js-yaml": {
+      "optional": true
+    }
   },
   "files": [
     "build",
