@@ -31,7 +31,7 @@
 pnpm add @adaptate/core zod
 ```
 
-## See it in 10 seconds
+## Before and after
 
 A model is streaming a tool call. So far it has sent `{"title":"Pas`.
 
