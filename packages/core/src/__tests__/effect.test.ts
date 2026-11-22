@@ -13,6 +13,7 @@ import {
   validate,
   validatePartial,
 } from "../effect";
+import { type AgUiDeltaEvent } from "../stream";
 
 const recipe = z.object({
   title: z.string().optional(),
@@ -315,6 +316,30 @@ describe("createEffectStreamValidator", () => {
       fed.agUi({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: "x" }),
     );
     expect(outcome?.partial).toEqual({ title: "fed" });
+    expect(
+      Effect.runSync(
+        fed.agUi({
+          type: "REASONING_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fed.agUi({
+          type: "THINKING_TEXT_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(Effect.runSync(fed.agUi({} as unknown as AgUiDeltaEvent))).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fed.agUi({ delta: '{"title":"Nope"}' } as unknown as AgUiDeltaEvent),
+      ),
+    ).toBeUndefined();
     const streamed = Effect.runSync(
       Stream.runCollect(
         fed.agUiStream(
@@ -328,6 +353,25 @@ describe("createEffectStreamValidator", () => {
   it("accumulates AG-UI deltas per call", () => {
     const fresh = createEffectStreamValidator(recipe, configs);
     expect(Effect.runSync(fresh.agUi({ type: "RUN_STARTED" }))).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fresh.agUi({
+          type: "REASONING_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fresh.agUi({
+          type: "THINKING_TEXT_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(Effect.runSync(fresh.agUi({} as unknown as AgUiDeltaEvent))).toBeUndefined();
     const parsed = Effect.runSync(
       fresh.agUi({
         type: "TOOL_CALL_ARGS",

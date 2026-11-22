@@ -10,7 +10,7 @@ import {
 type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
 
 function completeJson(text: string): string {
-  const stack: string[] = [];
+  let closers = "";
   let inString = false;
   let escaped = false;
   for (const char of text) {
@@ -19,22 +19,20 @@ function completeJson(text: string): string {
       else if (char === "\\") escaped = true;
       else if (char === '"') inString = false;
     } else if (char === '"') inString = true;
-    else if (char === "{") stack.push("}");
-    else if (char === "[") stack.push("]");
-    else if (char === "}" || char === "]") stack.pop();
+    else if (char === "{") closers = "}" + closers;
+    else if (char === "[") closers = "]" + closers;
+    else if (char === "}" || char === "]") closers = closers.slice(1);
   }
-  let body = text;
-  if (inString) body = (escaped ? body.slice(0, -1) : body) + '"';
-  body = body.replace(/[\s,:]+$/, "");
-  return body + stack.reverse().join("");
+  let closed = inString ? (escaped ? text.slice(0, -1) : text) + '"' : text;
+  return closed.replace(/[\s,:]+$/, "") + closers;
 }
 
 export function parsePartialJson(text: string): unknown {
-  for (let end = text.length; end > 0; end -= 1) {
+  for (let end = text.length; end--; ) {
     try {
-      return JSON.parse(completeJson(text.slice(0, end)));
+      return JSON.parse(completeJson(text.slice(0, end + 1)));
     } catch {
-      continue;
+      // The prefix is not JSON yet.
     }
   }
   return undefined;
@@ -125,15 +123,18 @@ export function agUiValidatorWith<
       }
     | undefined {
     const kind = event.type;
-    const id = kind[1] === "O" ? event.toolCallId : event.messageId;
-    const tail = kind.at(-1);
-    if (tail === "D") {
-      if (id !== undefined) slots.delete(id);
+    if (kind === "TOOL_CALL_END" || kind === "TEXT_MESSAGE_END") {
+      const ended = kind === "TOOL_CALL_END" ? event.toolCallId : event.messageId;
+      if (ended !== undefined) slots.delete(ended);
       return undefined;
     }
-    if ((tail !== "S" && tail !== "T") || id === undefined || typeof event.delta !== "string") {
-      return undefined;
-    }
+    const id =
+      kind === "TOOL_CALL_ARGS"
+        ? event.toolCallId
+        : kind === "TEXT_MESSAGE_CONTENT"
+          ? event.messageId
+          : undefined;
+    if (id === undefined || typeof event.delta !== "string") return undefined;
     let slot = slots.get(id);
     if (!slot) slots.set(id, (slot = [makeFeed(), undefined, undefined]));
     const value = slot[0](event.delta);
@@ -147,11 +148,8 @@ export function agUiValidatorWith<
       results: slot[2] as Results<TConfigs>,
     };
   };
-  function close(id: string) {
-    slots.delete(id);
-  }
   const api = push as typeof push & { close(id: string): void };
-  api.close = close;
+  api.close = (id) => slots.delete(id);
   return api;
 }
 

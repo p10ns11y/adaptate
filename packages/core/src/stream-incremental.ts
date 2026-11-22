@@ -330,12 +330,10 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       const structureSame =
         cachedCopy !== undefined && frame[frameRevision] === frame[frameCachedRevision];
       if (!deepest && structureSame) {
-        const target = index === 0 ? copyContainer(cachedCopy) : cachedCopy;
+        const target = copyContainer(cachedCopy);
         defineOwn(target, childLink as string, childCopy);
-        if (index === 0) {
-          frame[frameCached] = target;
-          frame[frameCachedRevision] = frame[frameRevision];
-        }
+        frame[frameCached] = target;
+        frame[frameCachedRevision] = frame[frameRevision];
         childCopy = target;
         childLink = frame[frameLink];
         continue;

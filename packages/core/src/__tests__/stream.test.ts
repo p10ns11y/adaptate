@@ -7,6 +7,7 @@ import {
   createStreamValidator,
   parsePartialJson,
   validateStructuredOutput,
+  type AgUiDeltaEvent,
 } from "../stream";
 import { createAgUiPartialValidator as createIncrementalAgUiPartialValidator } from "../stream-incremental";
 import { createPartialJsonParser } from "./partial-json-parser";
@@ -301,6 +302,28 @@ describe("createIncrementalAgUiPartialValidator", () => {
       expect(push({ type: "TEXT_MESSAGE_END", messageId: "m1" })).toBeUndefined();
       expect(push({ type: "TOOL_CALL_END" })).toBeUndefined();
       expect(push({ type: "TEXT_MESSAGE_END" })).toBeUndefined();
+      expect(
+        push({
+          type: "REASONING_MESSAGE_CONTENT",
+          messageId: "m1",
+          delta: '{"title":"Nope"}',
+        }),
+      ).toBeUndefined();
+      expect(
+        push({
+          type: "THINKING_TEXT_MESSAGE_CONTENT",
+          messageId: "m1",
+          delta: '{"title":"Nope"}',
+        }),
+      ).toBeUndefined();
+      expect(push({} as unknown as AgUiDeltaEvent)).toBeUndefined();
+      expect(
+        push({ delta: '{"title":"Nope"}' } as unknown as AgUiDeltaEvent),
+      ).toBeUndefined();
+      expect(
+        push({ type: "TEXT_MESSAGE_CONTENT", messageId: "m1", delta: '{"title":"Kept"}' })
+          ?.partial,
+      ).toEqual({ title: "Kept" });
       push.close("t1");
       expect(
         push({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: "{" })?.partial,

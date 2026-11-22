@@ -182,6 +182,44 @@ describe("incremental partial JSON", () => {
     );
   });
 
+  it("leaves earlier snapshots unchanged across later chunks", () => {
+    const feed = createPartialJsonFeed();
+    const first = feed('{"a":{"b":{"c":"x');
+    const firstText = JSON.stringify(first);
+    const second = feed("yz");
+    expect(JSON.stringify(first)).toBe(firstText);
+    expect(first).toEqual({ a: { b: { c: "x" } } });
+    expect(second).toEqual({ a: { b: { c: "xyz" } } });
+    fc.assert(
+      fc.property(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.array(fc.integer({ min: 1, max: 6 }), { minLength: 1, maxLength: 8 }),
+        (value, widths) => {
+          const text = JSON.stringify(value);
+          const partialFeed = createPartialJsonFeed();
+          const snapshots: unknown[] = [];
+          const frozen: string[] = [];
+          let cursor = 0;
+          let widthIndex = 0;
+          while (cursor < text.length) {
+            const width = widths[widthIndex % widths.length] ?? 1;
+            widthIndex += 1;
+            const got = partialFeed(text.slice(cursor, cursor + width));
+            cursor += width;
+            for (let earlier = 0; earlier < snapshots.length; earlier += 1) {
+              expect(JSON.stringify(snapshots[earlier])).toBe(frozen[earlier]);
+            }
+            if (got !== undefined) {
+              snapshots.push(got);
+              frozen.push(JSON.stringify(got));
+            }
+          }
+        },
+      ),
+      { numRuns: 40 },
+    );
+  });
+
   it("joins a split surrogate pair at every offset", () => {
     const source = '"\\ud83d\\ude00"';
     for (let cut = 0; cut <= source.length; cut += 1) {

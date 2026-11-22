@@ -9,6 +9,6 @@ export const heapTrials = 5;
 export const gateLimit = 1.05;
 
 export const streamIncrementalBaseline = {
-  full: { minBytes: 462498, gzipBytes: 96413 },
-  own: { minBytes: 8440, gzipBytes: 3670 },
+  full: { minBytes: 462515, gzipBytes: 96391 },
+  own: { minBytes: 8458, gzipBytes: 3651 },
 };
