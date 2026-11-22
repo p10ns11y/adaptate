@@ -110,3 +110,9 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
 `@adaptate/core/stream-incremental` reads each character of that grocery order once: 966 visits. A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+
+## References
+
+Donald E. Knuth, ["Structured Programming with go to Statements"](https://doi.org/10.1145/356635.356640), ACM Computing Surveys 6(4), 1974: "We should forget about small efficiencies, say about 97% of the time... Yet we should not pass up our opportunities in that critical 3%."
+
+We measured that the full re-parse per chunk was the critical 3% and optimized only that, leaving `./stream` untouched.
