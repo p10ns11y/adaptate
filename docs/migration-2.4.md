@@ -1,6 +1,12 @@
 ---
 title: "Migration 2.4"
 description: "YAML and the ref parser became optional peers between 2.3 and 2.4."
+answer: "Version 2.4 of @adaptate/utils makes js-yaml and the JSON Schema ref parser optional peers. Install js-yaml only to parse YAML, and the ref parser only for remote or file $ref pointers."
+faq:
+  - question: "Do I need to change code to upgrade?"
+    answer: "No code change is needed. Install the optional peers your app uses."
+  - question: "What is new in @adaptate/core?"
+    answer: "@adaptate/core/standard validates a Standard Schema, and @adaptate/core/effect runs checks in Effect."
 ---
 
 # Migration 2.3 → 2.4

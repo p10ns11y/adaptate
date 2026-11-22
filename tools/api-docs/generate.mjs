@@ -34,7 +34,10 @@ let guideOrder = [
   "transform.md",
   "streaming.md",
   "incremental-parser.md",
+  "ag-ui.md",
+  "web-streams.md",
   "openapi.md",
+  "zod.md",
   "effect.md",
   "typescript.md",
   "subpaths.md",
@@ -95,6 +98,9 @@ function parseFrontmatter(markdown) {
   let body = markdown.slice(end + "\n---\n".length);
   let frontmatter = {};
   for (let line of block.split("\n")) {
+    if (/^[\s-]/.test(line)) {
+      continue;
+    }
     let separator = line.indexOf(":");
     if (separator === -1) {
       continue;

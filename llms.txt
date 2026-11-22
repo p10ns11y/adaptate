@@ -10,7 +10,10 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Transform](docs/transform.md): One Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](docs/streaming.md): Check a tool call while the JSON is still arriving.
 - [Incremental partial JSON](docs/incremental-parser.md): Tokenize a JSON stream once and reuse closed values.
+- [AG-UI](docs/ag-ui.md): Check AG-UI TOOL_CALL_ARGS deltas against each view while the JSON is still arriving.
+- [Web streams](docs/web-streams.md): Feed a ReadableStream, server-sent events, or a Node stream into the incremental parser.
 - [OpenAPI](docs/openapi.md): Turn an OpenAPI schema into Zod, and write a Zod schema back out.
+- [Zod](docs/zod.md): Use one Zod schema with a Config per view, and check it through the Standard Schema interface.
 - [Effect](docs/effect.md): Run the same checks in an Effect pipeline. Effect is an optional peer.
 - [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
 - [Subpaths](docs/subpaths.md): The published entry points, and which peers each one loads.

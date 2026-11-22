@@ -1,6 +1,12 @@
 ---
 title: "Development"
 description: "Install, test, and build this repository with pnpm."
+answer: "Develop adaptate with pnpm 11.1.1 on Node 24. Run pnpm install, pnpm lint, pnpm test, and pnpm build. npm install at the repository root is not supported."
+faq:
+  - question: "Why not npm install?"
+    answer: "npm does not apply the supply-chain settings in .npmrc and pnpm-workspace.yaml, and the tree can diverge from CI."
+  - question: "How do I refresh the API reference?"
+    answer: "Run pnpm build, then pnpm docs:api. The verify job fails when docs/api or llms.txt drift."
 ---
 
 # Development

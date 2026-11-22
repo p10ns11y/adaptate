@@ -1,6 +1,12 @@
 ---
 title: "Subpaths"
 description: "The published entry points, and which peers each one loads."
+answer: "@adaptate/core publishes five entry points: the root, /stream, /stream-incremental, /standard, and /effect. zod is the only required peer, and effect loads only from /effect."
+faq:
+  - question: "Which entry point should a chat UI use?"
+    answer: "@adaptate/core/stream-incremental for long streams, or @adaptate/core/stream for the re-parse path and createFrameThrottle."
+  - question: "Which @adaptate/utils path loads a spec from disk?"
+    answer: "@adaptate/utils/openapi or @adaptate/utils/ssr."
 ---
 
 # Subpaths

@@ -1,6 +1,12 @@
 ---
 title: "Performance"
 description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
+answer: "CI fails a pull request when any benchmark case is more than 5% slower than its base. A local A/B run compares raw Zod, Zod plus adaptate, and valibot on a full document, partial chunks, and bundle size."
+faq:
+  - question: "How much slower is adaptate than raw Zod?"
+    answer: "In the recorded run, a parsed partial chunk costs 0.835 µs against 0.606 µs for raw Zod, and raw Zod cannot check partial JSON."
+  - question: "What does CI gate on?"
+    answer: "scripts/bench-compare.mjs fails when any case is more than 5% slower than the base commit."
 ---
 
 # Performance

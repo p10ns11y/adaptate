@@ -1,6 +1,12 @@
 ---
 title: "Optional peers"
 description: "effect, js-yaml, and the ref parser load only when that code is imported."
+answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers. Each loads only when the code that needs it is imported or called. zod is the only required peer."
+faq:
+  - question: "Do I need js-yaml for JSON specs?"
+    answer: "No. js-yaml loads only while parsing YAML."
+  - question: "When is the ref parser needed?"
+    answer: "Only for remote or file $ref pointers. In-document $ref pointers use the local resolver."
 ---
 
 # Optional peers

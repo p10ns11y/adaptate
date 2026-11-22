@@ -1,6 +1,12 @@
 ---
 title: "Proof"
 description: "Each front-page sentence mapped to a test, a script, or a CI job."
+answer: "Each claim on the adaptate front page maps to a test, a script, or a CI job in the repository. This page lists every claim next to its proof."
+faq:
+  - question: "Where is the partial-stream invariant tested?"
+    answer: "In packages/core/src/__tests__/partial-stream.invariants.property.test.ts."
+  - question: "How are the published types checked?"
+    answer: "verify-published-types.mjs runs in the verify job, and ts7-consumer typechecks the packed tarballs."
 ---
 
 # Proof

@@ -9,6 +9,12 @@ Source: docs/index.md
 ---
 title: "Docs"
 description: "Where to read about views, streaming, OpenAPI, types, and the generated API."
+answer: "adaptate docs cover views, streaming, OpenAPI, Zod, Effect, web streams, TypeScript, and an API reference generated from the published declaration files."
+faq:
+  - question: "Where do I start?"
+    answer: "Start with Transform for one schema and a config per view. Read Streaming next if a model sends JSON tool calls."
+  - question: "Is the API reference generated?"
+    answer: "Yes. pnpm docs:api writes docs/api from the .d.ts files that ship in @adaptate/core and @adaptate/utils."
 ---
 
 # Docs
@@ -17,14 +23,17 @@ One schema. Each part of the app checks only the fields it uses. A screen, a for
 
 A React component that checks its own view is [examples/react-view](../examples/react-view). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
 
-The pages below stay in this folder so a later docs site can pick them up. Each page has a `title` and a `description`. [llms.txt](../llms.txt) lists them for agents. [llms-full.txt](../llms-full.txt) contains the page text.
+The site builds these pages into /docs/. Each page has a `title` and a `description`. [llms.txt](../llms.txt) lists them for agents. [llms-full.txt](../llms-full.txt) contains the page text.
 
 ## Guides
 
 - [Transform](transform.md): one Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](streaming.md): check a tool call while the JSON is still arriving.
 - [Incremental partial JSON](incremental-parser.md): scan each new character of a JSON stream once.
+- [AG-UI](ag-ui.md): check AG-UI tool-call deltas against each view.
+- [Web streams](web-streams.md): feed a ReadableStream, SSE, or a Node stream into the parser.
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
+- [Zod](zod.md): one Zod schema, a `Config` per view, and the Standard Schema interface.
 - [Effect](effect.md): run the same checks in an Effect pipeline.
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
@@ -46,6 +55,14 @@ Source: docs/transform.md
 ---
 title: "Transform"
 description: "One Zod schema, and a config that marks which fields each screen requires."
+answer: "transformSchema(schema, config) returns a Zod schema where the fields marked true in the config are required. Fields the config does not mention keep their original optionality."
+faq:
+  - question: "What does transformSchema return?"
+    answer: "A Zod schema. The configured fields are required and every other field stays as it was."
+  - question: "How do I require a field on every array item?"
+    answer: "Use the '*' key, for example { tags: { '*': true } }."
+  - question: "How do I require a field only in some cases?"
+    answer: "Use makeConditionalSchemaTransformer(data)(schema, config) with requiredIf: (data) => boolean."
 ---
 
 # Transform
@@ -137,6 +154,14 @@ Source: docs/streaming.md
 ---
 title: "Streaming"
 description: "Check a tool call while the JSON is still arriving."
+answer: "@adaptate/core/stream checks a partial JSON document against each named config while text is still arriving. createAgUiPartialValidator turns AG-UI deltas into a partial value and a per-config result."
+faq:
+  - question: "What happens when a chunk cuts a string in half?"
+    answer: "parsePartialJson closes the open string, objects, and arrays, so {\"title\":\"Pas becomes { title: \"Pas\" }."
+  - question: "Does partial checking reject missing fields?"
+    answer: "No. partial(value) keeps absent fields optional and still type-checks the fields that are present."
+  - question: "Which peer does it need?"
+    answer: "Only zod, version ^3.25.0 or ^4.0.0."
 ---
 
 # Streaming
@@ -180,6 +205,12 @@ Source: docs/incremental-parser.md
 ---
 title: "Incremental partial JSON"
 description: "Tokenize a JSON stream once and reuse closed values."
+answer: "@adaptate/core/stream-incremental tokenizes each JSON chunk once. createPartialJsonFeed appends finished values to the open container and reuses closed values, so a push reads only the new characters."
+faq:
+  - question: "How is it different from @adaptate/core/stream?"
+    answer: "stream re-parses the whole prefix on each chunk. stream-incremental reads each new character once."
+  - question: "Does it accept bytes?"
+    answer: "Yes. fromAsyncIterable takes strings or UTF-8 bytes and decodes bytes with TextDecoder in stream mode."
 ---
 
 # Incremental partial JSON
@@ -231,6 +262,313 @@ for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) 
 Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order the caller reads 966 characters. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
+# AG-UI
+
+Source: docs/ag-ui.md
+
+---
+title: "AG-UI"
+description: "Check AG-UI TOOL_CALL_ARGS deltas against each view while the JSON is still arriving."
+answer: "createAgUiPartialValidator(schema, configs) returns a push function. Pass it each AG-UI TOOL_CALL_ARGS or TEXT_MESSAGE_CONTENT event, and it returns the partial value plus a valid flag for every named config."
+faq:
+  - question: "Which AG-UI events does push read?"
+    answer: "TOOL_CALL_ARGS keyed by toolCallId and TEXT_MESSAGE_CONTENT keyed by messageId. TOOL_CALL_END and TEXT_MESSAGE_END drop the buffer for that id."
+  - question: "Should I import it from /stream or /stream-incremental?"
+    answer: "Both export createAgUiPartialValidator with the same shape. /stream-incremental tokenizes each chunk once, which matters for long tool calls."
+  - question: "What does push return for a chunk that does not parse yet?"
+    answer: "undefined. The next chunk that completes a value returns a result."
+---
+
+# AG-UI
+
+An AG-UI agent streams a tool call as `TOOL_CALL_ARGS` events. Each event carries a `delta` of JSON text. `push` keeps one buffer per `toolCallId` and checks the partial value against every named config.
+
+```mermaid
+flowchart LR
+  Agent["AG-UI agent"] -->|"TOOL_CALL_ARGS delta"| Push["push(event)"]
+  Push --> Buffer["buffer per toolCallId"]
+  Buffer --> Partial["partial value"]
+  Partial --> Card["card config"]
+  Partial --> Kitchen["kitchen config"]
+```
+
+```ts
+import { z } from "zod";
+import { createAgUiPartialValidator } from "@adaptate/core/stream-incremental";
+
+const push = createAgUiPartialValidator(
+  z.object({ title: z.string(), servings: z.number() }),
+  { card: { title: true } },
+);
+const check = push({ type: "TOOL_CALL_ARGS", toolCallId: "call-1", delta: '{"title":"Pas' });
+```
+
+`check.partial` is `{ title: "Pas" }` and `check.results.card.valid` is `true`. `JSON.parse` on the same text throws.
+
+The file below is typechecked and run by the site tests. It builds the re-parse and incremental validators for one order schema.
+
+<!-- snippet: usages/ag-ui.ts -->
+```ts
+import { createAgUiPartialValidator as createReparseAgUi } from "@adaptate/core/stream";
+import { createAgUiPartialValidator as createIncrementalAgUi } from "@adaptate/core/stream-incremental";
+
+import { cardConfig, orderSchema } from "../order-schema";
+
+export function createReparseOrderValidator() {
+  return createReparseAgUi(orderSchema, { card: cardConfig });
+}
+
+export function createIncrementalOrderValidator() {
+  return createIncrementalAgUi(orderSchema, { card: cardConfig });
+}
+```
+<!-- /snippet -->
+
+The order schema and the card config:
+
+<!-- snippet: order-schema.ts -->
+```ts
+import type { Config } from "@adaptate/core";
+import { z } from "zod";
+
+export let orderSchema = z.object({
+  title: z.string(),
+  notes: z.string(),
+  items: z.array(
+    z.object({
+      sku: z.string(),
+      qty: z.number(),
+    }),
+  ),
+});
+
+export let partialOrderSchema = orderSchema.partial();
+
+export let cardConfig = {
+  title: true,
+} satisfies Config<z.infer<typeof partialOrderSchema>>;
+```
+<!-- /snippet -->
+
+See [Streaming](streaming.md) for `partial` and `final`, and [Incremental partial JSON](incremental-parser.md) for the tokenizer.
+
+
+# Web streams
+
+Source: docs/web-streams.md
+
+---
+title: "Web streams"
+description: "Feed a ReadableStream, server-sent events, or a Node stream into the incremental parser."
+answer: "fromAsyncIterable from @adaptate/core/stream-incremental reads any async sequence of strings or UTF-8 bytes and yields a partial value after each chunk. A ReadableStream, an SSE response, and a Node Readable all become that sequence."
+faq:
+  - question: "Do I need an SDK to read OpenAI or Anthropic deltas?"
+    answer: "No. A small async generator maps each provider event to its argument text, and fromAsyncIterable reads that."
+  - question: "Can I read server-sent events from fetch?"
+    answer: "Yes. Read response.body, split blocks on a blank line, and pass each data line to your handler."
+  - question: "Does it work in Node pipelines?"
+    answer: "Yes. Pass the pipeline source to fromAsyncIterable inside stream/promises pipeline."
+---
+
+# Web streams
+
+Every source below ends in the same place: an async sequence of strings or bytes that `fromAsyncIterable` turns into partial values.
+
+```mermaid
+flowchart LR
+  Web["ReadableStream"] --> Iter["async iterable of strings or bytes"]
+  Sse["SSE response or EventSource"] --> Iter
+  Node["Node Readable"] --> Iter
+  Iter --> Feed["fromAsyncIterable"]
+  Feed --> Value["partial value per chunk"]
+```
+
+```ts
+import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
+
+async function* chunks() {
+  yield '{"title":';
+  yield '"Pas';
+}
+
+for await (const partialValue of fromAsyncIterable(chunks())) {
+  console.log(partialValue);
+}
+```
+
+## ReadableStream
+
+<!-- snippet: usages/web-readable.ts -->
+```ts
+import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
+
+export async function* iterateReadable(
+  stream: ReadableStream<Uint8Array>,
+): AsyncGenerator<Uint8Array> {
+  let reader = stream.getReader();
+  try {
+    for (;;) {
+      let step = await reader.read();
+      if (step.done) return;
+      if (step.value) yield step.value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export async function collectWebStream(stream: ReadableStream<Uint8Array>): Promise<unknown[]> {
+  let partials: unknown[] = [];
+  for await (let partialValue of fromAsyncIterable(iterateReadable(stream))) {
+    partials.push(partialValue);
+  }
+  return partials;
+}
+```
+<!-- /snippet -->
+
+## Server-sent events
+
+<!-- snippet: usages/sse.ts -->
+```ts
+export function frameSseData(delta: string): string {
+  return `data: ${delta}\n\n`;
+}
+
+export async function readSse(response: Response, onDelta: (delta: string) => void): Promise<void> {
+  let body = response.body;
+  if (!body) return;
+  let reader = body.getReader();
+  let decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    for (;;) {
+      let step = await reader.read();
+      if (step.done) {
+        buffer += decoder.decode();
+        break;
+      }
+      buffer += decoder.decode(step.value, { stream: true });
+      buffer = emitSseBlocks(buffer, onDelta);
+    }
+    emitSseBlocks(`${buffer}\n\n`, onDelta);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export function attachEventSource(source: EventSource, onDelta: (delta: string) => void): () => void {
+  let onMessage = (event: MessageEvent) => {
+    if (typeof event.data !== "string") return;
+    if (event.data.length === 0 || event.data === "[DONE]") return;
+    onDelta(event.data);
+  };
+  source.addEventListener("message", onMessage);
+  return () => {
+    source.removeEventListener("message", onMessage);
+  };
+}
+
+export async function readSseFromFetch(
+  input: RequestInfo | URL,
+  onDelta: (delta: string) => void,
+): Promise<void> {
+  let response = await fetch(input);
+  await readSse(response, onDelta);
+}
+
+function emitSseBlocks(buffer: string, onDelta: (delta: string) => void): string {
+  let separator = buffer.indexOf("\n\n");
+  while (separator >= 0) {
+    let block = buffer.slice(0, separator);
+    buffer = buffer.slice(separator + 2);
+    emitSseBlock(block, onDelta);
+    separator = buffer.indexOf("\n\n");
+  }
+  return buffer;
+}
+
+function emitSseBlock(block: string, onDelta: (delta: string) => void): void {
+  let dataLines: string[] = [];
+  for (let line of block.split("\n")) {
+    if (!line.startsWith("data:")) continue;
+    let value = line.slice("data:".length);
+    dataLines.push(value.startsWith(" ") ? value.slice(1) : value);
+  }
+  if (dataLines.length === 0) return;
+  let data = dataLines.join("\n");
+  if (data.length === 0 || data === "[DONE]") return;
+  onDelta(data);
+}
+```
+<!-- /snippet -->
+
+## Node streams and provider deltas
+
+<!-- snippet: usages/node-stream.ts -->
+```ts
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
+
+export type OpenAiToolChunk = {
+  choices?: Array<{
+    delta?: {
+      tool_calls?: Array<{
+        function?: {
+          arguments?: string;
+        };
+      }>;
+    };
+  }>;
+};
+
+export type AnthropicInputChunk = {
+  delta?: {
+    type?: string;
+    partial_json?: string;
+  };
+};
+
+export async function* openAiArguments(
+  events: AsyncIterable<OpenAiToolChunk>,
+): AsyncGenerator<string> {
+  for await (let event of events) {
+    let delta = event.choices?.[0]?.delta?.tool_calls?.[0]?.function?.arguments;
+    if (typeof delta === "string" && delta.length > 0) yield delta;
+  }
+}
+
+export async function* anthropicInputJson(
+  events: AsyncIterable<AnthropicInputChunk>,
+): AsyncGenerator<string> {
+  for await (let event of events) {
+    let delta = event.delta;
+    if (
+      delta?.type === "input_json_delta" &&
+      typeof delta.partial_json === "string" &&
+      delta.partial_json.length > 0
+    ) {
+      yield delta.partial_json;
+    }
+  }
+}
+
+export async function collectNodeStream(readable: Readable): Promise<unknown[]> {
+  let partials: unknown[] = [];
+  await pipeline(readable, async function collect(source) {
+    for await (let partialValue of fromAsyncIterable(source as AsyncIterable<string | Uint8Array>)) {
+      partials.push(partialValue);
+    }
+  });
+  return partials;
+}
+```
+<!-- /snippet -->
+
+Each file is typechecked and run by the site tests.
+
+
 # OpenAPI
 
 Source: docs/openapi.md
@@ -238,6 +576,14 @@ Source: docs/openapi.md
 ---
 title: "OpenAPI"
 description: "Turn an OpenAPI schema into Zod, and write a Zod schema back out."
+answer: "@adaptate/utils converts an OpenAPI schema to Zod with openAPISchemaToZod, writes a Zod schema back out with zodToOpenAPISchema, and loads a spec from disk or the web with full $ref resolution."
+faq:
+  - question: "Can I load a YAML spec?"
+    answer: "Yes, with getDereferencedOpenAPIDocument. Install the optional peer js-yaml to parse YAML."
+  - question: "Can a converted schema have views?"
+    answer: "Yes. openAPISchemaToZod returns a Zod object, and transformSchema adds the per-view required fields."
+  - question: "Which OpenAPI keywords are supported?"
+    answer: "Types, enums, string formats and lengths, number bounds, array bounds, allOf, anyOf, oneOf, nullable, required, and resolved $ref."
 ---
 
 # OpenAPI
@@ -287,6 +633,128 @@ const openAPISchema = zodToOpenAPISchema(
 
 `json-schema-to-zod` and `zod-to-json-schema` cover cases these two functions do not.
 
+## Views from an OpenAPI schema
+
+The file below is typechecked and run by the site tests. It converts an OpenAPI object to Zod, then requires the title for a card view.
+
+<!-- snippet: usages/openapi.ts -->
+```ts
+import { transformSchema } from "@adaptate/core";
+import { openAPISchemaToZod } from "@adaptate/utils/openapi";
+import { z } from "zod";
+
+export let orderOpenApiSchema = {
+  type: "object",
+  required: ["title"],
+  properties: {
+    title: { type: "string" },
+    notes: { type: "string" },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["sku", "qty"],
+        properties: {
+          sku: { type: "string" },
+          qty: { type: "integer" },
+        },
+      },
+    },
+  },
+};
+
+let cardSchema: z.ZodType | undefined;
+
+export function cardSchemaFromOpenApi(): z.ZodType {
+  if (cardSchema) return cardSchema;
+  let converted = openAPISchemaToZod(orderOpenApiSchema);
+  if (!(converted instanceof z.ZodObject)) {
+    throw new Error("OpenAPI order schema was not an object");
+  }
+  cardSchema = transformSchema(converted, { title: true });
+  return cardSchema;
+}
+
+export function openApiCardReady(order: { title?: string }): boolean {
+  return cardSchemaFromOpenApi().safeParse(order).success;
+}
+```
+<!-- /snippet -->
+
+
+# Zod
+
+Source: docs/zod.md
+
+---
+title: "Zod"
+description: "Use one Zod schema with a Config per view, and check it through the Standard Schema interface."
+answer: "Write one Zod schema, then give each view a Config that marks the fields it needs. transformSchema(schema.partial(), config) returns a Zod schema for that view, and validateStandard checks it through ~standard."
+faq:
+  - question: "Which Zod versions are supported?"
+    answer: "zod ^3.25.0 or ^4.0.0, as a peer dependency."
+  - question: "Is the result still a Zod schema?"
+    answer: "Yes. It has parse, safeParse, and the ~standard interface, so any Standard Schema consumer can use it."
+  - question: "How does Config catch mistakes?"
+    answer: "Config<T> only accepts field paths that exist on T, so a typo fails at compile time."
+---
+
+# Zod
+
+One schema describes the data. Each view states which fields it needs. A title alone passes the card and fails the kitchen.
+
+```mermaid
+flowchart LR
+  Schema["recipe schema"] --> Partial["schema.partial()"]
+  Partial -->|"card config"| Card["card schema"]
+  Partial -->|"kitchen config"| Kitchen["kitchen schema"]
+  Card --> Standard["~standard validate"]
+```
+
+```ts
+import { z } from "zod";
+import { transformSchema } from "@adaptate/core";
+
+const recipe = z.object({ title: z.string(), servings: z.number() });
+transformSchema(recipe.partial(), { title: true }).parse({ title: "Pas" });
+```
+
+The file below is typechecked and run by the site tests.
+
+<!-- snippet: usages/zod.ts -->
+```ts
+import { transformSchema, type Config } from "@adaptate/core";
+import { validateStandard } from "@adaptate/core/standard";
+import { z } from "zod";
+
+export let recipeSchema = z.object({
+  title: z.string(),
+  servings: z.number(),
+});
+
+export type Recipe = z.infer<typeof recipeSchema>;
+
+export let cardConfig = { title: true } satisfies Config<Recipe>;
+export let kitchenConfig = { title: true, servings: true } satisfies Config<Recipe>;
+
+export let cardSchema = transformSchema(recipeSchema.partial(), cardConfig);
+export let kitchenSchema = transformSchema(recipeSchema.partial(), kitchenConfig);
+
+export function readyViews(recipe: Partial<Recipe>) {
+  return {
+    card: cardSchema.safeParse(recipe).success,
+    kitchen: kitchenSchema.safeParse(recipe).success,
+  };
+}
+
+export async function checkWithStandardSchema(recipe: unknown) {
+  return validateStandard(cardSchema, recipe);
+}
+```
+<!-- /snippet -->
+
+`validateStandard` comes from `@adaptate/core/standard`. It accepts any schema with `~standard.validate`, so a valibot or ArkType schema works the same way. See [Transform](transform.md) for config values and [TypeScript](typescript.md) for the published types.
+
 
 # Effect
 
@@ -295,6 +763,12 @@ Source: docs/effect.md
 ---
 title: "Effect"
 description: "Run the same checks in an Effect pipeline. Effect is an optional peer."
+answer: "@adaptate/core/effect runs the same adaptate checks inside an Effect pipeline. createEffectStreamValidator returns effects that fail with AdaptateParseError or AdaptateValidationError. effect is an optional peer."
+faq:
+  - question: "Does importing @adaptate/core load effect?"
+    answer: "No. Only @adaptate/core/effect imports effect."
+  - question: "Does an unmet config fail final(text)?"
+    answer: "No. final(text) reports { valid, issues } per config. final(text, configName) fails when that config is not met."
 ---
 
 # Effect
@@ -336,6 +810,40 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 
 `partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`. Pass a third argument, `makeFeed`, and those two methods call that feed instead. Omit it and they keep the re-parse feed.
 
+## A typechecked example
+
+The site tests run this file with `Effect.runPromise`. A missing title falls back on `AdaptateValidationError`. Truncated JSON still fails with `AdaptateParseError`.
+
+<!-- snippet: usages/effect.ts -->
+```ts
+import { Effect } from "effect";
+import { createEffectStreamValidator } from "@adaptate/core/effect";
+import { z } from "zod";
+
+let recipe = z.object({
+  title: z.string().optional(),
+  servings: z.number().optional(),
+});
+
+export let recipeValidator = createEffectStreamValidator(recipe, {
+  card: { title: true },
+  kitchen: { servings: true },
+});
+
+export function finalReport(text: string) {
+  return Effect.runPromise(recipeValidator.final(text));
+}
+
+export function cardOrFallback(text: string) {
+  return Effect.runPromise(
+    recipeValidator.final(text, "card").pipe(
+      Effect.catchTag("AdaptateValidationError", () => Effect.succeed({ title: "Untitled" })),
+    ),
+  );
+}
+```
+<!-- /snippet -->
+
 
 # TypeScript
 
@@ -344,6 +852,12 @@ Source: docs/typescript.md
 ---
 title: "TypeScript"
 description: "Types ship in the npm package. CI checks them on TypeScript 7 and 6."
+answer: "The adaptate packages ship their .d.ts files. Value types are inferred from the Zod schema, and CI typechecks the packed tarballs on TypeScript 7 and 6 with bundler, node16, and nodenext resolution."
+faq:
+  - question: "Do I need @types packages?"
+    answer: "No. Types ship inside @adaptate/core and @adaptate/utils."
+  - question: "Is Config type-checked?"
+    answer: "Yes. Config<T> checks field paths at compile time, including '*' on arrays."
 ---
 
 # TypeScript
@@ -374,6 +888,12 @@ Source: docs/subpaths.md
 ---
 title: "Subpaths"
 description: "The published entry points, and which peers each one loads."
+answer: "@adaptate/core publishes five entry points: the root, /stream, /stream-incremental, /standard, and /effect. zod is the only required peer, and effect loads only from /effect."
+faq:
+  - question: "Which entry point should a chat UI use?"
+    answer: "@adaptate/core/stream-incremental for long streams, or @adaptate/core/stream for the re-parse path and createFrameThrottle."
+  - question: "Which @adaptate/utils path loads a spec from disk?"
+    answer: "@adaptate/utils/openapi or @adaptate/utils/ssr."
 ---
 
 # Subpaths
@@ -416,6 +936,12 @@ Source: docs/optional-peers.md
 ---
 title: "Optional peers"
 description: "effect, js-yaml, and the ref parser load only when that code is imported."
+answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers. Each loads only when the code that needs it is imported or called. zod is the only required peer."
+faq:
+  - question: "Do I need js-yaml for JSON specs?"
+    answer: "No. js-yaml loads only while parsing YAML."
+  - question: "When is the ref parser needed?"
+    answer: "Only for remote or file $ref pointers. In-document $ref pointers use the local resolver."
 ---
 
 # Optional peers
@@ -452,6 +978,12 @@ Source: docs/performance.md
 ---
 title: "Performance"
 description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
+answer: "CI fails a pull request when any benchmark case is more than 5% slower than its base. A local A/B run compares raw Zod, Zod plus adaptate, and valibot on a full document, partial chunks, and bundle size."
+faq:
+  - question: "How much slower is adaptate than raw Zod?"
+    answer: "In the recorded run, a parsed partial chunk costs 0.835 µs against 0.606 µs for raw Zod, and raw Zod cannot check partial JSON."
+  - question: "What does CI gate on?"
+    answer: "scripts/bench-compare.mjs fails when any case is more than 5% slower than the base commit."
 ---
 
 # Performance
@@ -578,6 +1110,12 @@ Source: docs/proof.md
 ---
 title: "Proof"
 description: "Each front-page sentence mapped to a test, a script, or a CI job."
+answer: "Each claim on the adaptate front page maps to a test, a script, or a CI job in the repository. This page lists every claim next to its proof."
+faq:
+  - question: "Where is the partial-stream invariant tested?"
+    answer: "In packages/core/src/__tests__/partial-stream.invariants.property.test.ts."
+  - question: "How are the published types checked?"
+    answer: "verify-published-types.mjs runs in the verify job, and ts7-consumer typechecks the packed tarballs."
 ---
 
 # Proof
@@ -615,6 +1153,12 @@ Source: docs/migration-2.4.md
 ---
 title: "Migration 2.4"
 description: "YAML and the ref parser became optional peers between 2.3 and 2.4."
+answer: "Version 2.4 of @adaptate/utils makes js-yaml and the JSON Schema ref parser optional peers. Install js-yaml only to parse YAML, and the ref parser only for remote or file $ref pointers."
+faq:
+  - question: "Do I need to change code to upgrade?"
+    answer: "No code change is needed. Install the optional peers your app uses."
+  - question: "What is new in @adaptate/core?"
+    answer: "@adaptate/core/standard validates a Standard Schema, and @adaptate/core/effect runs checks in Effect."
 ---
 
 # Migration 2.3 → 2.4
@@ -641,6 +1185,12 @@ Source: docs/development.md
 ---
 title: "Development"
 description: "Install, test, and build this repository with pnpm."
+answer: "Develop adaptate with pnpm 11.1.1 on Node 24. Run pnpm install, pnpm lint, pnpm test, and pnpm build. npm install at the repository root is not supported."
+faq:
+  - question: "Why not npm install?"
+    answer: "npm does not apply the supply-chain settings in .npmrc and pnpm-workspace.yaml, and the tree can diverge from CI."
+  - question: "How do I refresh the API reference?"
+    answer: "Run pnpm build, then pnpm docs:api. The verify job fails when docs/api or llms.txt drift."
 ---
 
 # Development

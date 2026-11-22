@@ -1,6 +1,12 @@
 ---
 title: "TypeScript"
 description: "Types ship in the npm package. CI checks them on TypeScript 7 and 6."
+answer: "The adaptate packages ship their .d.ts files. Value types are inferred from the Zod schema, and CI typechecks the packed tarballs on TypeScript 7 and 6 with bundler, node16, and nodenext resolution."
+faq:
+  - question: "Do I need @types packages?"
+    answer: "No. Types ship inside @adaptate/core and @adaptate/utils."
+  - question: "Is Config type-checked?"
+    answer: "Yes. Config<T> checks field paths at compile time, including '*' on arrays."
 ---
 
 # TypeScript

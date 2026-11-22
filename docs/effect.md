@@ -1,6 +1,12 @@
 ---
 title: "Effect"
 description: "Run the same checks in an Effect pipeline. Effect is an optional peer."
+answer: "@adaptate/core/effect runs the same adaptate checks inside an Effect pipeline. createEffectStreamValidator returns effects that fail with AdaptateParseError or AdaptateValidationError. effect is an optional peer."
+faq:
+  - question: "Does importing @adaptate/core load effect?"
+    answer: "No. Only @adaptate/core/effect imports effect."
+  - question: "Does an unmet config fail final(text)?"
+    answer: "No. final(text) reports { valid, issues } per config. final(text, configName) fails when that config is not met."
 ---
 
 # Effect
@@ -41,3 +47,37 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 `validatePartial(schema, configs, partial)` fails on the first config that has errors, keeping that config's Zod issues. A thrown `ZodError` is kept as issues. Any other thrown cause becomes one custom issue with the error message.
 
 `partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`. Pass a third argument, `makeFeed`, and those two methods call that feed instead. Omit it and they keep the re-parse feed.
+
+## A typechecked example
+
+The site tests run this file with `Effect.runPromise`. A missing title falls back on `AdaptateValidationError`. Truncated JSON still fails with `AdaptateParseError`.
+
+<!-- snippet: usages/effect.ts -->
+```ts
+import { Effect } from "effect";
+import { createEffectStreamValidator } from "@adaptate/core/effect";
+import { z } from "zod";
+
+let recipe = z.object({
+  title: z.string().optional(),
+  servings: z.number().optional(),
+});
+
+export let recipeValidator = createEffectStreamValidator(recipe, {
+  card: { title: true },
+  kitchen: { servings: true },
+});
+
+export function finalReport(text: string) {
+  return Effect.runPromise(recipeValidator.final(text));
+}
+
+export function cardOrFallback(text: string) {
+  return Effect.runPromise(
+    recipeValidator.final(text, "card").pipe(
+      Effect.catchTag("AdaptateValidationError", () => Effect.succeed({ title: "Untitled" })),
+    ),
+  );
+}
+```
+<!-- /snippet -->

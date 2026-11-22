@@ -1,6 +1,12 @@
 ---
 title: "Incremental partial JSON"
 description: "Tokenize a JSON stream once and reuse closed values."
+answer: "@adaptate/core/stream-incremental tokenizes each JSON chunk once. createPartialJsonFeed appends finished values to the open container and reuses closed values, so a push reads only the new characters."
+faq:
+  - question: "How is it different from @adaptate/core/stream?"
+    answer: "stream re-parses the whole prefix on each chunk. stream-incremental reads each new character once."
+  - question: "Does it accept bytes?"
+    answer: "Yes. fromAsyncIterable takes strings or UTF-8 bytes and decodes bytes with TextDecoder in stream mode."
 ---
 
 # Incremental partial JSON
