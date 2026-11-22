@@ -269,7 +269,24 @@ describe("transformSchema", () => {
     ).toThrow();
   });
 
+  it("requires a field after converting an OpenAPI object and calling transformSchema", () => {
+    let recipe = openAPISchemaToZod({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        servings: { type: "integer" },
+      },
+    });
+    let kitchen = transformSchema(recipe, { servings: true });
+    expect(kitchen.parse({ title: "Pasta", servings: 2 })).toEqual({
+      title: "Pasta",
+      servings: 2,
+    });
+    expect(() => kitchen.parse({ title: "Pasta" })).toThrow();
+  });
+
   it("should handle array of objects at top level", () => {
+
     const baseSchema = z.array(
       z.object({
         name: z.string().optional(),
