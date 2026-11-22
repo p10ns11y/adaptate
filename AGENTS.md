@@ -6,6 +6,7 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 ## Structure
 - `packages/core/`: Schema transformation engine (`transformSchema`, `makeConditionalSchemaTransformer`)
 - `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
+- `apps/site/`: private static site (landing, docs, SEO). Build with `pnpm --filter adaptate-site build`; see [apps/site/README.md](apps/site/README.md)
 
 ## Using adaptate
 

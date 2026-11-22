@@ -6,6 +6,7 @@ packages:
   - tools/api-docs
   - examples/react-view
   - examples/live-load
+  - apps/site
 
 # --- Supply chain ---
 # Transitive deps must resolve from the registry / workspace (not arbitrary git URLs or tarballs).
