@@ -50,6 +50,8 @@ const check = push({
 
 The same partial reader returns the leaf of a 100,000-level document with the last character missing. [Streaming tool call](examples/streaming-tool-call)
 
+Streams partial JSON without re-reading what it already saw. [Numbers](docs/performance.md#measured).
+
 ## 30-second quickstart
 
 ```sh
