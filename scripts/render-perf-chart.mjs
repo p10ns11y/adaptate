@@ -6,7 +6,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const assetDirectory = resolve(scriptDirectory, "../assets");
 const sourcePath = resolve(assetDirectory, "perf-run.json");
 const libraryNames = ["zod", "adaptate", "valibot"];
-const bundleIds = [".", "./stream", "./standard", "./effect"];
+const bundleIds = [".", "./stream", "./stream-incremental", "./standard", "./effect"];
 
 function requireField(source, path) {
   let cursor = source;
@@ -73,6 +73,7 @@ function loadMeasurement() {
     importMedianMs: requireLibraryNumbers(source, "importMedianMs"),
     heapAfterBytes: requireLibraryNumbers(source, "heapAfterBytes"),
     parsedPartialMicros: requireLibraryNumbers(source, "parsedPartialMicros"),
+    agUiMicros: requireLibraryNumbers(source, "agUiMicros"),
     repairMicros: requireNumber(source, ["repairMicros"]),
     bundleOwn: requireBundles(source),
   };
@@ -88,7 +89,6 @@ const light = {
   track: "#e7e5e4",
   zod: "#2563eb",
   adaptate: "#b45309",
-  check: "#1c1917",
   valibot: "#0f766e",
   min: "#b45309",
   gzip: "#78716c",
@@ -102,7 +102,6 @@ const dark = {
   track: "#44403c",
   zod: "#60a5fa",
   adaptate: "#fdba74",
-  check: "#fafaf9",
   valibot: "#5eead4",
   min: "#fdba74",
   gzip: "#a8a29e",
@@ -129,25 +128,6 @@ function absentRow(theme, x, y, label, note) {
     text(x, y, label, theme.muted, 12),
     text(x + 72, y, note, theme.muted, 12),
   ].join("");
-}
-
-function stackedBarRow(theme, x, y, trackWidth, labelWidth, label, segments, maximum, display) {
-  const barX = x + labelWidth;
-  const barY = y - 11;
-  let segmentX = barX;
-  const pieces = [
-    text(x, y, label, theme.muted, 12),
-    `<rect x="${barX}" y="${barY}" width="${trackWidth}" height="14" rx="2" fill="${theme.track}"/>`,
-  ];
-  for (const segment of segments) {
-    const segmentWidth = maximum > 0 ? (segment.value / maximum) * trackWidth : 0;
-    pieces.push(
-      `<rect x="${segmentX.toFixed(2)}" y="${barY}" width="${Math.max(segmentWidth, 0).toFixed(2)}" height="14" fill="${segment.color}"/>`,
-    );
-    segmentX += segmentWidth;
-  }
-  pieces.push(text(barX + trackWidth + 8, y, display, theme.ink, 12, "600"));
-  return pieces.join("");
 }
 
 function barRow(theme, x, y, trackWidth, labelWidth, label, value, maximum, display, color) {
@@ -194,7 +174,7 @@ function libraryBars(theme, x, y, width, rows, maximum) {
 
 function chart(theme) {
   const width = 960;
-  const height = 700;
+  const height = 820;
   const fullMaximum = Math.max(
     measurement.fullDocument.zod,
     measurement.fullDocument.adaptate,
@@ -210,10 +190,9 @@ function chart(theme) {
     measurement.heapAfterBytes.adaptate,
     measurement.heapAfterBytes.valibot,
   );
-  const repairMicros = measurement.repairMicros;
-  const checkMicros = measurement.parsedPartialMicros.adaptate;
+  const agUiMicros = measurement.agUiMicros.adaptate;
   const streamMaximum = Math.max(
-    repairMicros + checkMicros,
+    agUiMicros,
     measurement.parsedPartialMicros.zod,
     measurement.parsedPartialMicros.adaptate,
     measurement.parsedPartialMicros.valibot,
@@ -233,8 +212,8 @@ function chart(theme) {
       display: format(source[label]),
       color,
     }));
-  const title = `Node ${measurement.runtimeVersion} on the GitHub Actions runner`;
-  const subtitle = `commit ${measurement.commit} · run ${measurement.runId} · ${measurement.runner}`;
+  const title = `Node ${measurement.runtimeVersion}`;
+  const subtitle = `commit ${measurement.commit} · run ${measurement.runId}`;
   const summary = [
     title,
     subtitle,
@@ -243,7 +222,7 @@ function chart(theme) {
     `Heap after GC bytes: zod ${group(measurement.heapAfterBytes.zod)}, adaptate ${group(measurement.heapAfterBytes.adaptate)}, valibot ${group(measurement.heapAfterBytes.valibot)}.`,
     `Bundle own min/gzip bytes, zod external: ${measurement.bundleOwn.map((entry) => `${entry.id} ${group(entry.minBytes)}/${group(entry.gzipBytes)}`).join(", ")}. ./effect also keeps effect external.`,
     `Parsed partial µs/chunk: zod ${measurement.parsedPartialMicros.zod.toFixed(3)}, adaptate ${measurement.parsedPartialMicros.adaptate.toFixed(3)}, valibot ${measurement.parsedPartialMicros.valibot.toFixed(3)}.`,
-    `AG-UI adaptate µs/chunk: JSON repair ${repairMicros.toFixed(3)}, check ${checkMicros.toFixed(3)}. Zod and valibot: no repair, needs complete JSON.`,
+    `AG-UI adaptate µs/chunk: ${agUiMicros.toFixed(3)} (@adaptate/core/stream-incremental). Zod and valibot: no repair, needs complete JSON.`,
   ].join(" ");
 
   const panelWidth = 296;
@@ -251,7 +230,7 @@ function chart(theme) {
   const left = 20;
   const top = 78;
   const shortHeight = 168;
-  const tallHeight = 360;
+  const tallHeight = 470;
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">`,
     `<title>${escapeXml(summary)}</title>`,
@@ -334,7 +313,7 @@ function chart(theme) {
       kind: "gzip",
     });
   }
-  const bundleLabelWidth = 92;
+  const bundleLabelWidth = 168;
   const bundleValueWidth = 52;
   const bundleTrack = bundleWidth - 32 - bundleLabelWidth - bundleValueWidth;
   bundleRows.forEach((row, index) => {
@@ -374,7 +353,7 @@ function chart(theme) {
       streamWidth,
       tallHeight,
       "Per chunk",
-      "µs. adaptate AG-UI is repair, then check",
+      "µs. AG-UI is @adaptate/core/stream-incremental",
     ),
   );
   const parsedRows = triples(measurement.parsedPartialMicros, (value) => value.toFixed(3));
@@ -407,19 +386,17 @@ function chart(theme) {
   parts.push(absentRow(theme, streamX + 16, streamCursor, "zod", noRepair));
   streamCursor += 28;
   parts.push(
-    stackedBarRow(
+    barRow(
       theme,
       streamX + 16,
       streamCursor,
       trackWidth,
       labelWidth,
       "adaptate",
-      [
-        { value: repairMicros, color: theme.adaptate },
-        { value: checkMicros, color: theme.check },
-      ],
+      agUiMicros,
       streamMaximum,
-      `${repairMicros.toFixed(3)} + ${checkMicros.toFixed(3)}`,
+      agUiMicros.toFixed(3),
+      theme.adaptate,
     ),
   );
   streamCursor += 28;

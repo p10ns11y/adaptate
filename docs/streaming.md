@@ -16,7 +16,7 @@ description: "Check a tool call while the JSON is still arriving."
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`. Each push runs `parsePartialJson` on that buffer and then `partial`. Other event types return `undefined`. The push time includes JSON repair and the partial check. On the grocery-order workload, re-closing the buffer is the repair: most chunks parse on the first close, and the rest need a few shorter prefixes. `JSON.parse` of that text is the repair cost, so a second bracket scan over the new characters does not replace it.
+`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`. See [Incremental partial JSON](incremental-parser.md).
 
 ```ts
 import { z } from "zod";

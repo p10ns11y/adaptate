@@ -8,9 +8,11 @@ import {
   type PartialValidationResult,
 } from "./partial.js";
 import {
-  createAgUiPartialValidator,
+  agUiValidatorWith,
   createStreamValidator,
+  reparseFeed,
   type AgUiDeltaEvent,
+  type PartialJsonFeed,
 } from "./stream.js";
 
 export class AdaptateValidationError extends Data.TaggedError(
@@ -131,9 +133,10 @@ export function validatePartial<
 export function createEffectStreamValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
->(schema: TSchema, configs: TConfigs) {
+>(schema: TSchema, configs: TConfigs, makeFeed?: () => PartialJsonFeed) {
   const validator = createStreamValidator(schema, configs);
-  const pushAgUi = createAgUiPartialValidator(schema, configs);
+  const feedFor = makeFeed ?? reparseFeed;
+  const pushAgUi = agUiValidatorWith(schema, configs, feedFor);
   function final(
     text: string,
   ): Effect.Effect<
@@ -208,7 +211,7 @@ export function createEffectStreamValidator<
       return Effect.sync(() => pushAgUi(event));
     },
     agUiStream<E, R>(events: Stream.Stream<AgUiDeltaEvent, E, R>) {
-      const pushEvent = createAgUiPartialValidator(schema, configs);
+      const pushEvent = agUiValidatorWith(schema, configs, feedFor);
       return Stream.mapEffect(
         events,
         (event) => Effect.sync(() => pushEvent(event)),

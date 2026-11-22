@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -36,6 +36,13 @@ const entries = [
     adaptate: true,
   },
   {
+    id: "./stream-incremental",
+    file: "stream-incremental.js",
+    importsZod: true,
+    importsEffect: false,
+    adaptate: true,
+  },
+  {
     id: "./effect",
     file: "effect.js",
     importsZod: true,
@@ -56,6 +63,7 @@ function aliasFor(root) {
   const build = resolve(root, "packages/core/build");
   return {
     "@adaptate/core/stream": resolve(build, "stream.es.js"),
+    "@adaptate/core/stream-incremental": resolve(build, "stream-incremental.es.js"),
     "@adaptate/core/standard": resolve(build, "standard.es.js"),
     "@adaptate/core/effect": resolve(build, "effect.es.js"),
     "@adaptate/core": resolve(build, "index.es.js"),
@@ -123,6 +131,12 @@ function assertShape(entry, built, external) {
 export async function measureBundles(root, smokeLabel) {
   const measured = [];
   for (const entry of entries) {
+    if (
+      entry.id === "./stream-incremental" &&
+      !existsSync(resolve(root, "packages/core/build/stream-incremental.es.js"))
+    ) {
+      continue;
+    }
     const fullExternal = entry.importsEffect ? ["effect"] : [];
     const ownExternal = ["zod", "effect"];
     const full = await bundleFile(entry.file, root, fullExternal);

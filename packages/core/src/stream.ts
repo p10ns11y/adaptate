@@ -7,11 +7,10 @@ import {
   type DeepPartial,
   type PartialValidationResult,
 } from "./partial.js";
-
 type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
 
 function completeJson(text: string): string {
-  const stack: string[] = [];
+  let closers = "";
   let inString = false;
   let escaped = false;
   for (const char of text) {
@@ -20,22 +19,20 @@ function completeJson(text: string): string {
       else if (char === "\\") escaped = true;
       else if (char === '"') inString = false;
     } else if (char === '"') inString = true;
-    else if (char === "{") stack.push("}");
-    else if (char === "[") stack.push("]");
-    else if (char === "}" || char === "]") stack.pop();
+    else if (char === "{") closers = "}" + closers;
+    else if (char === "[") closers = "]" + closers;
+    else if (char === "}" || char === "]") closers = closers.slice(1);
   }
-  let body = text;
-  if (inString) body = (escaped ? body.slice(0, -1) : body) + '"';
-  body = body.replace(/[\s,:]+$/, "");
-  return body + stack.reverse().join("");
+  let closed = inString ? (escaped ? text.slice(0, -1) : text) + '"' : text;
+  return closed.replace(/[\s,:]+$/, "") + closers;
 }
 
 export function parsePartialJson(text: string): unknown {
-  for (let end = text.length; end > 0; end -= 1) {
+  for (let end = text.length; end--; ) {
     try {
-      return JSON.parse(completeJson(text.slice(0, end)));
+      return JSON.parse(completeJson(text.slice(0, end + 1)));
     } catch {
-      continue;
+      // The prefix is not JSON yet.
     }
   }
   return undefined;
@@ -96,28 +93,97 @@ export type AgUiDeltaEvent = {
   messageId?: string;
 };
 
+type AgUiSlot<TConfigs> = [
+  (chunk: string) => unknown,
+  unknown,
+  Results<TConfigs> | undefined,
+];
+
+export type PartialJsonFeed = (chunk: string) => unknown;
+
+export function reparseFeed(): PartialJsonFeed {
+  let buffer = "";
+  return (chunk) => {
+    buffer += chunk;
+    return parsePartialJson(buffer);
+  };
+}
+
+export function agUiValidatorWith<
+  TSchema extends z.ZodType,
+  TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
+>(schema: TSchema, configs: TConfigs, makeFeed: () => PartialJsonFeed) {
+  const validator = createStreamValidator(schema, configs);
+  const slots = new Map<string, AgUiSlot<TConfigs>>();
+  const push = function push(event: AgUiDeltaEvent):
+    | {
+        id: string;
+        partial: DeepPartial<z.infer<TSchema>>;
+        results: Results<TConfigs>;
+      }
+    | undefined {
+    const kind = event.type;
+    if (kind === "TOOL_CALL_END" || kind === "TEXT_MESSAGE_END") {
+      const ended = kind === "TOOL_CALL_END" ? event.toolCallId : event.messageId;
+      if (ended !== undefined) slots.delete(ended);
+      return undefined;
+    }
+    const id =
+      kind === "TOOL_CALL_ARGS"
+        ? event.toolCallId
+        : kind === "TEXT_MESSAGE_CONTENT"
+          ? event.messageId
+          : undefined;
+    if (id === undefined || typeof event.delta !== "string") return undefined;
+    let slot = slots.get(id);
+    if (!slot) slots.set(id, (slot = [makeFeed(), undefined, undefined]));
+    const value = slot[0](event.delta);
+    if (value === undefined) return undefined;
+    if (value !== slot[1]) {
+      slot[2] = validator.partial((slot[1] = value) as DeepPartial<z.infer<TSchema>>);
+    }
+    return {
+      id,
+      partial: value as DeepPartial<z.infer<TSchema>>,
+      results: slot[2] as Results<TConfigs>,
+    };
+  };
+  const api = push as typeof push & { close(id: string): void };
+  api.close = (id) => slots.delete(id);
+  return api;
+}
+
 export function createAgUiPartialValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
-  const validator = createStreamValidator(schema, configs);
-  const buffers = new Map<string, string>();
-  return function push(event: AgUiDeltaEvent) {
-    const id =
-      event.type === "TOOL_CALL_ARGS"
-        ? event.toolCallId
-        : event.type === "TEXT_MESSAGE_CONTENT"
-          ? event.messageId
-          : undefined;
-    if (id === undefined || typeof event.delta !== "string") return undefined;
-    const text = (buffers.get(id) ?? "") + event.delta;
-    buffers.set(id, text);
-    const partial = parsePartialJson(text);
-    if (partial === undefined) return undefined;
-    return {
-      id,
-      partial: partial as DeepPartial<z.infer<TSchema>>,
-      results: validator.partial(partial as DeepPartial<z.infer<TSchema>>),
-    };
+  return agUiValidatorWith(schema, configs, reparseFeed);
+}
+
+type FrameClock = (callback: () => void) => number;
+
+function frameClock(): FrameClock {
+  const requestFrame = (
+    globalThis as { requestAnimationFrame?: FrameClock }
+  ).requestAnimationFrame;
+  if (typeof requestFrame === "function") {
+    return (callback) => requestFrame(callback);
+  }
+  return (callback) => setTimeout(callback, 0) as unknown as number;
+}
+
+export function createFrameThrottle<T>(emit: (value: T) => void): (value: T) => void {
+  let latest: T | undefined;
+  let pending = false;
+  const clock = frameClock();
+  return function pushFrame(value: T) {
+    latest = value;
+    if (pending) return;
+    pending = true;
+    clock(() => {
+      pending = false;
+      emit(latest as T);
+    });
   };
 }
+

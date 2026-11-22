@@ -53,54 +53,68 @@ pnpm --filter @adaptate/core build && node bench/ab/run.js
 
 Where the work is not the same:
 
-- AG-UI: B appends the delta, repairs JSON with `parsePartialJson` on the whole buffer, then `safeParse`s a lenient schema cached on the base schema. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON` instead of drawing the parsed-partial time on that row. `repairMicros` clocks `parsePartialJson` on the growing buffer, without the check. It is recorded and is not gated. Repair re-parses the whole growing text each chunk; an incremental parser is planned.
+- AG-UI: B imports `createAgUiPartialValidator` from `@adaptate/core/stream-incremental`. Each chunk is tokenized once ([incremental scan](incremental-parser.md)), then `safeParse`s a lenient schema cached on the base schema when the value is new. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON`. `repairMicros` clocks `parsePartialJson` from `@adaptate/core/stream` on the growing buffer, without the check. That clock is the full-prefix oracle. It is recorded and is not gated.
 - Parsed partial: the same value. B reuses one lenient schema per base schema (`WeakMap`) and `safeParse`s it. A and C reuse one static all-optional schema. The `ab-eval` gate names this row `adaptate cached partial us/chunk` and fails when head is more than 5% slower than base.
 - `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
 - Valibot uses its own schemas for the same accept/reject rules.
 - `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
 - Four views per render: card, line items, delivery, and receipt. The schemas are built once. Each timed render parses the grocery order with all four. Zod and Valibot use static schemas for those fields. Adaptate calls `transformSchema` on one partial schema. The rate is renders per second (`viewsPerSec`). [`agree.js`](../bench/ab/agree.js) requires the full order to pass every view, and an empty object or a card-only object to fail. This row is recorded and is not gated. The README chart does not draw it.
 
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk (`@adaptate/core/stream-incremental`), cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./stream-incremental`, `./standard`, and `./effect` (full bundle and zod-external). `./stream-incremental` is new on this line, so its base is the recorded size in `bench/ab/config.js` until a base commit contains that entry. Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
 
 On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
 
-The table below is the A/B of that same head against raw Zod and Valibot. It is not the gate. Absolute rates are not comparable to the earlier run [44952593670](https://github.com/p10ns11y/adaptate/actions/runs/44952593670), which was a different runner. The AG-UI row in that table is the full push. For A and C that full push is the parsed-partial check, because they have no repair step.
+The table below is one local `node bench/ab/run.js` of commit `1a51df50ff0842213e015b18c5d4240a2e994c0a` against raw Zod and Valibot. It is not the gate. The AG-UI row is `createAgUiPartialValidator` from `@adaptate/core/stream-incremental`. For A and C that full push is the parsed-partial check, because they have no repair step. `repairMicros` is `parsePartialJson` on the growing buffer and is not that row.
 
-The README chart's JSON repair and check are both from Node v24.22.3 in job [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710) (commit `ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db`): repair 34.935 µs/chunk, check 1.302 µs/chunk. Zod and Valibot are `no repair: needs complete JSON`. Repair re-parses the whole growing text each chunk; an incremental parser is planned.
-
-Node 24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6 on `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44956631113), artifact `ab-eval-results`.
+Node v24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6.
 
 Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
 
 | Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
 | --- | --- | --- | --- | --- | --- |
-| Import median (ms) | Node v24.22.3 | 35.288 | 36.886 | +1.598 ms (+4.528%) | 5.209 |
-| Import p95 (ms) | Node v24.22.3 | 36.433 | 38.849 | +2.416 ms (+6.630%) | 5.294 |
-| Full document (validations/sec) | Node v24.22.3 | 3,512,914 | 3,302,796 | -210,118 /s (-5.981%) | 694,396 |
-| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.433 | 24.084 | +23.651 µs (+5468.278%) | 0.926 |
-| Parsed partial check, cached schema (µs/chunk) | Node v24.22.3 | 0.433 | 0.667 | +0.234 µs (+54.147%) | 0.926 |
-| Heap after GC (bytes) | Node v24.22.3 | 8,292,224 | 8,424,424 | 132,200 B (+1.594%) | 5,204,896 |
-| Heap delta after GC (bytes) | Node v24.22.3 | 356,512 | 361,312 | 4,800 B (+1.346%) | 51,680 |
-| Import median (ms) | Bun 1.4.5 | 21.620 | 23.231 | +1.611 ms (+7.451%) | 9.142 |
-| Import p95 (ms) | Bun 1.4.5 | 23.956 | 25.857 | +1.900 ms (+7.932%) | 10.347 |
-| Full document (validations/sec) | Bun 1.4.5 | 1,536,444 | 1,533,334 | -3,110 /s (-0.202%) | 1,832,097 |
-| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.574 | 16.041 | +15.467 µs (+2694.862%) | 1.113 |
-| Parsed partial check, cached schema (µs/chunk) | Bun 1.4.5 | 0.574 | 0.689 | +0.115 µs (+20.034%) | 1.113 |
-| Heap after GC (bytes) | Bun 1.4.5 | 2,086,637 | 2,279,282 | 192,645 B (+9.232%) | 667,759 |
-| Heap delta after GC (bytes) | Bun 1.4.5 | 603,429 | 669,493 | 66,064 B (+10.948%) | 121,082 |
-| Import median (ms) | Chromium 159.0.8154.6 | 23.100 | 24.100 | +1.000 ms (+4.329%) | 5.900 |
-| Import p95 (ms) | Chromium 159.0.8154.6 | 49.600 | 26.200 | -23.400 ms (-47.177%) | 12.000 |
-| Full document (validations/sec) | Chromium 159.0.8154.6 | 3,157,420 | 2,222,850 | -934,570 /s (-29.599%) | 687,270 |
-| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.560 | 21.638 | +21.079 µs (+3767.166%) | 0.878 |
-| Parsed partial check, cached schema (µs/chunk) | Chromium 159.0.8154.6 | 0.560 | 0.684 | +0.125 µs (+22.306%) | 0.878 |
+| Import median (ms) | Node v24.22.3 | 39.744 | 41.684 | +1.939 ms (+4.879%) | 6.042 |
+| Import p95 (ms) | Node v24.22.3 | 41.752 | 43.983 | +2.230 ms (+5.342%) | 7.341 |
+| Full document (validations/sec) | Node v24.22.3 | 2,425,500 | 2,256,119 | -169,380 /s (-6.983%) | 472,695 |
+| 4 views per render (renders/sec) | Node v24.22.3 | 1,124,133 | 484,695 | -639,438 /s (-56.883%) | 271,223 |
+| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.606 | 3.023 | +2.417 µs (+398.633%) | 1.409 |
+| JSON repair (µs/chunk) | Node v24.22.3 | no repair: needs complete JSON | 24.076 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Node v24.22.3 | 0.606 | 0.835 | +0.229 µs (+37.732%) | 1.409 |
+| Heap after GC (bytes) | Node v24.22.3 | 8,322,872 | 8,510,312 | 187,440 B (+2.252%) | 5,217,008 |
+| Heap delta after GC (bytes) | Node v24.22.3 | 351,048 | 389,264 | 38,216 B (+10.886%) | 52,240 |
+| Import median (ms) | Bun 1.4.5 | 21.966 | 23.289 | +1.323 ms (+6.024%) | 9.014 |
+| Import p95 (ms) | Bun 1.4.5 | 22.838 | 24.682 | +1.845 ms (+8.078%) | 9.509 |
+| Full document (validations/sec) | Bun 1.4.5 | 1,190,317 | 1,161,432 | -28,885 /s (-2.427%) | 1,324,228 |
+| 4 views per render (renders/sec) | Bun 1.4.5 | 570,205 | 221,755 | -348,450 /s (-61.110%) | 402,240 |
+| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.703 | 3.036 | +2.333 µs (+331.741%) | 1.566 |
+| JSON repair (µs/chunk) | Bun 1.4.5 | no repair: needs complete JSON | 18.943 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Bun 1.4.5 | 0.703 | 0.920 | +0.217 µs (+30.799%) | 1.566 |
+| Heap after GC (bytes) | Bun 1.4.5 | 2,109,007 | 2,392,765 | 283,758 B (+13.455%) | 670,300 |
+| Heap delta after GC (bytes) | Bun 1.4.5 | 605,701 | 710,345 | 104,644 B (+17.277%) | 121,899 |
+| Import median (ms) | Chromium 159.0.8154.6 | 21.900 | 22.500 | +0.600 ms (+2.740%) | 4.800 |
+| Import p95 (ms) | Chromium 159.0.8154.6 | 25.200 | 24.300 | -0.900 ms (-3.571%) | 11.600 |
+| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,399,280 | 1,811,705 | -587,575 /s (-24.490%) | 555,445 |
+| 4 views per render (renders/sec) | Chromium 159.0.8154.6 | 1,170,260 | 311,560 | -858,700 /s (-73.377%) | 332,530 |
+| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.720 | 2.602 | +1.882 µs (+261.440%) | 1.084 |
+| JSON repair (µs/chunk) | Chromium 159.0.8154.6 | no repair: needs complete JSON | 23.119 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Chromium 159.0.8154.6 | 0.720 | 0.888 | +0.168 µs (+23.308%) | 1.084 |
 | zod-only min / gzip (bytes) | esbuild 0.28.2 | 455,377 / 93,666 | — | — | baseline |
 | `.` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 456,345 / 93,976 | 968 / 310 B (+0.331% gzip) | — |
 | `.` own min / gzip, zod external | esbuild 0.28.2 | — | 2,490 / 1,207 | +2,490 / +1,207 B | — |
 | `./stream` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 458,164 / 94,634 | 2,787 / 968 B (+1.033% gzip) | — |
-| `./stream` own min / gzip, zod external | esbuild 0.28.2 | — | 4,278 / 1,927 | +4,278 / +1,927 B | — |
+| `./stream` own min / gzip, zod external | esbuild 0.28.2 | — | 4,278 / 1,926 | +4,278 / +1,926 B | — |
 | `./standard` min / gzip | esbuild 0.28.2 | — | 589 / 328 | 589 / 328 B | — |
 | `./standard` own min / gzip, zod external | esbuild 0.28.2 | — | 589 / 328 | +589 / +328 B | — |
+| `./stream-incremental` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 461,003 / 95,833 | 5,626 / 2,167 B (+2.314% gzip) | — |
+| `./stream-incremental` own min / gzip, zod external | esbuild 0.28.2 | — | 7,056 / 3,094 | +7,056 / +3,094 B | — |
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
-The table above was recorded from `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`. Gate on that run: PASS (limit 1.05). The README chart is one later run, commit `ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db`, job [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710). [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing. Every panel, including JSON repair and the check, comes from that file.
+`@adaptate/core/stream-incremental` reads each character of that grocery order once: 966 visits. A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+
+## Credit
+
+Measure first, then optimize only the critical path. Donald E. Knuth, "Structured Programming with go to Statements", ACM Computing Surveys 6(4), 1974:
+
+> We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.
+
+The per-chunk re-parse was that critical 3% here: [10.1145/356635.356640](https://doi.org/10.1145/356635.356640).

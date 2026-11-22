@@ -60,6 +60,8 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
 - `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
 - Validation is pure, so this integration does not retry.
+- `@adaptate/core/stream-incremental`: `createPartialJsonFeed` tokenizes a JSON stream once. An open string keeps its decoded prefix, and a push copies the deepest open container and the spine above it. `fromAsyncIterable` reads strings or UTF-8 bytes and yields each partial value. `createAgUiPartialValidator` on that subpath uses the feed. `@adaptate/core/stream` still appends to a buffer and calls `parsePartialJson`. Both validators drop a slot on `TOOL_CALL_END`, `TEXT_MESSAGE_END`, and `close(id)`. `createEffectStreamValidator` takes an optional feed and uses the re-parse feed when it is omitted.
+- `createFrameThrottle` emits the latest value on the next frame.
 
 ### Changed
 - `final(text)` parses strict JSON, requires the base schema, and returns `{ value, configs }` for every named config. `final(text, configName)` validates that one config, and fails with `AdaptateValidationError` when `configName` is not an own key of `configs`. `validatePartial` keeps issues from a thrown `ZodError`.

@@ -1,30 +1,35 @@
 {
-  "commit": "ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db",
-  "runId": "44965424710",
+  "commit": "1a51df50ff0842213e015b18c5d4240a2e994c0a",
+  "runId": "local",
   "runtimeVersion": "v24.22.3",
-  "runner": "GitHub Actions ubuntu-latest",
+  "runner": "local",
   "esbuildVersion": "0.28.2",
   "fullDocument": {
-    "zod": 1610620.6835365682,
-    "adaptate": 1425668.7810531922,
-    "valibot": 336468.6743134232
+    "zod": 2425499.502772602,
+    "adaptate": 2256119.4472507355,
+    "valibot": 472694.76128914556
   },
   "importMedianMs": {
-    "zod": 66.280235,
-    "adaptate": 69.025599,
-    "valibot": 9.055138
+    "zod": 39.744395,
+    "adaptate": 41.683517,
+    "valibot": 6.042117
   },
   "heapAfterBytes": {
-    "zod": 8319808,
-    "adaptate": 8464680,
-    "valibot": 5215856
+    "zod": 8322872,
+    "adaptate": 8510312,
+    "valibot": 5217008
   },
   "parsedPartialMicros": {
-    "zod": 0.8870567760532151,
-    "adaptate": 1.3021124802280848,
-    "valibot": 1.9544771439180737
+    "zod": 0.6062874386909417,
+    "adaptate": 0.8350510141030887,
+    "valibot": 1.4086809829345768
   },
-  "repairMicros": 34.93460592334495,
+  "agUiMicros": {
+    "zod": 0.6062874386909417,
+    "adaptate": 3.023147217940581,
+    "valibot": 1.4086809829345768
+  },
+  "repairMicros": 24.075885618166524,
   "bundleOwn": [
     {
       "id": ".",
@@ -40,6 +45,11 @@
       "id": "./standard",
       "minBytes": 589,
       "gzipBytes": 328
+    },
+    {
+      "id": "./stream-incremental",
+      "minBytes": 7056,
+      "gzipBytes": 3094
     },
     {
       "id": "./effect",

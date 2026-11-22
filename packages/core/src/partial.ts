@@ -135,10 +135,11 @@ export function validatePartialAgainstConfigs<
     throw new Error("The given schema must be a Zod object or array.");
   }
   const parsed = lenientSchema(schema).safeParse(partial);
-  const valid = parsed.success;
-  const errors = parsed.success ? null : parsed.error;
   return Object.fromEntries(
-    Object.keys(configs).map((name) => [name, { valid, errors }]),
+    Object.keys(configs).map((name) => [
+      name,
+      { valid: parsed.success, errors: parsed.success ? null : parsed.error },
+    ]),
   ) as { [K in keyof TConfigs]: PartialValidationResult };
 }
 

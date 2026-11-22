@@ -5,7 +5,7 @@ description: "Exported from @adaptate/core/effect."
 
 # Function: createEffectStreamValidator()
 
-> **createEffectStreamValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): `object`
+> **createEffectStreamValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`, `makeFeed?`): `object`
 
 ## Type Parameters
 
@@ -26,6 +26,10 @@ description: "Exported from @adaptate/core/effect."
 ### configs
 
 `TConfigs`
+
+### makeFeed?
+
+() => [`PartialJsonFeed`](../../stream/type-aliases/PartialJsonFeed.md)
 
 ## Returns
 

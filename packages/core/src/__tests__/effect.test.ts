@@ -13,6 +13,7 @@ import {
   validate,
   validatePartial,
 } from "../effect";
+import { type AgUiDeltaEvent } from "../stream";
 
 const recipe = z.object({
   title: z.string().optional(),
@@ -309,9 +310,68 @@ describe("createEffectStreamValidator", () => {
     expect(report.kitchen.errors?.issues[0]?.path).toEqual(["servings"]);
   });
 
+  it("uses a caller feed for AG-UI when one is passed", () => {
+    const fed = createEffectStreamValidator(recipe, configs, () => () => ({ title: "fed" }));
+    const outcome = Effect.runSync(
+      fed.agUi({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: "x" }),
+    );
+    expect(outcome?.partial).toEqual({ title: "fed" });
+    expect(
+      Effect.runSync(
+        fed.agUi({
+          type: "REASONING_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fed.agUi({
+          type: "THINKING_TEXT_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(Effect.runSync(fed.agUi({} as unknown as AgUiDeltaEvent))).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fed.agUi({ delta: '{"title":"Nope"}' } as unknown as AgUiDeltaEvent),
+      ),
+    ).toBeUndefined();
+    const streamed = Effect.runSync(
+      Stream.runCollect(
+        fed.agUiStream(
+          Stream.make({ type: "TOOL_CALL_ARGS", toolCallId: "t2", delta: "y" }),
+        ),
+      ),
+    );
+    expect(streamed[0]?.partial).toEqual({ title: "fed" });
+  });
+
   it("accumulates AG-UI deltas per call", () => {
     const fresh = createEffectStreamValidator(recipe, configs);
     expect(Effect.runSync(fresh.agUi({ type: "RUN_STARTED" }))).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fresh.agUi({
+          type: "REASONING_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      Effect.runSync(
+        fresh.agUi({
+          type: "THINKING_TEXT_MESSAGE_CONTENT",
+          messageId: "m",
+          delta: '{"title":"Nope"}',
+        }),
+      ),
+    ).toBeUndefined();
+    expect(Effect.runSync(fresh.agUi({} as unknown as AgUiDeltaEvent))).toBeUndefined();
     const parsed = Effect.runSync(
       fresh.agUi({
         type: "TOOL_CALL_ARGS",

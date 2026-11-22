@@ -53,13 +53,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 1,610,621, Adaptate 1,425,669, Valibot 336,469. Import median milliseconds: 66.280, 69.026, 9.055. Heap after GC bytes: 8,319,808, 8,464,680, 5,215,856. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,926, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.887, 1.302, 1.954. AG-UI: Zod and Valibot have no repair and need complete JSON. Adaptate is JSON repair 34.935 microseconds plus the check 1.302 microseconds." src="assets/perf.svg" width="960">
+    <img alt="Node v24.22.3 commit 1a51df50ff0842213e015b18c5d4240a2e994c0a · run local Full document validations/sec: zod 2,425,500, adaptate 2,256,119, valibot 472,695. Import median ms: zod 39.744, adaptate 41.684, valibot 6.042. Heap after GC bytes: zod 8,322,872, adaptate 8,510,312, valibot 5,217,008. Bundle own min/gzip bytes, zod external: . 2,490/1,207, ./stream 4,278/1,926, ./stream-incremental 7,056/3,094, ./standard 589/328, ./effect 4,221/1,713. ./effect also keeps effect external. Parsed partial µs/chunk: zod 0.606, adaptate 0.835, valibot 1.409. AG-UI adaptate µs/chunk: 3.023 (@adaptate/core/stream-incremental). Zod and valibot: no repair, needs complete JSON." src="assets/perf.svg" width="960">
   </picture>
 </p>
 
-Node v24.22.3 on the GitHub Actions runner. Commit [`ceb5ab4`](https://github.com/p10ns11y/adaptate/commit/ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db). Run [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710). [Performance](docs/performance.md)
+Node v24.22.3. Commit [`1a51df5`](https://github.com/p10ns11y/adaptate/commit/1a51df50ff0842213e015b18c5d4240a2e994c0a). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
 
-Repair re-parses the whole growing text each chunk; an incremental parser is planned.
+`@adaptate/core/stream-incremental` tokenizes a partial JSON stream once. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits. AG-UI on that subpath is 3.023 µs/chunk. Parsed partial is 0.835 µs/chunk against raw Zod 0.606 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
 
 ## Quick start
 
@@ -145,6 +145,10 @@ const cardSchema = transformSchema(recipe.partial(), card);
 ```
 
 CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md)
+
+## Design
+
+One walk of the schema. [DESIGN.md](DESIGN.md) records O(N) time and O(D) space.
 
 ## Why trust it
 

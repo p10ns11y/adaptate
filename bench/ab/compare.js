@@ -3,7 +3,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { nodeNowNs } from "./clock.js";
-import { gateBudgetMs, gateColdSamples, gateLimit, gateRounds } from "./config.js";
+import {
+  gateBudgetMs,
+  gateColdSamples,
+  gateLimit,
+  gateRounds,
+  streamIncrementalBaseline,
+} from "./config.js";
 import { spawnColdMs } from "./cold.js";
 import { measureBundles } from "./bundle.js";
 import { createApps } from "./measure.js";
@@ -254,7 +260,11 @@ const baseBundles = await measureBundles(baseRoot);
 const headBundles = await measureBundles(headRoot);
 const bundleRows = [];
 for (const headEntry of headBundles.entries) {
-  const baseEntry = baseBundles.entries.find((entry) => entry.id === headEntry.id);
+  const baseEntry =
+    baseBundles.entries.find((entry) => entry.id === headEntry.id) ??
+    (headEntry.id === "./stream-incremental"
+      ? { id: headEntry.id, ...streamIncrementalBaseline }
+      : undefined);
   if (!baseEntry) throw new Error(`base is missing bundle ${headEntry.id}`);
   for (const field of ["full", "own"]) {
     for (const unit of ["minBytes", "gzipBytes"]) {

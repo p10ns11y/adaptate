@@ -15,6 +15,7 @@ The pages below stay in this folder so a later docs site can pick them up. Each 
 
 - [Transform](transform.md): one Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](streaming.md): check a tool call while the JSON is still arriving.
+- [Incremental partial JSON](incremental-parser.md): scan each new character of a JSON stream once.
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
 - [Effect](effect.md): run the same checks in an Effect pipeline.
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.

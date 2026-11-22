@@ -20,3 +20,20 @@ export function libraryHref(root, specifier) {
   if (!existsSync(file)) throw new Error(`missing build ${file}`);
   return pathToFileURL(file).href;
 }
+
+export async function adaptateStreamForBench(root) {
+  const stream = await import(libraryHref(root, "@adaptate/core/stream"));
+  const incrementalFile = root
+    ? resolve(root, "packages/core/build/stream-incremental.es.js")
+    : "";
+  if (root && !existsSync(incrementalFile)) return stream;
+  const incremental = await import(
+    root
+      ? pathToFileURL(incrementalFile).href
+      : "@adaptate/core/stream-incremental",
+  );
+  return {
+    ...stream,
+    createAgUiPartialValidator: incremental.createAgUiPartialValidator,
+  };
+}

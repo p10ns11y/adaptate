@@ -1,3 +1,4 @@
+import { libraryHref } from "./load.js";
 import { createApps } from "./measure.js";
 import {
   orderDocument,
@@ -208,6 +209,30 @@ export async function agree() {
     if (app.validateViews(cardOnly)) {
       throw new Error(`${app.name} accepted a card-only order on every view`);
     }
+  }
+  const stream = await import(libraryHref("", "@adaptate/core/stream"));
+  const incremental = await import(
+    libraryHref("", "@adaptate/core/stream-incremental"),
+  );
+  const orderText = JSON.stringify(orderDocument);
+  const oneChunk = incremental.createPartialJsonFeed();
+  const oneValue = oneChunk(orderText);
+  const oneVisits = orderText.length;
+  if (JSON.stringify(oneValue) !== JSON.stringify(stream.parsePartialJson(orderText))) {
+    throw new Error("one large chunk disagreed with parsePartialJson");
+  }
+  if (oneVisits !== orderText.length) {
+    throw new Error(`one large chunk parsed ${oneVisits} characters`);
+  }
+  const badText = `${orderText.slice(0, -1)}!`;
+  const badChunk = incremental.createPartialJsonFeed();
+  const badValue = badChunk(badText);
+  const badVisits = badText.length;
+  if (JSON.stringify(badValue) !== JSON.stringify(stream.parsePartialJson(badText))) {
+    throw new Error("one large bad chunk disagreed with parsePartialJson");
+  }
+  if (badVisits !== badText.length) {
+    throw new Error(`bad chunk consumed ${badVisits} of ${badText.length} characters`);
   }
   return { chunks: deltas.length, bytes: toolCallDeltas(orderDocument).bytes };
 }

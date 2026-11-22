@@ -76,13 +76,7 @@ export function transformSchema<
           return [key, value];
         }),
       );
-
-      let updatedPartialSchema = z.object(newShape);
-
-      return z.object({
-        ...unwrappedPartialSchema.shape,
-        ...updatedPartialSchema.shape,
-      });
+      return z.object({ ...shape, ...newShape });
     }
 
     if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig["*"]) {
@@ -102,29 +96,24 @@ export function transformSchema<
     throw new Error("The given schema must be a Zod object.");
   }
 
-  let updatedSchema: z.ZodType = schema;
-
   if (schema instanceof z.ZodArray && (config as any)["*"]) {
     let transformedElement = transformSchema(
       schema.element as z.ZodType,
       (config as any)["*"],
     );
-    updatedSchema = z.array(
+    let updatedSchema: z.ZodType = z.array(
       z.object({
         ...(schema.element as z.ZodObject<any>).shape,
         ...(transformedElement as z.ZodObject<any>).shape,
       }),
     );
-  } else {
-    // Guard above ensures this is a `ZodObject` whenever the array branch is not taken.
-    let objectSchema = schema as z.ZodObject<any>;
-    let extended = extendSchema(objectSchema, config);
-    updatedSchema = z.object({
-      ...objectSchema.shape,
-      ...extended.shape,
-    });
+    return updatedSchema as TSchema;
   }
-
+  let objectSchema = schema as z.ZodObject<any>;
+  let updatedSchema: z.ZodType = z.object({
+    ...objectSchema.shape,
+    ...extendSchema(objectSchema, config).shape,
+  });
   return updatedSchema as TSchema;
 }
 

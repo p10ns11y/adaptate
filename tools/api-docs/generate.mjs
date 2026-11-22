@@ -15,6 +15,7 @@ let packagesToDocument = [
     entryPoints: [
       join(repositoryRoot, "packages/core/build/index.d.ts"),
       join(repositoryRoot, "packages/core/build/stream.d.ts"),
+      join(repositoryRoot, "packages/core/build/stream-incremental.d.ts"),
       join(repositoryRoot, "packages/core/build/standard.d.ts"),
       join(repositoryRoot, "packages/core/build/effect.d.ts"),
     ],
@@ -32,6 +33,7 @@ let packagesToDocument = [
 let guideOrder = [
   "transform.md",
   "streaming.md",
+  "incremental-parser.md",
   "openapi.md",
   "effect.md",
   "typescript.md",

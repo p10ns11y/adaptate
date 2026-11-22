@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { nodeNowNs } from "./clock.js";
 import { reportBudgetMs, reportRounds } from "./config.js";
-import { libraryHref } from "./load.js";
+import { adaptateStreamForBench, libraryHref } from "./load.js";
 import {
   decodePartials,
   orderDocument,
@@ -25,9 +25,7 @@ if (variant === "zod") {
 } else if (variant === "adaptate") {
   const zodModule = await import(libraryHref(root, "zod"));
   const adaptateCore = await import(libraryHref(root, "@adaptate/core"));
-  const adaptateStream = await import(
-    libraryHref(root, "@adaptate/core/stream")
-  );
+  const adaptateStream = await adaptateStreamForBench(root);
   const { createAdaptateApp } = await import("./adaptate-app.js");
   app = createAdaptateApp(zodModule.z, adaptateCore, adaptateStream);
 } else if (variant === "valibot") {

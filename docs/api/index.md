@@ -31,11 +31,19 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardIssue](core/standard/type-aliases/StandardIssue.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardResult\<Output\>](core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
+- [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
+- [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.
 - [Function: createStreamValidator()](core/stream/functions/createStreamValidator.md): Exported from @adaptate/core/stream.
 - [Function: parsePartialJson()](core/stream/functions/parsePartialJson.md): Exported from @adaptate/core/stream.
+- [Function: reparseFeed()](core/stream/functions/reparseFeed.md): Exported from @adaptate/core/stream.
 - [Function: validateStructuredOutput()](core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
+- [Type Alias: PartialJsonFeed](core/stream/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream.
 
 ## @adaptate/utils
 
