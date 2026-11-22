@@ -220,3 +220,6 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
   .docs { grid-template-columns: 1fr; }
   .docs nav { border-bottom: 1px solid var(--line); }
 }
+
+.journey { max-width: 78ch; padding-top: 2rem; }
+.journey > h1:first-child { margin-top: 0; }

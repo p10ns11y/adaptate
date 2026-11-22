@@ -19,7 +19,7 @@ import {
 import { apiFrontMatterSchema, guideFrontMatterSchema, sourceOnlyFrontMatterSchema } from "../src/site/frontmatter.ts";
 import { escapeHtml, renderHead } from "../src/site/head.ts";
 import { renderFooter, renderHeader } from "../src/site/header.ts";
-import { staticRoutes } from "../src/site/routes.ts";
+import { journeyRoute, staticRoutes } from "../src/site/routes.ts";
 
 let require = createRequire(import.meta.url);
 let siteDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -161,7 +161,29 @@ for (let page of pages) {
   ].join("\n");
 }
 
+let journeyMarkdown = readFileSync(join(repositoryRoot, "JOURNEY.md"), "utf8");
+let journeyLead = journeyMarkdown
+  .split(/\n\n+/)
+  .map((part) => part.trim())
+  .find((part) => part.length > 0 && !part.startsWith("#") && !part.startsWith("```"));
+if ((journeyLead ?? "").replace(/\s+/g, " ") !== journeyRoute.answer) {
+  throw new Error("JOURNEY.md lead paragraph must match journeyRoute.answer");
+}
+currentSource = "JOURNEY.md";
+let journeyTokens = marked.lexer(journeyMarkdown);
+let journeyHeadingIndex = journeyTokens.findIndex((token) => token.type === "heading" && token.depth === 1);
+if (journeyHeadingIndex >= 0) journeyTokens.splice(journeyHeadingIndex, 1);
+let journeyLeadIndex = journeyTokens.findIndex((token) => token.type === "paragraph");
+if (journeyLeadIndex >= 0) journeyTokens.splice(journeyLeadIndex, 1);
+let journeyHtml = [
+  `<h1>${escapeHtml(plainText(journeyRoute.heading))}</h1>`,
+  `<p class="answer">${escapeHtml(journeyRoute.answer)}</p>`,
+  marked.parser(journeyTokens),
+].join("\n");
+
 function diagramLabel(source) {
+  let title = source.match(/^\s*title\s+(.+)$/m);
+  if (title) return `Timeline: ${title[1].trim()}`;
   let labels = [...source.matchAll(/\["([^"]+)"\]|\[([^\]"]+)\]/g)].map((match) => match[1] ?? match[2]);
   let unique = [...new Set(labels)].slice(0, 12);
   return `Flowchart: ${unique.join(", ")}`;
@@ -245,7 +267,26 @@ for (let page of pages) {
   writeFileSync(outputPath, document);
 }
 
-let routes = [...staticRoutes, ...pages.map((page) => page.route)];
+let journeyDocument = [
+  "<!doctype html>",
+  `<html lang="en">`,
+  "  <head>",
+  `    ${renderHead(journeyRoute, { siteUrl, version })}`,
+  "  </head>",
+  "  <body>",
+  `    ${renderHeader(journeyRoute.kind)}`,
+  `    <main id="main" tabindex="-1"><div class="wrap journey"><article>`,
+  withDiagrams(journeyHtml),
+  "</article></div></main>",
+  `    ${renderFooter()}`,
+  "  </body>",
+  "</html>",
+  "",
+].join("\n");
+mkdirSync(join(distDirectory, "journey"), { recursive: true });
+writeFileSync(join(distDirectory, "journey", "index.html"), journeyDocument);
+
+let routes = [...staticRoutes, journeyRoute, ...pages.map((page) => page.route)];
 let seen = new Set();
 for (let route of routes) {
   if (seen.has(route.path)) throw new Error(`Duplicate route ${route.path}`);
@@ -253,4 +294,4 @@ for (let route of routes) {
 }
 mkdirSync(metaDirectory, { recursive: true });
 writeFileSync(join(metaDirectory, "routes.json"), `${JSON.stringify(routes, null, 2)}\n`);
-console.log(`Wrote ${pages.length} docs pages and ${diagrams.length} diagrams.`);
+console.log(`Wrote ${pages.length} docs pages, /journey, and ${diagrams.length} diagrams.`);

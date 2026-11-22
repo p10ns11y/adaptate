@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { apiRoute, rewriteHref, routeForDoc, slugifyHeading, sourceOnlyDocs } from "../site/docs-model";
 import { guideFrontMatterSchema } from "../site/frontmatter";
 import { rewriteLlms } from "../site/llms";
+import { journeyRoute } from "../site/routes";
 import { buildAgentIndexes, guideNames } from "../../../../tools/api-docs/llms.mjs";
 
 let siteRoot = new URL("../../", import.meta.url);
@@ -37,6 +38,7 @@ describe("docs", () => {
       "https://github.com/p10ns11y/adaptate/tree/main/examples/react-view",
     );
     expect(rewriteHref("../llms.txt", "docs/index.md")).toBe("/llms.txt");
+    expect(rewriteHref("../JOURNEY.md", "docs/index.md")).toBe("/journey/");
     expect(rewriteHref("credits.md", "docs/index.md")).toBe("https://github.com/p10ns11y/adaptate/blob/main/docs/credits.md");
     expect(rewriteHref("https://example.com", "docs/index.md")).toBe("https://example.com");
   });
@@ -83,6 +85,9 @@ describe("docs", () => {
   it("makes served llms links absolute", () => {
     let served = rewriteLlms("- [Zod](docs/zod.md): views\n\nSource: docs/api/index.md\n", "https://preview.invalid");
     expect(served).toBe("- [Zod](https://preview.invalid/docs/zod/): views\n\nSource: https://preview.invalid/docs/api/\n");
+    expect(rewriteLlms("- [Journey](JOURNEY.md): history\n\nSource: JOURNEY.md\n", "https://preview.invalid")).toBe(
+      "- [Journey](https://preview.invalid/journey/): history\n\nSource: https://preview.invalid/journey/\n",
+    );
   });
 
   it("slugifies heading HTML without leaving markup", () => {
@@ -95,7 +100,20 @@ describe("docs", () => {
     }
   });
 
+  it("keeps the journey lead in sync and lists JOURNEY.md for agents", () => {
+    let journey = readFileSync(new URL("JOURNEY.md", repositoryRoot), "utf8");
+    let lead = journey
+      .split(/\n\n+/)
+      .map((part) => part.trim())
+      .find((part) => part.length > 0 && !part.startsWith("#") && !part.startsWith("```"));
+    expect(lead).toBe(journeyRoute.answer);
+    let { llms, llmsFull } = buildAgentIndexes(new URL(".", repositoryRoot).pathname);
+    expect(llms).toContain("(JOURNEY.md)");
+    expect(llmsFull).toContain("Source: JOURNEY.md");
+  });
+
   it("has no snippet drift", () => {
+
     let output = execFileSync(process.execPath, ["scripts/snippets.mjs", "--check"], {
       cwd: siteRoot,
       encoding: "utf8",

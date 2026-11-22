@@ -26,7 +26,7 @@ export function renderHeader(kind: RouteKind): string {
 export function renderFooter(): string {
   return [
     `<footer class="site-footer"><div class="wrap">`,
-    `<p>MIT. <a href="${repositoryUrl}">Source on GitHub</a> · <a href="${repositoryUrl}/blob/main/docs/credits.md">Credits</a> · <a href="/llms.txt">llms.txt</a></p>`,
+    `<p>MIT. <a href="${repositoryUrl}">Source on GitHub</a> · <a href="/journey/">Journey</a> · <a href="${repositoryUrl}/blob/main/docs/credits.md">Credits</a> · <a href="/llms.txt">llms.txt</a></p>`,
     `</div></footer>`,
   ].join("");
 }

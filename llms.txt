@@ -7,6 +7,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 ## Docs
 
 - [Docs](docs/index.md): Typed, validated data from OpenAPI, JSON Schema, or Zod, including JSON that is still streaming.
+- [The adaptate journey](JOURNEY.md): The problem started at Oneflow, where entity schemas did not match across endpoints while I was building features. I wrote the precursor by hand, alone. After I lost access to t...
 - [Transform](docs/transform.md): One Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](docs/streaming.md): Check a tool call while the JSON is still arriving.
 - [AG-UI](docs/ag-ui.md): Check AG-UI TOOL_CALL_ARGS deltas against each view while the JSON is still arriving.

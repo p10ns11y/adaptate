@@ -28,6 +28,7 @@ export function rewriteHref(href: string, sourcePath: string): string {
   let base = sourcePath.split("/").slice(0, -1).join("/");
   let resolved = normalize(`${base}/${target}`);
   if (resolved === "llms.txt" || resolved === "llms-full.txt") return `/${resolved}`;
+  if (resolved === "JOURNEY.md") return "/journey/";
   if (resolved.startsWith("docs/") && resolved.endsWith(".md") && !sourceOnlyDocs.has(resolved)) {
     return `${routeForDoc(resolved)}${hash}`;
   }
