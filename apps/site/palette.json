@@ -1,0 +1,12 @@
+{
+  "tokens": {
+    "plume-core": { "hex": "#FEF2DC", "role": "Accent, HUD peaks" },
+    "thrust": { "hex": "#D19057", "role": "Primary CTA, logo" },
+    "ember": { "hex": "#DF6746", "role": "Warnings" },
+    "void": { "hex": "#0A0D12", "role": "Background, logo tile" },
+    "ocean": { "hex": "#2F5480", "role": "Panels" },
+    "cloud": { "hex": "#C4C6C5", "role": "Body text on dark" },
+    "sky": { "hex": "#7AAED6", "role": "Links, gauges" },
+    "exhaust": { "hex": "#D2BB98", "role": "Muted text" }
+  }
+}

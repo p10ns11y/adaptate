@@ -34,7 +34,7 @@ jobs:
         run: pnpm test
 
       - name: Build
-        run: npx turbo run build
+        run: npx turbo run build --filter='!adaptate-site'
 
       - name: React view example
         run: pnpm --filter adaptate-react-view test
@@ -58,6 +58,35 @@ jobs:
             git diff -- docs/api llms.txt llms-full.txt
             exit 1
           fi
+
+      - name: Site changes
+        id: site
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          if git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(apps/site/|docs/|README\.md$|llms(-full)?\.txt$|packages/[^/]+/src/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Site
+        if: steps.site.outputs.run == 'true'
+        timeout-minutes: 6
+        run: |
+          pnpm --filter adaptate-site exec playwright install --with-deps chromium
+          pnpm --filter adaptate-site snippets:check
+          pnpm --filter adaptate-site build
+          pnpm --filter adaptate-site test
+          pnpm --filter adaptate-site budget
+          pnpm --filter adaptate-site seo-check
+          pnpm --filter adaptate-site a11y
 
   zod-latest:
     runs-on: ubuntu-latest
@@ -141,7 +170,7 @@ jobs:
           pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
-        run: npx turbo run build
+        run: npx turbo run build --filter='!adaptate-site'
 
       - name: Typecheck packed tarballs on TypeScript 7 and 6
         run: node scripts/ts-consumer-check.mjs

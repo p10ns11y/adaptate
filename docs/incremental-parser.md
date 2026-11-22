@@ -1,6 +1,12 @@
 ---
 title: "Incremental partial JSON"
 description: "Tokenize a JSON stream once and reuse closed values."
+answer: "createPartialJsonFeed and fromAsyncIterable tokenize each new character of a JSON stream once, reuse closed values, and yield a partial document you can check while the text is still arriving."
+faq:
+  - question: "How do I feed a Node stream?"
+    answer: "Pass a Node Readable or any async iterable of strings or UTF-8 bytes to fromAsyncIterable from @adaptate/core/stream-incremental."
+  - question: "Does it re-scan earlier characters?"
+    answer: "No. Each new character is read once. Closed values are reused, and only still-open containers are copied."
 ---
 
 # Incremental partial JSON

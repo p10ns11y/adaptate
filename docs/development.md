@@ -1,6 +1,12 @@
 ---
 title: "Development"
 description: "Install, test, and build this repository with pnpm."
+answer: "Develop adaptate with pnpm 11.1.1 on Node 24. Run pnpm install, pnpm lint, pnpm test, and pnpm build. npm install at the repository root is not supported."
+faq:
+  - question: "Why not npm install?"
+    answer: "npm does not apply the supply-chain settings in .npmrc and pnpm-workspace.yaml, and the tree can diverge from CI."
+  - question: "How do I refresh the API reference?"
+    answer: "Run pnpm build, then pnpm docs:api. The verify job fails when docs/api or llms.txt drift."
 ---
 
 # Development
@@ -22,23 +28,6 @@ pnpm build         # turbo run build
 pnpm typecheck
 ```
 
-`turbo.json` makes `build` depend on dependency `check-types` and dependency `test`.
-
-```
-├── .devcontainer/   # Node 24 + pnpm
-├── bench/ab/        # A/B runtime eval
-├── docs/
-├── packages/core/   # @adaptate/core
-├── packages/utils/  # @adaptate/utils
-├── skills/
-├── tools/api-docs/  # TypeDoc markdown from the published .d.ts files
-├── AGENTS.md
-├── CODING_STYLE.md
-└── turbo.json
-```
-
 Agent procedures: [AGENTS.md](../AGENTS.md), [skills/](../skills/). Dev container: [.devcontainer/README.md](../.devcontainer/README.md).
-
-The pattern comes from [Oneflow AB](https://oneflow.com): one data model, several components, different required fields. The first prototype was a ChatGPT Canvas. PR [#21](https://github.com/p10ns11y/adaptate/pull/21) is the first agent-written change in the repo.
 
 License: MIT.

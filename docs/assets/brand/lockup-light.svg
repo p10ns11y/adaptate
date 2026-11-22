@@ -2,29 +2,29 @@
 <g transform="translate(0 4) scale(2.8750)">
 <defs>
 <linearGradient id="lk2light-eG" x1="16" y1="25" x2="16" y2="7" gradientUnits="userSpaceOnUse">
-<stop offset="0" stop-color="#ECA43F"/>
-<stop offset="0.42" stop-color="#FFE99D"/>
-<stop offset="1" stop-color="#D3D4D6"/>
+<stop offset="0" stop-color="#D19057"/>
+<stop offset="0.42" stop-color="#FEF2DC"/>
+<stop offset="1" stop-color="#C4C6C5"/>
 </linearGradient>
 <linearGradient id="lk2light-eBurn" x1="16" y1="25.6" x2="16" y2="20.6" gradientUnits="userSpaceOnUse">
-<stop offset="0" stop-color="#FFE99D"/>
-<stop offset="1" stop-color="#ECA43F"/>
+<stop offset="0" stop-color="#FEF2DC"/>
+<stop offset="1" stop-color="#D19057"/>
 </linearGradient>
 </defs>
-  <rect width="32" height="32" rx="7" fill="#0F0E0C"/>
+  <rect width="32" height="32" rx="7" fill="#0A0D12"/>
   <path d="M8.0 23.55C9.35 21.5 13.35 11.55 14.4 7.15" fill="none" stroke="url(#lk2light-eG)" stroke-width="3.3" stroke-linecap="round"/>
   <path d="M24.0 23.55C22.65 21.5 18.65 11.55 17.6 7.15" fill="none" stroke="url(#lk2light-eG)" stroke-width="3.3" stroke-linecap="round"/>
   <ellipse cx="16" cy="23.9" rx="3.05" ry="2.25" fill="url(#lk2light-eBurn)"/>
-  <circle cx="16" cy="23.65" r="1.1" fill="#FFE99D"/>
+  <circle cx="16" cy="23.65" r="1.1" fill="#FEF2DC"/>
 </g>
 <g transform="translate(104 0)">
 <defs>
 <linearGradient id="lk2light-burn" x1="0" y1="8" x2="0" y2="-8" gradientUnits="userSpaceOnUse">
-<stop offset="0" stop-color="#FFE99D"/>
-<stop offset="1" stop-color="#ECA43F"/>
+<stop offset="0" stop-color="#FEF2DC"/>
+<stop offset="1" stop-color="#D19057"/>
 </linearGradient>
 </defs>
-<g fill="#0F0E0C">
+<g fill="#0A0D12">
 <g transform="translate(10 0)">
 <path d="M14.95 92.13L15.4 90.88L15.86 89.48L16.32 87.92L16.8 86.18L17.3 84.28L17.82 82.22L18.36 80.01L18.9 77.67L19.47 75.2L20.04 72.62L20.62 69.93L21.2 67.15L21.79 64.29L22.38 61.36L22.96 58.37L23.54 55.34L24.11 52.27L24.67 49.18L25.21 46.08L25.73 42.98L26.24 39.9L26.72 36.84L27.18 33.82L27.6 30.85L27.99 27.94L28.35 25.11L28.67 22.36L28.95 19.71L29.18 17.17L29.37 14.76L29.5 12.47L29.59 10.34L27.01 9.96L26.46 11.99L25.86 14.16L25.22 16.46L24.54 18.89L23.83 21.42L23.09 24.06L22.32 26.77L21.52 29.57L20.7 32.43L19.87 35.33L19.01 38.28L18.15 41.25L17.28 44.24L16.4 47.23L15.51 50.21L14.63 53.17L13.75 56.1L12.88 58.98L12.02 61.81L11.17 64.57L10.34 67.24L9.53 69.82L8.74 72.29L7.98 74.65L7.25 76.87L6.56 78.95L5.91 80.87L5.3 82.61L4.73 84.17L4.23 85.51L3.8 86.63L3.45 87.47L3 89.85L3.49 92.22L4.85 94.22L6.87 95.55L9.25 96L11.62 95.51L13.62 94.15L14.95 92.13Z"/>
 <path d="M58.55 87.47L58.2 86.63L57.77 85.51L57.27 84.17L56.7 82.61L56.09 80.87L55.44 78.95L54.75 76.87L54.02 74.65L53.26 72.29L52.47 69.82L51.66 67.24L50.83 64.57L49.98 61.81L49.12 58.98L48.25 56.1L47.37 53.17L46.49 50.21L45.6 47.23L44.72 44.24L43.85 41.25L42.99 38.28L42.13 35.33L41.3 32.43L40.48 29.57L39.68 26.77L38.91 24.06L38.17 21.42L37.46 18.89L36.78 16.46L36.14 14.16L35.54 11.99L34.99 9.96L32.41 10.34L32.5 12.47L32.63 14.76L32.82 17.17L33.05 19.71L33.33 22.36L33.65 25.11L34.01 27.94L34.4 30.85L34.82 33.82L35.28 36.84L35.76 39.9L36.27 42.98L36.79 46.08L37.33 49.18L37.89 52.27L38.46 55.34L39.04 58.37L39.62 61.36L40.21 64.29L40.8 67.15L41.38 69.93L41.96 72.62L42.53 75.2L43.1 77.67L43.64 80.01L44.18 82.22L44.7 84.28L45.2 86.18L45.68 87.92L46.14 89.48L46.6 90.88L47.05 92.13L48.38 94.15L50.38 95.51L52.75 96L55.13 95.55L57.15 94.22L58.51 92.22L59 89.85L58.55 87.47Z"/>

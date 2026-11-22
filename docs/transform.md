@@ -1,6 +1,14 @@
 ---
 title: "Transform"
 description: "One Zod schema, and a config that marks which fields each screen requires."
+answer: "transformSchema(schema, config) returns a Zod schema where the fields marked true in the config are required. Fields the config does not mention keep their original optionality."
+faq:
+  - question: "What does transformSchema return?"
+    answer: "A Zod schema. The configured fields are required and every other field stays as it was."
+  - question: "How do I require a field on every array item?"
+    answer: "Use the '*' key, for example { tags: { '*': true } }."
+  - question: "How do I require a field only in some cases?"
+    answer: "Use makeConditionalSchemaTransformer(data)(schema, config) with requiredIf: (data) => boolean."
 ---
 
 # Transform
@@ -97,4 +105,4 @@ Traversal, from `packages/core/src/index.ts`:
 3. An array `'*'` config is applied to the element schema.
 4. The new shape is copied back with object spread into `z.object`.
 
-Fields absent from the config are kept. [DESIGN.md](../DESIGN.md) walks through the recursion and states O(N) time and O(D) space.
+Fields absent from the config are kept.

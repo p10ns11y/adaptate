@@ -1,6 +1,12 @@
 ---
 title: "Proof"
 description: "Each front-page sentence mapped to a test, a script, or a CI job."
+answer: "Each claim on the root README maps to a test, a script, or a CI job in this repository. This page lists the sentence and the proof that covers it."
+faq:
+  - question: "Where are the deep-input tests?"
+    answer: "packages/core/src/__tests__/deep-nesting.test.ts and packages/utils/src/__tests__/deep-nesting.test.ts cover 100,000-level walks and the 500-level $ref cap."
+  - question: "Where are the README snippets tested?"
+    answer: "packages/core/src/__tests__/index.test.ts and packages/utils/src/__tests__/openapi.test.ts run the README snippets as shown."
 ---
 
 # Proof

@@ -1,6 +1,14 @@
 ---
 title: "Streaming"
 description: "Check a tool call while the JSON is still arriving."
+answer: "@adaptate/core/stream checks a partial JSON document against each named config while text is still arriving. createAgUiPartialValidator turns AG-UI deltas into a partial value and a per-config result."
+faq:
+  - question: "What happens when a chunk cuts a string in half?"
+    answer: "parsePartialJson closes the open string, objects, and arrays, so {\"title\":\"Pas becomes { title: \"Pas\" }."
+  - question: "Does partial checking reject missing fields?"
+    answer: "No. partial(value) keeps absent fields optional and still type-checks the fields that are present."
+  - question: "Which peer does it need?"
+    answer: "Only zod, version ^3.25.0 or ^4.0.0."
 ---
 
 # Streaming
@@ -16,7 +24,7 @@ description: "Check a tool call while the JSON is still arriving."
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`. See [Incremental partial JSON](incremental-parser.md).
+`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
 
 ```ts
 import { z } from "zod";

@@ -1,6 +1,12 @@
 ---
 title: "Performance"
 description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
+answer: "CI compares a pull request with its base and fails when a case is more than 5% slower. The measured run, visit counts, and bundle sizes for this release are recorded on this page."
+faq:
+  - question: "What does CI fail on?"
+    answer: "scripts/bench-compare.mjs fails a pull request when any timed case is more than 5% slower than its base (limit 1.05)."
+  - question: "Where is the recorded run?"
+    answer: "The measured tables and the visit-count comparison for the incremental feed are in the Measured section on this page."
 ---
 
 # Performance

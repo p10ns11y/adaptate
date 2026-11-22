@@ -1,7 +1,9 @@
 import { Application } from "typedoc";
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { buildAgentIndexes, pageDescription, pageTitle, parseFrontmatter, readText, yamlQuote } from "./llms.mjs";
 
 let scriptDirectory = dirname(fileURLToPath(import.meta.url));
 let repositoryRoot = resolve(scriptDirectory, "../..");
@@ -29,135 +31,6 @@ let packagesToDocument = [
     ],
   },
 ];
-
-let guideOrder = [
-  "transform.md",
-  "streaming.md",
-  "incremental-parser.md",
-  "openapi.md",
-  "effect.md",
-  "typescript.md",
-  "subpaths.md",
-  "optional-peers.md",
-  "performance.md",
-  "proof.md",
-  "migration-2.4.md",
-  "development.md",
-];
-
-function readText(filePath) {
-  return readFileSync(filePath, "utf8");
-}
-
-function yamlQuote(value) {
-  return JSON.stringify(value);
-}
-
-function firstParagraph(markdownBody) {
-  let lines = markdownBody.split("\n");
-  let paragraph = [];
-  let started = false;
-  for (let line of lines) {
-    let trimmed = line.trim();
-    if (!started) {
-      if (
-      trimmed.length === 0 ||
-      trimmed.startsWith("#") ||
-      trimmed.startsWith(">") ||
-      trimmed.startsWith("```") ||
-      trimmed.startsWith("|") ||
-      trimmed.startsWith("-") ||
-      trimmed.startsWith("<")
-    ) {
-        continue;
-      }
-      started = true;
-      paragraph.push(trimmed);
-      continue;
-    }
-    if (trimmed.length === 0 || trimmed.startsWith("```") || trimmed.startsWith("#")) {
-      break;
-    }
-    paragraph.push(trimmed);
-  }
-  return paragraph.join(" ").replace(/\s+/g, " ").trim();
-}
-
-function parseFrontmatter(markdown) {
-  if (!markdown.startsWith("---\n")) {
-    return { frontmatter: {}, body: markdown };
-  }
-  let end = markdown.indexOf("\n---\n", 4);
-  if (end === -1) {
-    return { frontmatter: {}, body: markdown };
-  }
-  let block = markdown.slice(4, end);
-  let body = markdown.slice(end + "\n---\n".length);
-  let frontmatter = {};
-  for (let line of block.split("\n")) {
-    let separator = line.indexOf(":");
-    if (separator === -1) {
-      continue;
-    }
-    let key = line.slice(0, separator).trim();
-    let rawValue = line.slice(separator + 1).trim();
-    if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-      frontmatter[key] = JSON.parse(rawValue);
-    } else {
-      frontmatter[key] = rawValue;
-    }
-  }
-  return { frontmatter, body };
-}
-
-function pageTitle(markdown, fallbackTitle) {
-  let parsed = parseFrontmatter(markdown);
-  if (typeof parsed.frontmatter.title === "string" && parsed.frontmatter.title.length > 0) {
-    return parsed.frontmatter.title;
-  }
-  let heading = parsed.body.match(/^#\s+(.+)$/m);
-  if (heading) {
-    return heading[1].trim();
-  }
-  return fallbackTitle;
-}
-
-function shorten(text) {
-  let singleLine = text.replace(/\s+/g, " ").trim();
-  if (singleLine.length > 180) {
-    return `${singleLine.slice(0, 177)}...`;
-  }
-  return singleLine;
-}
-
-function isProse(text) {
-  let trimmed = text.trim();
-  if (trimmed.length < 12) {
-    return false;
-  }
-  if (
-    trimmed.startsWith("`") ||
-    trimmed.startsWith("*") ||
-    trimmed.startsWith(">") ||
-    trimmed.startsWith("Published declarations")
-  ) {
-    return false;
-  }
-  return /[A-Za-z]{3,}\s+[A-Za-z]/.test(trimmed);
-}
-
-function pageDescription(markdown, fallbackDescription) {
-  let parsed = parseFrontmatter(markdown);
-  let writtenDescription = parsed.frontmatter.description;
-  if (typeof writtenDescription === "string" && isProse(writtenDescription)) {
-    return shorten(writtenDescription);
-  }
-  let paragraph = firstParagraph(parsed.body);
-  if (isProse(paragraph)) {
-    return shorten(paragraph);
-  }
-  return fallbackDescription;
-}
 
 function withFrontmatter(markdown, fallbackTitle, fallbackDescription) {
   let parsed = parseFrontmatter(markdown);
@@ -253,40 +126,6 @@ async function documentPackage(packageInfo) {
   }
 }
 
-function guidePages() {
-  let indexPath = join(docsDirectory, "index.md");
-  let indexMarkdown = readText(indexPath);
-  let linked = new Set();
-  for (let match of indexMarkdown.matchAll(/\(([^)]+\.md)\)/g)) {
-    linked.add(match[1]);
-  }
-  let missingFromNav = [];
-  for (let guideName of guideOrder) {
-    if (!linked.has(guideName) && !linked.has(`./${guideName}`)) {
-      missingFromNav.push(guideName);
-    }
-  }
-  if (missingFromNav.length > 0) {
-    throw new Error(`docs/index.md does not link ${missingFromNav.join(", ")}`);
-  }
-  let pages = [
-    {
-      path: "docs/index.md",
-      markdown: indexMarkdown,
-    },
-  ];
-  for (let guideName of guideOrder) {
-    let guidePath = join(docsDirectory, guideName);
-    let markdown = readText(guidePath);
-    let parsed = parseFrontmatter(markdown);
-    if (!parsed.frontmatter.title || !parsed.frontmatter.description) {
-      throw new Error(`${guideName} needs title and description frontmatter`);
-    }
-    pages.push({ path: `docs/${guideName}`, markdown });
-  }
-  return pages;
-}
-
 function writeApiIndex(apiPages) {
   let lines = [
     "---",
@@ -319,40 +158,6 @@ function writeApiIndex(apiPages) {
   writeFileSync(join(apiDirectory, "index.md"), `${lines.join("\n")}`);
 }
 
-function writeAgentIndexes(pages) {
-  let summary = [
-    "# Adaptate",
-    "",
-    "> One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.",
-    "",
-    "Paths are relative to the repository root. There is no deployed documentation site.",
-    "",
-    "## Docs",
-    "",
-  ];
-  let full = [
-    "# Adaptate",
-    "",
-    "> One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.",
-    "",
-  ];
-  let apiSummary = ["", "## API", ""];
-  for (let page of pages) {
-    let title = pageTitle(page.markdown, page.path);
-    let description = pageDescription(page.markdown, title);
-    let bullet = `- [${title}](${page.path}): ${description}`;
-    if (page.path.startsWith("docs/api/")) {
-      apiSummary.push(bullet);
-    } else {
-      summary.push(bullet);
-    }
-    full.push(`# ${title}`, "", `Source: ${page.path}`, "", page.markdown.trim(), "", "");
-  }
-  summary.push(...apiSummary, "");
-  writeFileSync(join(repositoryRoot, "llms.txt"), `${summary.join("\n")}`);
-  writeFileSync(join(repositoryRoot, "llms-full.txt"), `${full.join("\n").trim()}\n`);
-}
-
 mkdirSync(apiDirectory, { recursive: true });
 rmSync(join(apiDirectory, "core"), { recursive: true, force: true });
 rmSync(join(apiDirectory, "utils"), { recursive: true, force: true });
@@ -376,15 +181,8 @@ let apiPages = walkMarkdown(apiDirectory)
   .sort((left, right) => left.path.localeCompare(right.path));
 
 writeApiIndex(apiPages);
-let apiIndex = {
-  path: "docs/api/index.md",
-  markdown: readText(join(apiDirectory, "index.md")),
-  title: "API",
-  description: "API reference generated from the published declaration files.",
-};
-apiPages.push(apiIndex);
-apiPages.sort((left, right) => left.path.localeCompare(right.path));
 
-let pages = [...guidePages(), ...apiPages];
-writeAgentIndexes(pages);
-console.log(`Wrote docs/api, llms.txt, and llms-full.txt (${pages.length} pages).`);
+let indexes = buildAgentIndexes(repositoryRoot);
+writeFileSync(join(repositoryRoot, "llms.txt"), indexes.llms);
+writeFileSync(join(repositoryRoot, "llms-full.txt"), indexes.llmsFull);
+console.log(`Wrote docs/api, llms.txt, and llms-full.txt (${indexes.pageCount} pages).`);
