@@ -179,7 +179,7 @@ Source: docs/incremental-parser.md
 
 ---
 title: "Incremental partial JSON"
-description: "Scan each new character of a JSON stream once."
+description: "Resume the bracket scan of a JSON stream."
 ---
 
 # Incremental partial JSON
@@ -198,7 +198,7 @@ flowchart TD
   hold --> reuse["Reuse the previous check"]
 ```
 
-Each character of the stream is scanned once. On the grocery order (966 characters, 41 chunks) that is 966 visits, against 68,304 when every chunk rescans the whole buffer. `parsePartialJson` still walks a whole prefix. `createPartialJsonParser` resumes from the previous chunk. `createAgUiPartialValidator` uses that resume. A parsed value is checked with the lenient partial. A chunk that does not parse keeps the previous value and its check. `createFrameThrottle` keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
+The bracket scan resumes from the previous chunk, so each new character is scanned once. `JSON.parse` still receives a repaired prefix, and a chunk that does not parse at the end tries earlier ends. On the grocery order (966 characters, 41 chunks) that is 68,714 characters passed to `JSON.parse` across 130 parses. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix. `createPartialJsonParser` counts those parsed characters in `visits`. `createAgUiPartialValidator` uses the resumed scan. A parsed value is checked with the lenient partial. A chunk that does not parse keeps the previous value and its check. `createFrameThrottle` keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
 # OpenAPI
@@ -526,7 +526,7 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,246 / 94,453 | 2,869 / 787 B (+0.840% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,340 / 1,789 | +4,340 / +1,789 B | — |
 
-Character visits on that grocery order, 41 chunks: 68,304 with a full rescan of the buffer each chunk, 966 when each character is scanned once. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+Characters passed to `JSON.parse` on that grocery order, 41 chunks: 68,714 across 130 parses. The bracket scan visits each new character once (966). A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
 
 
 # Proof
@@ -561,7 +561,7 @@ Each sentence on the front page maps to something in the repo.
 | The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
 | CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
 | Node v24.22.3. Commit 233627c. One local node bench/ab/run.js | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn. AG-UI on that run is 17.240 µs/chunk |
-| A partial JSON stream scans each new character once | [`createPartialJsonParser`](../packages/core/src/partial-json.ts) resumes the bracket and string state. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix. The grocery order is 966 visits, against 68,304 for a full rescan each chunk |
+| A partial JSON stream resumes its bracket scan | [`createPartialJsonParser`](../packages/core/src/partial-json.ts) resumes the bracket and string state and counts characters passed to `JSON.parse`. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix. The grocery order passes 68,714 characters to `JSON.parse` across 130 parses. A full rescan was 68,304 character visits |
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
 

@@ -59,7 +59,7 @@
 
 Node v24.22.3. Commit [`233627c`](https://github.com/p10ns11y/adaptate/commit/233627cfaf8e67424ed612ec2320c7b1eb657742). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
 
-A partial JSON stream scans each new character once. AG-UI is 17.240 µs/chunk. Parsed partial is 0.843 µs/chunk against raw Zod 0.623 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
+A partial JSON stream resumes its bracket scan. `JSON.parse` on the grocery order receives 68,714 characters across 130 parses. AG-UI is 17.240 µs/chunk. Parsed partial is 0.843 µs/chunk against raw Zod 0.623 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
 
 ## Quick start
 

@@ -37,21 +37,42 @@ describe("incremental partial JSON", () => {
         (value, prefixCut, widths) => {
           const full = JSON.stringify(value);
           const text = full.slice(0, prefixCut % (full.length + 1));
-          const parser = createPartialJsonParser();
-          let buffer = "";
-          let widthIndex = 0;
-          while (buffer.length < text.length) {
-            const width = widths[widthIndex % Math.max(widths.length, 1)] ?? 1;
-            widthIndex += 1;
-            const piece = text.slice(buffer.length, buffer.length + Math.max(width, 1));
-            buffer += piece;
-            expect(sameValue(parser.push(piece), parsePartialJson(buffer))).toBe(true);
-            expect(sameValue(parser.push(""), parsePartialJson(buffer))).toBe(true);
+          const parsedLengths: number[] = [];
+          const realParse = JSON.parse;
+          JSON.parse = ((valueText: string) => {
+            parsedLengths.push(valueText.length);
+            return realParse(valueText);
+          }) as typeof JSON.parse;
+          try {
+            const parser = createPartialJsonParser();
+            let buffer = "";
+            let widthIndex = 0;
+            const parsedDuring = (from: number): number =>
+              parsedLengths.slice(from).reduce((sum, length) => sum + length, 0);
+            while (buffer.length < text.length) {
+              const width = widths[widthIndex % Math.max(widths.length, 1)] ?? 1;
+              widthIndex += 1;
+              const piece = text.slice(buffer.length, buffer.length + Math.max(width, 1));
+              buffer += piece;
+              const parsedBefore = parsedLengths.length;
+              const visitsBefore = parser.visits;
+              const got = parser.push(piece);
+              expect(parser.visits - visitsBefore).toBe(parsedDuring(parsedBefore));
+              expect(sameValue(got, parsePartialJson(buffer))).toBe(true);
+              const emptyBefore = parsedLengths.length;
+              const emptyVisits = parser.visits;
+              const again = parser.push("");
+              expect(parser.visits - emptyVisits).toBe(parsedDuring(emptyBefore));
+              expect(sameValue(again, parsePartialJson(buffer))).toBe(true);
+            }
+            const doubledBefore = parsedLengths.length;
+            const doubledVisits = parser.visits;
+            const doubled = parser.push(text);
+            expect(parser.visits - doubledVisits).toBe(parsedDuring(doubledBefore));
+            expect(sameValue(doubled, parsePartialJson(text + text))).toBe(true);
+          } finally {
+            JSON.parse = realParse;
           }
-          expect(parser.visits).toBe(text.length);
-          expect(sameValue(parser.push(text), parsePartialJson(text + text))).toBe(
-            true,
-          );
         },
       ),
       { numRuns: 80 },

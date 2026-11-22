@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { partialPathIsValid } from "../partial";
 import {
   createAgUiPartialValidator,
   createFrameThrottle,
@@ -257,7 +256,7 @@ describe("createAgUiPartialValidator", () => {
 });
 
 describe("createPartialJsonParser", () => {
-  it("visits each character once and agrees with parsePartialJson", () => {
+  it("agrees with parsePartialJson and counts parsed characters", () => {
     const samples = [
       '{"title":"a\\',
       '{"a":"hi\\"',
@@ -286,37 +285,39 @@ describe("createPartialJsonParser", () => {
           if (typeof expected === "number") expect(Object.is(got, expected)).toBe(true);
         }
         expect(parser.push("")).toEqual(parsePartialJson(text));
-        expect(parser.visits).toBe(text.length);
       }
     }
   });
-});
 
-describe("partialPathIsValid", () => {
-  it("checks only the value at the path", () => {
-    expect(partialPathIsValid(recipe, { title: "Pasta" }, ["title"])).toBe(true);
-    expect(partialPathIsValid(recipe, { title: 1 }, ["title"])).toBe(false);
-    expect(partialPathIsValid(recipe, { title: "Pasta" }, [])).toBe(true);
-    expect(partialPathIsValid(recipe, { servings: "x" }, [])).toBe(false);
-    expect(partialPathIsValid(recipe, { extra: 1 }, ["extra"])).toBe(true);
-    expect(partialPathIsValid(recipe, {}, ["title"])).toBe(true);
-    expect(partialPathIsValid(recipe, { title: undefined }, ["title"])).toBe(true);
-    expect(partialPathIsValid(recipe, { steps: "no" }, ["steps", 0])).toBe(true);
-    expect(partialPathIsValid(recipe, { steps: [] }, ["steps", 0])).toBe(true);
-    expect(
-      partialPathIsValid(recipe, { steps: [{ minutes: 3 }] }, ["steps", 0, "minutes"]),
-    ).toBe(true);
-    expect(
-      partialPathIsValid(recipe, { steps: [{ minutes: "x" }] }, ["steps", 0, "minutes"]),
-    ).toBe(false);
-    expect(partialPathIsValid(recipe, { title: null }, ["title", "extra"])).toBe(true);
-    expect(partialPathIsValid(recipe, { title: "Pasta" }, ["title", "extra"])).toBe(true);
-    expect(partialPathIsValid(recipe, "no", ["title"])).toBe(true);
-    expect(partialPathIsValid(recipe, { title: "x" }, [0])).toBe(true);
-    expect(partialPathIsValid(z.string(), "hi", ["missing"])).toBe(true);
-    const wrapped = z.object({ title: z.string().optional() });
-    expect(partialPathIsValid(wrapped, { title: "Pasta" }, ["title"])).toBe(true);
-    expect(partialPathIsValid(wrapped, { title: 1 }, ["title"])).toBe(false);
+  it("parses one complete chunk once and walks a bad ending", () => {
+    const text = JSON.stringify({
+      title: "Pasta",
+      steps: Array.from({ length: 48 }, (_step, index) => ({ index })),
+    });
+    const realParse = JSON.parse;
+    const lengths: number[] = [];
+    JSON.parse = ((value: string) => {
+      lengths.push(value.length);
+      return realParse(value);
+    }) as typeof JSON.parse;
+    try {
+      const parser = createPartialJsonParser();
+      expect(parser.push(text)).toEqual(realParse(text));
+      expect(lengths).toEqual([text.length]);
+      expect(parser.visits).toBe(text.length);
+      const bad = `${text.slice(0, -1)}!!!`;
+      lengths.length = 0;
+      const badParser = createPartialJsonParser();
+      const parsed = badParser.push(bad);
+      const parsedSum = lengths.reduce((sum, length) => sum + length, 0);
+      expect(lengths.length).toBeGreaterThan(1);
+      expect(lengths.length).toBeLessThanOrEqual(bad.length);
+      expect(badParser.visits).toBe(parsedSum);
+      JSON.parse = realParse;
+      expect(parsed).toEqual(parsePartialJson(bad));
+    } finally {
+      JSON.parse = realParse;
+    }
   });
 });
 

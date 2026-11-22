@@ -1,3 +1,4 @@
+import { libraryHref } from "./load.js";
 import { createApps } from "./measure.js";
 import {
   orderDocument,
@@ -208,6 +209,25 @@ export async function agree() {
     if (app.validateViews(cardOnly)) {
       throw new Error(`${app.name} accepted a card-only order on every view`);
     }
+  }
+  const stream = await import(libraryHref("", "@adaptate/core/stream"));
+  const orderText = JSON.stringify(orderDocument);
+  const oneChunk = stream.createPartialJsonParser();
+  const oneValue = oneChunk.push(orderText);
+  if (JSON.stringify(oneValue) !== JSON.stringify(stream.parsePartialJson(orderText))) {
+    throw new Error("one large chunk disagreed with parsePartialJson");
+  }
+  if (oneChunk.visits !== orderText.length) {
+    throw new Error(`one large chunk parsed ${oneChunk.visits} characters`);
+  }
+  const badText = `${orderText.slice(0, -1)}!`;
+  const badChunk = stream.createPartialJsonParser();
+  const badValue = badChunk.push(badText);
+  if (JSON.stringify(badValue) !== JSON.stringify(stream.parsePartialJson(badText))) {
+    throw new Error("one large bad chunk disagreed with parsePartialJson");
+  }
+  if (badChunk.visits <= orderText.length || badChunk.visits > badText.length * badText.length * 2) {
+    throw new Error(`bad chunk parsed ${badChunk.visits} characters`);
   }
   return { chunks: deltas.length, bytes: toolCallDeltas(orderDocument).bytes };
 }

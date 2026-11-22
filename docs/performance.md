@@ -107,4 +107,4 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,246 / 94,453 | 2,869 / 787 B (+0.840% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,340 / 1,789 | +4,340 / +1,789 B | — |
 
-Character visits on that grocery order, 41 chunks: 68,304 with a full rescan of the buffer each chunk, 966 when each character is scanned once. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+Characters passed to `JSON.parse` on that grocery order, 41 chunks: 68,714 across 130 parses. The bracket scan visits each new character once (966). A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.

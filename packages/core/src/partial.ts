@@ -69,29 +69,6 @@ function lenientSchema(schema: z.ZodType): z.ZodType {
   return built;
 }
 
-export function partialPathIsValid(
-  schema: z.ZodType,
-  value: unknown,
-  path: ReadonlyArray<string | number>,
-): boolean {
-  let node = lenientSchema(schema);
-  let current: unknown = value;
-  for (const segment of path) {
-    if (current == null) return true;
-    node = unwrapOptional(node);
-    const nextNode =
-      typeof segment === "number"
-        ? (node as z.ZodArray<z.ZodType>).element
-        : (node as { shape?: Record<string, z.ZodType> }).shape?.[segment];
-    if (!nextNode || !Array.isArray(current) && typeof current !== "object") return true;
-    const container = current as Record<string, unknown> & unknown[];
-    if (container[segment] === undefined) return true;
-    node = nextNode as z.ZodType;
-    current = container[segment];
-  }
-  return unwrapOptional(node).safeParse(current).success;
-}
-
 export function cacheLenientSchema(schema: z.ZodType): void {
   if (schema instanceof z.ZodObject || schema instanceof z.ZodArray) {
     lenientSchema(schema);

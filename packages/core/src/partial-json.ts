@@ -43,13 +43,21 @@ export type PartialJsonParser = {
 export function createPartialJsonParser(): PartialJsonParser {
   const pushChunk = createPartialJsonFeed();
   let visits = 0;
+  const parseJson = JSON.parse;
   return {
     get visits() {
       return visits;
     },
     push(chunk: string) {
-      visits += chunk.length;
-      return pushChunk(chunk);
+      JSON.parse = ((text: string) => {
+        visits += text.length;
+        return parseJson(text);
+      }) as typeof JSON.parse;
+      try {
+        return pushChunk(chunk);
+      } finally {
+        JSON.parse = parseJson;
+      }
     },
   };
 }
