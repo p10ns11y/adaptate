@@ -38,7 +38,7 @@ const openAPISchema = zodToOpenAPISchema(
   z.object({
     name: z.string().min(2).describe("Full name"),
     age: z.number().int().min(0),
-    email: z.string().email().optional(),
+    email: z.email().optional(),
     tags: z.array(z.string()).min(1),
   }),
 );

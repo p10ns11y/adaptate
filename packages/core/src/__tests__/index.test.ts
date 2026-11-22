@@ -8,6 +8,12 @@ import {
 } from "#utils/openapi";
 
 import { transformSchema, makeConditionalSchemaTransformer, type Config } from "../";
+import { Readable } from "node:stream";
+import { Effect } from "effect";
+import { createAgUiPartialValidator, createStreamValidator } from "../stream";
+import { fromAsyncIterable } from "../stream-incremental";
+import { validateAgainstStandardSchemas } from "../standard";
+import { createEffectStreamValidator } from "../effect";
 
 describe("transformSchema", () => {
   it("should make properties required based on the config", async () => {
@@ -545,13 +551,88 @@ describe("makeConditionalSchemaTransformer", () => {
   });
 });
 
-describe("readme inferred type", () => {
-  it("checks the card config against the inferred recipe type", () => {
+describe("readme snippets", () => {
+  it("checks the quickstart card against the inferred recipe type", () => {
     let recipe = z.object({ title: z.string(), servings: z.number() });
     type Recipe = z.infer<typeof recipe>;
     let card = { title: true } satisfies Config<Recipe>;
     let cardSchema = transformSchema(recipe.partial(), card);
+    expect(cardSchema.parse({ title: "Pasta" })).toEqual({ title: "Pasta" });
     expect(cardSchema.safeParse({ title: "Pas" }).success).toBe(true);
     expect(cardSchema.safeParse({}).success).toBe(false);
+    let kitchenSchema = transformSchema(recipe.partial(), {
+      title: true,
+      servings: true,
+    });
+    expect(kitchenSchema.safeParse({ title: "Pas" }).success).toBe(false);
+  });
+
+  it("reads a cutoff tool call that JSON.parse rejects", () => {
+    let recipe = z.object({ title: z.string(), servings: z.number() });
+    let push = createAgUiPartialValidator(recipe, { card: { title: true } });
+    let cutoff = '{"title":"Pas';
+    expect(() => JSON.parse(cutoff)).toThrow(SyntaxError);
+    let check = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "call-1",
+      delta: cutoff,
+    });
+    expect(check?.partial).toEqual({ title: "Pas" });
+    expect(check?.results.card.valid).toBe(true);
+  });
+  it("streams three deltas and reports per-view readiness from final", () => {
+    let recipe = z.object({ title: z.string(), servings: z.number() }).partial();
+    let views = { card: { title: true }, kitchen: { title: true, servings: true } };
+    let push = createAgUiPartialValidator(recipe, views);
+    let partials = ['{"title":"Pa', 'sta","serv', 'ings":2}'].map(
+      (delta) => push({ type: "TOOL_CALL_ARGS", toolCallId: "call-1", delta })?.partial,
+    );
+    expect(partials).toEqual([{ title: "Pa" }, { title: "Pasta" }, { title: "Pasta", servings: 2 }]);
+    let ready = createStreamValidator(recipe, views).final({ title: "Pasta" });
+    expect([ready.card.valid, ready.kitchen.valid]).toEqual([true, false]);
+  });
+
+  it("reads bytes from a Node Readable incrementally", async () => {
+    let encoder = new TextEncoder();
+    let bytes = Readable.from([encoder.encode('{"title":"Pas'), encoder.encode('ta","servings":2}')]);
+    let seen: unknown[] = [];
+    for await (let partial of fromAsyncIterable(bytes)) seen.push(partial);
+    expect(seen).toEqual([{ title: "Pas" }, { title: "Pasta", servings: 2 }]);
+  });
+
+  it("checks nested, array, and conditional configs", () => {
+    let order = z
+      .object({
+        items: z.array(z.object({ name: z.string(), qty: z.number() }).partial()),
+        delivery: z.object({ address: z.string(), notes: z.string() }).partial(),
+      })
+      .partial();
+    let checkout = {
+      items: { "*": { name: true, qty: true } },
+      delivery: { address: true },
+    } satisfies Config<z.infer<typeof order>>;
+    let schema = transformSchema(order, checkout);
+    expect(schema.safeParse({ items: [{ name: "Milk" }], delivery: { address: "Main St 1" } }).success).toBe(false);
+    expect(schema.safeParse({ items: [{ name: "Milk", qty: 1 }], delivery: { address: "Main St 1" } }).success).toBe(true);
+    let pickup = z.object({ pickup: z.boolean(), address: z.string().optional() });
+    let rule = { address: { requiredIf: (data: { pickup: boolean }) => !data.pickup } };
+    expect(makeConditionalSchemaTransformer({ pickup: false })(pickup, rule).schema.safeParse({ pickup: false }).success).toBe(false);
+    expect(makeConditionalSchemaTransformer({ pickup: true })(pickup, rule).schema.safeParse({ pickup: true }).success).toBe(true);
+  });
+
+  it("validates transformed Zod schemas as Standard Schemas", async () => {
+    let recipe = z.object({ title: z.string(), servings: z.number() }).partial();
+    let report = await validateAgainstStandardSchemas({ title: "Pasta" }, {
+      card: transformSchema(recipe, { title: true }),
+      kitchen: transformSchema(recipe, { title: true, servings: true }),
+    });
+    expect([report.card.valid, report.kitchen.valid]).toEqual([true, false]);
+  });
+
+  it("reports views from the Effect validator", () => {
+    let recipe = z.object({ title: z.string().optional(), servings: z.number().optional() });
+    let validator = createEffectStreamValidator(recipe, { card: { title: true }, kitchen: { servings: true } });
+    let report = Effect.runSync(validator.final('{"title":"Pasta"}'));
+    expect([report.configs.card.valid, report.configs.kitchen.valid]).toEqual([true, false]);
   });
 });

@@ -18,23 +18,40 @@ flowchart TD
 
 ```ts
 import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
 
-await pipeline(readable, async function collect(source) {
-  for await (const partialValue of fromAsyncIterable(source)) {
-    use(partialValue);
-  }
-});
+const partials: unknown[] = [];
+const readable = Readable.from([
+  new TextEncoder().encode('{"title":"Pas'),
+  new TextEncoder().encode('ta"}'),
+]);
 
-async function* openAiArguments(events) {
+for await (const partialValue of fromAsyncIterable(readable)) {
+  partials.push(partialValue);
+}
+
+type OpenAiEvent = {
+  choices?: Array<{
+    delta?: {
+      tool_calls?: Array<{ function?: { arguments?: string } }>;
+    };
+  }>;
+};
+
+async function* openAiArguments(events: Iterable<OpenAiEvent> | AsyncIterable<OpenAiEvent>) {
   for await (const event of events) {
     const delta = event.choices?.[0]?.delta?.tool_calls?.[0]?.function?.arguments;
     if (typeof delta === "string" && delta.length > 0) yield delta;
   }
 }
 
-async function* anthropicInputJson(events) {
+type AnthropicEvent = {
+  delta?: { type?: string; partial_json?: string };
+};
+
+async function* anthropicInputJson(
+  events: Iterable<AnthropicEvent> | AsyncIterable<AnthropicEvent>,
+) {
   for await (const event of events) {
     const delta = event.delta;
     if (delta?.type === "input_json_delta" && typeof delta.partial_json === "string") {
@@ -43,10 +60,23 @@ async function* anthropicInputJson(events) {
   }
 }
 
-for await (const partialValue of fromAsyncIterable(openAiArguments(events))) use(partialValue);
-for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) use(partialValue);
+const openAiEvents: OpenAiEvent[] = [
+  {
+    choices: [{ delta: { tool_calls: [{ function: { arguments: '{"title":"Pas' } }] } }],
+  },
+];
+const anthropicEvents: AnthropicEvent[] = [
+  { delta: { type: "input_json_delta", partial_json: '{"title":"Pas' } },
+];
+
+for await (const partialValue of fromAsyncIterable(openAiArguments(openAiEvents))) {
+  partials.push(partialValue);
+}
+for await (const partialValue of fromAsyncIterable(anthropicInputJson(anthropicEvents))) {
+  partials.push(partialValue);
+}
 ```
 
 `Readable` from Node, a Web `ReadableStream`, and either delta mapping are the same input: strings or bytes. No SDK is required.
 
-Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order the caller reads 966 characters. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
+Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order in `bench/ab/order.js`, the incremental feed reads each character once. Partial JSON tests assert `visits` equals the text length. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
