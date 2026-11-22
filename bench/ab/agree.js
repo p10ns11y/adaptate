@@ -226,8 +226,8 @@ export async function agree() {
   if (JSON.stringify(badValue) !== JSON.stringify(stream.parsePartialJson(badText))) {
     throw new Error("one large bad chunk disagreed with parsePartialJson");
   }
-  if (badChunk.visits <= orderText.length || badChunk.visits > badText.length * badText.length * 2) {
-    throw new Error(`bad chunk parsed ${badChunk.visits} characters`);
+  if (badChunk.visits !== badText.length) {
+    throw new Error(`bad chunk consumed ${badChunk.visits} of ${badText.length} characters`);
   }
   return { chunks: deltas.length, bytes: toolCallDeltas(orderDocument).bytes };
 }

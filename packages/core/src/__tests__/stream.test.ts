@@ -208,6 +208,12 @@ describe("createAgUiPartialValidator", () => {
     });
     expect(first?.partial).toEqual({ title: "Pa" });
     expect(first?.results.card.valid).toBe(true);
+    const repeated = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "t1",
+      delta: "",
+    });
+    expect(repeated?.partial).toBe(first?.partial);
     const second = push({
       type: "TOOL_CALL_ARGS",
       toolCallId: "t1",
@@ -256,6 +262,117 @@ describe("createAgUiPartialValidator", () => {
 });
 
 describe("createPartialJsonParser", () => {
+  it("matches parsePartialJson on partial tokens, escapes, and closers", () => {
+    const samples = [
+      "1.",
+      "1e",
+      "1E",
+      "1e+",
+      "1e-",
+      "1e2",
+      "1E2",
+      "1e+2",
+      "1e-2",
+      "-",
+      "-.",
+      "-e",
+      "+1",
+      "-0",
+      "01",
+      "00",
+      "1.2.3",
+      "truee",
+      "falsee",
+      "nulll",
+      "t",
+      "tr",
+      "tru",
+      "f",
+      "n",
+      "nu",
+      "nul",
+      "{{{",
+      "{{",
+      "{",
+      "[",
+      "}",
+      "]",
+      " ",
+      '{"a":}',
+      '{"a":-}',
+      '{"ok":tr',
+      '{"tit',
+      '{"a"',
+      '{"a":',
+      '{"a":1,}',
+      '{"a":1,2}',
+      '{"a":1}}',
+      "{}x",
+      '{"a":1}{"b":2}',
+      "[1,]",
+      "[1,2,]",
+      "[,]",
+      "[,,]",
+      "[1 2]",
+      "[truee]",
+      '{"a":truee}',
+      "[1e,2]",
+      '{"a":1e,"b":2}',
+      "[1.,2]",
+      "[{]",
+      "{]",
+      "[}",
+      '{"a":1,"a":2}',
+      '"\\b',
+      '"\\f',
+      '"\\r',
+      '"\\t',
+      '"\\"',
+      '"\\/',
+      '"\\\\',
+      '"a\u0001b"',
+      '"\\u12GG"',
+      '"\\u0041"',
+      '"\\uD800\\uDC00"',
+      '"hello\\"',
+      '"\\q"',
+      '"ab\\qcd"',
+      '"\\nfoo',
+      '"a\\u12"',
+      '"a\\u0041',
+      " \t\n\r",
+      "[1,,2]",
+      "{,}",
+      '{"a":1,, "b":2}',
+      "-5e-324",
+      "-5e-",
+      "-3.5e",
+      "[false[false",
+      "4.44.4",
+      '["!["!',
+      "[7e-3[7e-3",
+      "[0[0",
+      '{"a"}',
+      ":",
+      ":1",
+      '{"a":]',
+      "[1}",
+      "}",
+    ];
+    for (const text of samples) {
+      const parser = createPartialJsonParser();
+      let buffer = "";
+      for (const character of text) {
+        buffer += character;
+        const got = parser.push(character);
+        const expected = parsePartialJson(buffer);
+        expect(got, buffer).toEqual(expected);
+        if (typeof expected === "number") expect(Object.is(got, expected)).toBe(true);
+        expect(parser.visits).toBe(buffer.length);
+      }
+    }
+  });
+
   it("agrees with parsePartialJson and counts parsed characters", () => {
     const samples = [
       '{"title":"a\\',
@@ -289,35 +406,29 @@ describe("createPartialJsonParser", () => {
     }
   });
 
-  it("parses one complete chunk once and walks a bad ending", () => {
+  it("counts every character of one large chunk, including a bad ending", () => {
     const text = JSON.stringify({
       title: "Pasta",
       steps: Array.from({ length: 48 }, (_step, index) => ({ index })),
     });
-    const realParse = JSON.parse;
-    const lengths: number[] = [];
-    JSON.parse = ((value: string) => {
-      lengths.push(value.length);
-      return realParse(value);
-    }) as typeof JSON.parse;
-    try {
-      const parser = createPartialJsonParser();
-      expect(parser.push(text)).toEqual(realParse(text));
-      expect(lengths).toEqual([text.length]);
-      expect(parser.visits).toBe(text.length);
-      const bad = `${text.slice(0, -1)}!!!`;
-      lengths.length = 0;
-      const badParser = createPartialJsonParser();
-      const parsed = badParser.push(bad);
-      const parsedSum = lengths.reduce((sum, length) => sum + length, 0);
-      expect(lengths.length).toBeGreaterThan(1);
-      expect(lengths.length).toBeLessThanOrEqual(bad.length);
-      expect(badParser.visits).toBe(parsedSum);
-      JSON.parse = realParse;
-      expect(parsed).toEqual(parsePartialJson(bad));
-    } finally {
-      JSON.parse = realParse;
-    }
+    const parser = createPartialJsonParser();
+    expect(parser.push(text)).toEqual(JSON.parse(text));
+    expect(parser.visits).toBe(text.length);
+    const bad = `${text.slice(0, -1)}!!!`;
+    const badParser = createPartialJsonParser();
+    expect(badParser.push(bad)).toEqual(parsePartialJson(bad));
+    expect(badParser.visits).toBe(bad.length);
+  });
+
+  it("reuses a closed subtree while the open path changes", () => {
+    const parser = createPartialJsonParser();
+    const first = parser.push('{"closed":{"n":1},"open":1');
+    const second = parser.push("2");
+    const firstRecord = first as { closed: { n: number }; open: number };
+    const secondRecord = second as { closed: { n: number }; open: number };
+    expect(firstRecord.closed).toBe(secondRecord.closed);
+    expect(secondRecord.open).toBe(12);
+    expect(parser.visits).toBe('{"closed":{"n":1},"open":1'.length + 1);
   });
 });
 

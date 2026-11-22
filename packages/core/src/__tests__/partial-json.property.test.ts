@@ -21,10 +21,20 @@ const configs = {
 };
 
 function sameValue(got: unknown, expected: unknown): boolean {
-  if (typeof expected === "number" || typeof got === "number") {
-    return Object.is(got, expected);
+  if (Object.is(got, expected)) return true;
+  if (typeof got !== "object" || typeof expected !== "object") return false;
+  if (got === null || expected === null) return false;
+  if (Array.isArray(got) || Array.isArray(expected)) {
+    if (!Array.isArray(got) || !Array.isArray(expected)) return false;
+    if (got.length !== expected.length) return false;
+    return got.every((item, index) => sameValue(item, expected[index]));
   }
-  return JSON.stringify(got) === JSON.stringify(expected);
+  const gotRecord = got as Record<string, unknown>;
+  const expectedRecord = expected as Record<string, unknown>;
+  const gotKeys = Object.keys(gotRecord);
+  const expectedKeys = Object.keys(expectedRecord);
+  if (gotKeys.length !== expectedKeys.length) return false;
+  return expectedKeys.every((key) => sameValue(gotRecord[key], expectedRecord[key]));
 }
 
 describe("incremental partial JSON", () => {
@@ -37,42 +47,24 @@ describe("incremental partial JSON", () => {
         (value, prefixCut, widths) => {
           const full = JSON.stringify(value);
           const text = full.slice(0, prefixCut % (full.length + 1));
-          const parsedLengths: number[] = [];
-          const realParse = JSON.parse;
-          JSON.parse = ((valueText: string) => {
-            parsedLengths.push(valueText.length);
-            return realParse(valueText);
-          }) as typeof JSON.parse;
-          try {
-            const parser = createPartialJsonParser();
-            let buffer = "";
-            let widthIndex = 0;
-            const parsedDuring = (from: number): number =>
-              parsedLengths.slice(from).reduce((sum, length) => sum + length, 0);
-            while (buffer.length < text.length) {
-              const width = widths[widthIndex % Math.max(widths.length, 1)] ?? 1;
-              widthIndex += 1;
-              const piece = text.slice(buffer.length, buffer.length + Math.max(width, 1));
-              buffer += piece;
-              const parsedBefore = parsedLengths.length;
-              const visitsBefore = parser.visits;
-              const got = parser.push(piece);
-              expect(parser.visits - visitsBefore).toBe(parsedDuring(parsedBefore));
-              expect(sameValue(got, parsePartialJson(buffer))).toBe(true);
-              const emptyBefore = parsedLengths.length;
-              const emptyVisits = parser.visits;
-              const again = parser.push("");
-              expect(parser.visits - emptyVisits).toBe(parsedDuring(emptyBefore));
-              expect(sameValue(again, parsePartialJson(buffer))).toBe(true);
-            }
-            const doubledBefore = parsedLengths.length;
-            const doubledVisits = parser.visits;
-            const doubled = parser.push(text);
-            expect(parser.visits - doubledVisits).toBe(parsedDuring(doubledBefore));
-            expect(sameValue(doubled, parsePartialJson(text + text))).toBe(true);
-          } finally {
-            JSON.parse = realParse;
+          const parser = createPartialJsonParser();
+          let buffer = "";
+          let widthIndex = 0;
+          while (buffer.length < text.length) {
+            const width = widths[widthIndex % Math.max(widths.length, 1)] ?? 1;
+            widthIndex += 1;
+            const piece = text.slice(buffer.length, buffer.length + Math.max(width, 1));
+            buffer += piece;
+            const got = parser.push(piece);
+            expect(parser.visits).toBe(buffer.length);
+            expect(sameValue(got, parsePartialJson(buffer))).toBe(true);
+            const again = parser.push("");
+            expect(parser.visits).toBe(buffer.length);
+            expect(sameValue(again, parsePartialJson(buffer))).toBe(true);
           }
+          const doubled = parser.push(text);
+          expect(parser.visits).toBe(buffer.length + text.length);
+          expect(sameValue(doubled, parsePartialJson(text + text))).toBe(true);
         },
       ),
       { numRuns: 80 },
