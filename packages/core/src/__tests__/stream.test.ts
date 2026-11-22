@@ -499,6 +499,12 @@ describe("createPartialJsonParser", () => {
     }
   });
 
+  it("keeps a finished keyword when another keyword follows", () => {
+    const parser = createPartialJsonParser();
+    expect(parser.push("null")).toBeNull();
+    expect(parser.push("true")).toBeNull();
+  });
+
   it("counts every character of one large chunk, including a bad ending", () => {
     const text = JSON.stringify({
       title: "Pasta",
