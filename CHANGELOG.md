@@ -42,19 +42,14 @@ All notable changes to this project will be documented in this file.
 
 **Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
 
-## Unreleased 2.4.0
-
-- `@adaptate/utils` resolves in-document `$ref` pointers locally and has no required runtime dependencies.
-- Install optional `js-yaml` 5 to parse YAML, and `@apidevtools/json-schema-ref-parser` 16 to resolve remote or file `$ref`s.
-
-## Unreleased 2.3.0 — Streaming partial validation (RFC-001)
+## 2.3.0 — 2026-11-22 — Streaming partial validation (RFC-001)
 
 ### Added
 - `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `DeepPartial`.
 - `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
 - CI job on the latest zod.
 
-## Unreleased 2.4.0 — Runtime majors and Standard Schema
+## 2.4.0 — 2026-11-22 — Streaming feed, deep input, Standard Schema
 
 ### Added
 - `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
@@ -62,11 +57,13 @@ All notable changes to this project will be documented in this file.
 - Validation is pure, so this integration does not retry.
 - `@adaptate/core/stream-incremental`: `createPartialJsonFeed` tokenizes a JSON stream once. An open string keeps its decoded prefix, and a push copies the deepest open container and the spine above it. `fromAsyncIterable` reads strings or UTF-8 bytes and yields each partial value. `createAgUiPartialValidator` on that subpath uses the feed. `@adaptate/core/stream` still appends to a buffer and calls `parsePartialJson`. Both validators drop a slot on `TOOL_CALL_END`, `TEXT_MESSAGE_END`, and `close(id)`. `createEffectStreamValidator` takes an optional feed and uses the re-parse feed when it is omitted.
 - `createFrameThrottle` emits the latest value on the next frame.
+- Deep runtime input no longer overflows the call stack. Streamed JSON, partial values, `openAPISchemaToZod`, `zodToOpenAPISchema` and local `$ref` dereference walk with explicit stacks (Knuth 1974, recursion elimination). A 50,000-level chain runs in about 80 ms.
 
 ### Changed
 - `final(text)` parses strict JSON, requires the base schema, and returns `{ value, configs }` for every named config. `final(text, configName)` validates that one config, and fails with `AdaptateValidationError` when `configName` is not an own key of `configs`. `validatePartial` keeps issues from a thrown `ZodError`.
 
 ### Changed — what consumers install
+- `@adaptate/utils` resolves in-document `$ref` pointers locally. Install optional `js-yaml` 5 to parse YAML, and `@apidevtools/json-schema-ref-parser` 16 to resolve remote or file `$ref`s.
 - `@adaptate/utils` no longer requires `@apidevtools/json-schema-ref-parser` or `js-yaml`. Optional peers are parser 16 and js-yaml 5. Core still has zero runtime dependencies.
 - `@types/js-yaml` dropped; js-yaml 5 ships its own types.
 - Dev TypeScript is 7.0.2. Oxlint type-aware lint (`oxlint-tsgolint`) replaces ESLint `@typescript-eslint/no-deprecated`.
