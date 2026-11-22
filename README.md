@@ -53,13 +53,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 commit 168260132fe4953548a28a2c3e167a3fdf93305d · run local Full document validations/sec: zod 2,466,896, adaptate 2,262,696, valibot 455,096. Import median ms: zod 40.397, adaptate 42.197, valibot 6.124. Heap after GC bytes: zod 8,320,768, adaptate 8,500,248, valibot 5,214,848. Bundle own min/gzip bytes, zod external: . 2,490/1,207, ./stream 6,987/3,065, ./standard 589/328, ./effect 6,936/2,851. ./effect also keeps effect external. Parsed partial µs/chunk: zod 0.628, adaptate 0.842, valibot 1.506. AG-UI adaptate µs/chunk: 3.073 (tokenizer and the check). Zod and valibot: no repair, needs complete JSON." src="assets/perf.svg" width="960">
+    <img alt="Node v24.22.3 commit 1a51df50ff0842213e015b18c5d4240a2e994c0a · run local Full document validations/sec: zod 2,425,500, adaptate 2,256,119, valibot 472,695. Import median ms: zod 39.744, adaptate 41.684, valibot 6.042. Heap after GC bytes: zod 8,322,872, adaptate 8,510,312, valibot 5,217,008. Bundle own min/gzip bytes, zod external: . 2,490/1,207, ./stream 4,278/1,926, ./stream-incremental 7,056/3,094, ./standard 589/328, ./effect 4,221/1,713. ./effect also keeps effect external. Parsed partial µs/chunk: zod 0.606, adaptate 0.835, valibot 1.409. AG-UI adaptate µs/chunk: 3.023 (@adaptate/core/stream-incremental). Zod and valibot: no repair, needs complete JSON." src="assets/perf.svg" width="960">
   </picture>
 </p>
 
-Node v24.22.3. Commit [`1682601`](https://github.com/p10ns11y/adaptate/commit/168260132fe4953548a28a2c3e167a3fdf93305d). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
+Node v24.22.3. Commit [`1a51df5`](https://github.com/p10ns11y/adaptate/commit/1a51df50ff0842213e015b18c5d4240a2e994c0a). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
 
-A partial JSON stream is tokenized once. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits. AG-UI is 3.073 µs/chunk. Parsed partial is 0.842 µs/chunk against raw Zod 0.628 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
+`@adaptate/core/stream-incremental` tokenizes a partial JSON stream once. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits. AG-UI on that subpath is 3.023 µs/chunk. Parsed partial is 0.835 µs/chunk against raw Zod 0.606 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
 
 ## Quick start
 
