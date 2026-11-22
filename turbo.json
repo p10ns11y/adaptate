@@ -5,6 +5,10 @@
       "dependsOn": ["^check-types", "^test"],
       "outputs": ["build/**", "ssr-build/**"]
     },
+    "adaptate-live-load#build": {
+      "dependsOn": ["@adaptate/core#build", "@adaptate/utils#build"],
+      "outputs": ["dist/**"]
+    },
     "test": {
       "outputs": ["coverage/**"]
     },
