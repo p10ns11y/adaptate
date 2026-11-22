@@ -24,9 +24,24 @@ type Container = unknown[] | Record<string, unknown>;
 type OpenFrame = [Container, boolean, number, string | undefined, string];
 
 const completeToken =
-  /(?:([ \n\r\t]+)|([{}[\]:,])|("(?:[^"\\]|\\.)*")|(true|false|null)|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?))/y;
+  /(?:([ \n\r\t]+)|([{}[\]:,])|(true|false|null)|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?))/y;
 const numberPrefix = /^(?:-?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+-]?\d*)?|-)/;
 const keywordPrefix = /^(?:t|tr|tru|f|fa|fal|fals|n|nu|nul)$/;
+
+function finishedStringEnd(source: string, start: number): number | undefined {
+  let index = start + 1;
+  while (index < source.length) {
+    const character = source[index] as string;
+    if (character === '"') return index + 1;
+    if (character === "\\") {
+      if (index + 1 >= source.length) return undefined;
+      index += 2;
+      continue;
+    }
+    index += 1;
+  }
+  return undefined;
+}
 
 function copyContainer(items: Container): Container {
   return Array.isArray(items) ? items.slice() : { ...items };
@@ -228,22 +243,36 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
     if (chunk.length === 0 && hasCache) return cached;
     source += chunk;
     while (cursor < source.length && !sealed) {
+      if (source[cursor] === '"') {
+        const end = finishedStringEnd(source, cursor);
+        if (end === undefined) break;
+        const token = source.slice(cursor, end);
+        cursor = end;
+        let value: unknown;
+        try {
+          value = JSON.parse(token) as unknown;
+        } catch {
+          acceptValue(parsedString(token.slice(1, -1)), true);
+          sealed = true;
+          break;
+        }
+        if (!acceptValue(value, true)) {
+          cursor = end - token.length;
+          sealed = true;
+          break;
+        }
+        continue;
+      }
       completeToken.lastIndex = cursor;
       const matched = completeToken.exec(source);
       if (!matched || matched.index !== cursor) {
         const rest = source.slice(cursor);
-        if (
-          rest.startsWith('"') ||
-          numberPrefix.test(rest) ||
-          keywordPrefix.test(rest)
-        ) {
-          break;
-        }
+        if (numberPrefix.test(rest) || keywordPrefix.test(rest)) break;
         sealed = true;
         break;
       }
       const token = matched[0];
-      if (matched[5] && expectsValue()) {
+      if (matched[4] && expectsValue()) {
         const rest = source.slice(cursor);
         const span = (numberPrefix.exec(rest) as RegExpExecArray)[0];
         if (cursor + span.length >= source.length) break;
@@ -263,18 +292,14 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
         }
         continue;
       }
-      let value: unknown;
-      if (matched[3]) {
-        try {
-          value = JSON.parse(matched[3]) as unknown;
-        } catch {
-          acceptValue(parsedString(matched[3].slice(1, -1)), true);
-          sealed = true;
-          break;
-        }
-      } else if (matched[5]) value = Number(matched[5]);
-      else value = matched[4] === "true" ? true : matched[4] === "false" ? false : null;
-      if (!acceptValue(value, Boolean(matched[3]))) {
+      const value = matched[4]
+        ? Number(matched[4])
+        : matched[3] === "true"
+          ? true
+          : matched[3] === "false"
+            ? false
+            : null;
+      if (!acceptValue(value, false)) {
         cursor -= token.length;
         sealed = true;
         break;
