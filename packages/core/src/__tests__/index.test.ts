@@ -8,6 +8,7 @@ import {
 } from "#utils/openapi";
 
 import { transformSchema, makeConditionalSchemaTransformer, type Config } from "../";
+import { createAgUiPartialValidator } from "../stream";
 
 describe("transformSchema", () => {
   it("should make properties required based on the config", async () => {
@@ -528,13 +529,33 @@ describe("makeConditionalSchemaTransformer", () => {
   });
 });
 
-describe("readme inferred type", () => {
-  it("checks the card config against the inferred recipe type", () => {
+describe("readme snippets", () => {
+  it("checks the quickstart card against the inferred recipe type", () => {
     let recipe = z.object({ title: z.string(), servings: z.number() });
     type Recipe = z.infer<typeof recipe>;
     let card = { title: true } satisfies Config<Recipe>;
     let cardSchema = transformSchema(recipe.partial(), card);
+    expect(cardSchema.parse({ title: "Pasta" })).toEqual({ title: "Pasta" });
     expect(cardSchema.safeParse({ title: "Pas" }).success).toBe(true);
     expect(cardSchema.safeParse({}).success).toBe(false);
+    let kitchenSchema = transformSchema(recipe.partial(), {
+      title: true,
+      servings: true,
+    });
+    expect(kitchenSchema.safeParse({ title: "Pas" }).success).toBe(false);
+  });
+
+  it("reads a cutoff tool call that JSON.parse rejects", () => {
+    let recipe = z.object({ title: z.string(), servings: z.number() });
+    let push = createAgUiPartialValidator(recipe, { card: { title: true } });
+    let cutoff = '{"title":"Pas';
+    expect(() => JSON.parse(cutoff)).toThrow(SyntaxError);
+    let check = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "call-1",
+      delta: cutoff,
+    });
+    expect(check?.partial).toEqual({ title: "Pas" });
+    expect(check?.results.card.valid).toBe(true);
   });
 });

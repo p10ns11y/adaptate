@@ -1,69 +1,56 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
-    <img alt="Adaptate" src="assets/logo.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/lockup-dark.svg">
+    <img alt="Adaptate" src="docs/assets/brand/lockup-light.svg" width="480">
   </picture>
 </p>
 
 <p align="center">
-  <strong>One schema. Each part of the app checks only the fields it uses.</strong>
-  <br>
-  A screen, a form, an API client, or a stream.
+  <strong>Partial documents fail a full schema, and deep input overflows a recursive walk.</strong>
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/adaptate"><img alt="npm adaptate" src="https://img.shields.io/npm/v/adaptate?label=adaptate&logo=npm&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="npm @adaptate/core" src="https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&logo=npm&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/utils"><img alt="npm @adaptate/utils" src="https://img.shields.io/npm/v/@adaptate/utils?label=%40adaptate%2Futils&logo=npm&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="downloads per month" src="https://img.shields.io/npm/dm/@adaptate/core?logo=npm&label=downloads%2Fmonth"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="types included" src="https://img.shields.io/npm/types/@adaptate/core"></a>
-</p>
+## What you can count on
 
-<p align="center">
-  <a href="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI"></a>
-  <a href="./coverage"><img alt="coverage" src="./coverage-badge.svg"></a>
-  <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/@adaptate/core?color=blue"></a>
-  <a href="./tsconfig.json"><img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white"></a>
-  <a href="https://nodejs.org"><img alt="Node.js version" src="https://img.shields.io/node/v/@adaptate/core?logo=node.js&logoColor=white"></a>
-  <a href="https://zod.dev"><img alt="zod peer" src="https://img.shields.io/badge/zod-%5E3.25.0%20%7C%7C%20%5E4.0.0-3b82f6?logo=zod&logoColor=white"></a>
-  <a href="https://github.com/p10ns11y/adaptate/commits/main"><img alt="last commit" src="https://img.shields.io/github/last-commit/p10ns11y/adaptate?logo=github"></a>
-  <a href="https://github.com/p10ns11y/adaptate/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/p10ns11y/adaptate?logo=github"></a>
-  <a href="https://github.com/p10ns11y/adaptate"><img alt="GitHub stars" src="https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github"></a>
-  <a href="./.devcontainer/README.md"><img alt="dev container" src="https://img.shields.io/badge/dev%20container-ready-2496ED?logo=docker&logoColor=white"></a>
-</p>
+| | |
+| --- | --- |
+| **100,000 levels** | Streamed JSON, including a missing last character. OpenAPI to Zod, Zod to OpenAPI, and a local `$ref` document. |
+| **Under 3 seconds** | One `$ref` at each of those 100,000 levels. |
+| **`RangeError` past 500** | A nested `$ref` chain stops at depth 500. |
 
-<p align="center">
-  <a href="https://github.com/p10ns11y/adaptate"><strong>Star</strong></a>
-  &nbsp;·&nbsp;
-  <a href="examples/react-view"><strong>React view</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://stackblitz.com/github/p10ns11y/adaptate/tree/main/examples/streaming-tool-call"><strong>Try the stream in the browser</strong></a>
-</p>
+[Core deep-nesting test](packages/core/src/__tests__/deep-nesting.test.ts) · [Utils deep-nesting test](packages/utils/src/__tests__/deep-nesting.test.ts) · [Local `$ref` test](packages/utils/src/__tests__/dereference-local.test.ts) · [Proof](docs/proof.md)
 
-## What it's for
+```mermaid
+flowchart LR
+  openapi[OpenAPI schema] --> schema[One Zod schema]
+  schema --> card[Card]
+  schema --> kitchen[Kitchen]
+  schema --> stream[Tool call still typing]
+```
 
-**Deep input does not overflow the call stack.** Streamed JSON, partial JSON, OpenAPI conversion, and local `$ref` dereferencing walk with a loop. Tests run each of them 100,000 levels deep. One `$ref` at each of those 100,000 levels finishes in under 3 seconds. A nested `$ref` past 500 throws `RangeError`.
+## Before and after
 
-- A React component checks the fields it renders. A Vue, Svelte, or Solid component can call `transformSchema` the same way. The runnable example is [examples/react-view](examples/react-view).
-- A form can require the fields collected so far and leave the rest optional.
-- An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out.
-- A config names the fields each view requires.
-- A chat can check a tool call while the model is still typing.
+The model has sent `{"title":"Pas`.
 
-## Measured
+| `JSON.parse` | `@adaptate/core/stream` |
+| --- | --- |
+| Throws `SyntaxError`. | `check.partial` is `{ title: "Pas" }`. `check.results.card.valid` is `true`. |
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 commit 1a51df50ff0842213e015b18c5d4240a2e994c0a · run local Full document validations/sec: zod 2,425,500, adaptate 2,256,119, valibot 472,695. Import median ms: zod 39.744, adaptate 41.684, valibot 6.042. Heap after GC bytes: zod 8,322,872, adaptate 8,510,312, valibot 5,217,008. Bundle own min/gzip bytes, zod external: . 2,490/1,207, ./stream 4,278/1,926, ./stream-incremental 7,056/3,094, ./standard 589/328, ./effect 4,221/1,713. ./effect also keeps effect external. Parsed partial µs/chunk: zod 0.606, adaptate 0.835, valibot 1.409. AG-UI adaptate µs/chunk: 3.023 (@adaptate/core/stream-incremental). Zod and valibot: no repair, needs complete JSON." src="assets/perf.svg" width="960">
-  </picture>
-</p>
+```ts
+import { z } from "zod";
+import { createAgUiPartialValidator } from "@adaptate/core/stream";
 
-Node v24.22.3. Commit [`1a51df5`](https://github.com/p10ns11y/adaptate/commit/1a51df50ff0842213e015b18c5d4240a2e994c0a). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
+const recipe = z.object({ title: z.string(), servings: z.number() });
+const push = createAgUiPartialValidator(recipe, { card: { title: true } });
+const check = push({
+  type: "TOOL_CALL_ARGS",
+  toolCallId: "call-1",
+  delta: '{"title":"Pas',
+});
+```
 
-`@adaptate/core/stream-incremental` tokenizes a partial JSON stream once. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits. AG-UI on that subpath is 3.023 µs/chunk. Parsed partial is 0.835 µs/chunk against raw Zod 0.606 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
+The same partial reader returns the leaf of a 100,000-level document with the last character missing. [Streaming tool call](examples/streaming-tool-call)
 
-## Quick start
+## 30-second quickstart
 
 ```sh
 pnpm add @adaptate/core zod
@@ -72,104 +59,26 @@ pnpm add @adaptate/core zod
 ```ts
 import { z } from "zod";
 import { transformSchema } from "@adaptate/core";
-
 const recipe = z.object({ title: z.string(), servings: z.number() });
 const card = transformSchema(recipe.partial(), { title: true });
 card.parse({ title: "Pasta" });
 ```
 
-## In a component
+`{ title: "Pas" }` passes that card. The same schema with `servings: true` rejects it. [React view](examples/react-view)
 
-`useViewSchema` keeps that check in a hook. `recipeSchema` is the shared recipe with every field optional. The card requires the title. The kitchen component in the same file also requires how many people, so a title alone passes the card and fails the kitchen.
+## Where it fits
 
-```jsx
-let cardConfig = { title: true };
+| You have | You call | Read |
+| --- | --- | --- |
+| A screen or a form that needs some fields | `transformSchema` | [Transform](docs/transform.md) |
+| A tool call that is still typing | `createAgUiPartialValidator` | [Streaming](docs/streaming.md) |
+| An OpenAPI schema | `openAPISchemaToZod` | [OpenAPI](docs/openapi.md) |
+| An Effect pipeline | `createEffectStreamValidator` | [Effect](docs/effect.md) |
 
-function useViewSchema(schema, config) {
-  return useMemo(() => transformSchema(schema, config), [schema, config]);
-}
-
-function RecipeCard({ recipe }) {
-  let cardSchema = useViewSchema(recipeSchema, cardConfig);
-  let parsed = cardSchema.safeParse(recipe);
-  if (!parsed.success) return <p>The card is not ready.</p>;
-  return <p>{parsed.data.title}</p>;
-}
-```
-
-## A stream is one case
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/stream-demo-dark.gif">
-    <img alt="One recipe feeds a card and a kitchen screen. With only the dish name, the card is ready and the kitchen is not. When the number of servings arrives, the kitchen is ready too." src="assets/stream-demo.gif" width="760">
-  </picture>
-</p>
-
-One case: a reply that is still arriving. The card checks the dish name. The kitchen also needs how many people. The model has sent `{"title":"Pas` so far.
-
-<table>
-<tr>
-<th width="50%">Without Adaptate</th>
-<th width="50%">With Adaptate</th>
-</tr>
-<tr>
-<td valign="top">
-<pre><code>const args = '{"title":"Pas';
-JSON.parse(args);</code></pre>
-<code>JSON.parse</code> throws. The card stays blank.
-</td>
-<td valign="top">
-<pre><code>const check = push({
-  type: "TOOL_CALL_ARGS",
-  toolCallId: "call-1",
-  delta: '{"title":"Pas',
-});</code></pre>
-<code>check.partial</code> is <code>{ title: "Pas" }</code>. The card check passes.
-</td>
-</tr>
-</table>
-
-`push` comes from `@adaptate/core/stream`. Run it in [examples/streaming-tool-call](examples/streaming-tool-call).
-
-## TypeScript
-
-The types ship in the package. A value's type is inferred from the Zod schema you write.
-
-```ts
-import { z } from "zod";
-import { transformSchema, type Config } from "@adaptate/core";
-
-const recipe = z.object({ title: z.string(), servings: z.number() });
-type Recipe = z.infer<typeof recipe>;
-const card = { title: true } satisfies Config<Recipe>;
-const cardSchema = transformSchema(recipe.partial(), card);
-```
-
-CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md)
-
-## Design
-
-One walk of the schema. [DESIGN.md](DESIGN.md) records O(N) time and O(D) space.
-
-## Why trust it
-
-The lines above are about the check being right. The chart is that one run. [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
-
-[Docs](docs/index.md) · [Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [API](docs/api/index.md)
+Types ship in the package. CI checks the packed tarballs on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md) · [API](docs/api/index.md) · [Docs](docs/index.md)
 
 ## Credits
 
-The loops above follow [Donald E. Knuth, "Structured Programming with go to Statements"](https://doi.org/10.1145/356635.356640), ACM Computing Surveys 6(4), 1974.
-
-Recursion is a function that calls itself on the next nested piece, then continues after that call returns. JavaScript engines, including V8, do not remove those tail calls, so each level keeps a frame on the call stack until a deep document throws `RangeError`. Knuth's method does that walk in a loop and keeps the frames in an ordinary stack, so a deep document uses memory instead of the call stack.
-
-```mermaid
-flowchart TD
-  nested[Nested value] --> loop[Loop]
-  loop --> frame[Push a frame]
-  frame --> loop
-  loop --> done[Built value]
-```
+Donald E. Knuth, "Structured Programming with go to Statements", ACM Computing Surveys 6(4), 1974. The deep walks above keep their frames in an ordinary stack. The quotation is in [Performance](docs/performance.md).
 
 MIT

@@ -64,16 +64,16 @@ Config values:
 import { z } from "zod";
 import { transformSchema, type Config } from "@adaptate/core";
 
-const schema = z
-  .object({
+const schema = z.deepPartial(
+  z.object({
     name: z.string(),
     age: z.number(),
     address: z.object({
       street: z.string(),
       city: z.string(),
     }),
-  })
-  .deepPartial();
+  }),
+);
 
 const config = {
   name: true,
@@ -83,14 +83,29 @@ const config = {
 
 const updatedSchema = transformSchema(schema, config);
 updatedSchema.parse({ name: "Davin", age: 30, address: { city: "Pettit" } });
-updatedSchema.parse({ name: "Davin", age: 30, address: { street: "Main St" } }); // throws
+const streetOnly = updatedSchema.safeParse({
+  name: "Davin",
+  age: 30,
+  address: { street: "Main St" },
+});
 ```
 
-The same config works when each field is written with `.optional()` instead of `.deepPartial()`.
+`streetOnly.success` is false: `city` is required.
+
+Zod 4 exports `z.deepPartial`. The object method `.deepPartial()` is the Zod 3 method. The same config works when each field is written with `.optional()` instead of `z.deepPartial`.
 
 `Config<T>` checks field paths at compile time, including `'*'` on arrays:
 
 ```ts
+import { z } from "zod";
+import { type Config } from "@adaptate/core";
+
+const userSchema = z.object({
+  name: z.string(),
+  address: z.object({ street: z.string(), city: z.string() }),
+  tags: z.array(z.string()),
+});
+
 const config = {
   name: true,
   address: { city: true },
@@ -125,7 +140,7 @@ Traversal, from `packages/core/src/index.ts`:
 1. An optional field is unwrapped with `.unwrap()`.
 2. Nested objects recurse with the nested config.
 3. An array `'*'` config is applied to the element schema.
-4. The new shape is merged back with `ZodObject.merge()`.
+4. The new shape is copied back with object spread into `z.object`.
 
 Fields absent from the config are kept. [DESIGN.md](../DESIGN.md) walks through the recursion and states O(N) time and O(D) space.
 
@@ -197,23 +212,40 @@ flowchart TD
 
 ```ts
 import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
 
-await pipeline(readable, async function collect(source) {
-  for await (const partialValue of fromAsyncIterable(source)) {
-    use(partialValue);
-  }
-});
+const partials: unknown[] = [];
+const readable = Readable.from([
+  new TextEncoder().encode('{"title":"Pas'),
+  new TextEncoder().encode('ta"}'),
+]);
 
-async function* openAiArguments(events) {
+for await (const partialValue of fromAsyncIterable(readable)) {
+  partials.push(partialValue);
+}
+
+type OpenAiEvent = {
+  choices?: Array<{
+    delta?: {
+      tool_calls?: Array<{ function?: { arguments?: string } }>;
+    };
+  }>;
+};
+
+async function* openAiArguments(events: Iterable<OpenAiEvent> | AsyncIterable<OpenAiEvent>) {
   for await (const event of events) {
     const delta = event.choices?.[0]?.delta?.tool_calls?.[0]?.function?.arguments;
     if (typeof delta === "string" && delta.length > 0) yield delta;
   }
 }
 
-async function* anthropicInputJson(events) {
+type AnthropicEvent = {
+  delta?: { type?: string; partial_json?: string };
+};
+
+async function* anthropicInputJson(
+  events: Iterable<AnthropicEvent> | AsyncIterable<AnthropicEvent>,
+) {
   for await (const event of events) {
     const delta = event.delta;
     if (delta?.type === "input_json_delta" && typeof delta.partial_json === "string") {
@@ -222,13 +254,26 @@ async function* anthropicInputJson(events) {
   }
 }
 
-for await (const partialValue of fromAsyncIterable(openAiArguments(events))) use(partialValue);
-for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) use(partialValue);
+const openAiEvents: OpenAiEvent[] = [
+  {
+    choices: [{ delta: { tool_calls: [{ function: { arguments: '{"title":"Pas' } }] } }],
+  },
+];
+const anthropicEvents: AnthropicEvent[] = [
+  { delta: { type: "input_json_delta", partial_json: '{"title":"Pas' } },
+];
+
+for await (const partialValue of fromAsyncIterable(openAiArguments(openAiEvents))) {
+  partials.push(partialValue);
+}
+for await (const partialValue of fromAsyncIterable(anthropicInputJson(anthropicEvents))) {
+  partials.push(partialValue);
+}
 ```
 
 `Readable` from Node, a Web `ReadableStream`, and either delta mapping are the same input: strings or bytes. No SDK is required.
 
-Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order the caller reads 966 characters. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
+Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order in `bench/ab/order.js`, the incremental feed reads each character once. Partial JSON tests assert `visits` equals the text length. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
 # OpenAPI
@@ -275,7 +320,7 @@ const openAPISchema = zodToOpenAPISchema(
   z.object({
     name: z.string().min(2).describe("Full name"),
     age: z.number().int().min(0),
-    email: z.string().email().optional(),
+    email: z.email().optional(),
     tags: z.array(z.string()).min(1),
   }),
 );
@@ -392,11 +437,11 @@ flowchart LR
 
 | Entry | Exports |
 | --- | --- |
-| `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer` |
-| `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `createFrameThrottle` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator` |
-| `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas` |
-| `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError` |
+| `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `Config`, `DeepPartial`, `PartialValidationResult` |
+| `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `agUiValidatorWith`, `reparseFeed`, `createFrameThrottle`, `AgUiDeltaEvent`, `PartialJsonFeed` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator`, `PartialJsonFeed` |
+| `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
+| `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
 
 `@adaptate/utils` has no required runtime dependencies. Its peers are in [Optional peers](optional-peers.md). Published paths:
 
@@ -532,7 +577,7 @@ The table below is one local `node bench/ab/run.js` of commit `1a51df50ff0842213
 
 Node v24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6.
 
-Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
+Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas. `deltaCharacters` is 24, and the last delta is the remainder. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
 
 | Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
 | --- | --- | --- | --- | --- | --- |
@@ -573,7 +618,7 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
-`@adaptate/core/stream-incremental` reads each character of that grocery order once: 966 visits. A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+`@adaptate/core/stream-incremental` reads each character of that grocery order once. Partial JSON tests assert `visits` equals the text length. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
 
 ## Credit
 
@@ -599,24 +644,17 @@ Each sentence on the front page maps to something in the repo.
 
 | Sentence | Proof |
 | --- | --- |
-| One schema. Each part of the app checks only the fields it uses | [`transformSchema` makes the configured fields required](../packages/core/src/__tests__/index.test.ts). A title-only value passes the card and fails the kitchen: [examples/react-view](../examples/react-view) |
-| A screen, a form, an API client, or a stream | The rows below. The stream is one of those cases |
-| A React component checks the fields it renders | [examples/react-view](../examples/react-view) renders a card and a kitchen from one schema. The card shows `Pasta` when the value is `{ title: "Pasta" }`. The kitchen stays waiting until `servings` is present |
-| A Vue, Svelte, or Solid component can call `transformSchema` the same way | [`transformSchema`](../packages/core/src/index.ts) returns a Zod schema. [`@adaptate/core` has no React, Vue, Svelte, or Solid dependency](../packages/core/package.json). The repository includes the React example only |
-| A form can require the fields collected so far and leave the rest optional | `transformSchema(recipe.partial(), { title: true })` accepts `{ title: "Pas" }` and rejects `{}` ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts), [examples/react-view](../examples/react-view)) |
-| An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out | [YAML load and JSON-schema round trip](../packages/utils/src/__tests__/openapi.test.ts) |
-| A config names the fields each view requires | The card config is `{ title: true }` checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
-| A chat can check a tool call while the model is still typing | [AG-UI tool-call deltas, including a cut-off string](../packages/core/src/__tests__/stream.test.ts) and [every parsed prefix keeps the partial-stream invariant](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts) |
-| `JSON.parse` throws on that cut-off text, and Adaptate returns `{ title: "Pas" }` with the card check passing | The same test, and [examples/streaming-tool-call](../examples/streaming-tool-call) which installs published `@adaptate/core@2.3.0` and checks both results |
-| With only the dish name, the card is ready and the kitchen is not | [`final`](../packages/core/src/__tests__/effect.test.ts) on `{"title":"Pasta"}`: card valid, kitchen invalid |
-| When the number of servings arrives, the kitchen is ready too | The same test, on `{"title":"Pasta","servings":2}` |
-| The same checks run in plain code or in an Effect pipeline | [`final(text)` reports every named config; `final(text, "card")` checks that one](../packages/core/src/__tests__/effect.test.ts). `final` agrees with `transformSchema` per config ([I2](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts)) |
-| Core ships without extra runtime libraries | [`@adaptate/core` `package.json` has no `dependencies`; `zod` is the peer](../packages/core/package.json). [The main entry and `./stream` load when `effect` is missing](../packages/core/src/__tests__/effect.test.ts) |
-| The published types match the build | [`verify-published-types.mjs`](../scripts/verify-published-types.mjs) in the [verify job](../.github/workflows/ci.yml) |
-| The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
-| CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
-| Node v24.22.3. Commit 1a51df5. One local node bench/ab/run.js | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn. AG-UI on `@adaptate/core/stream-incremental` is 3.023 µs/chunk |
-| A partial JSON stream is tokenized once on `@adaptate/core/stream-incremental` | [`createPartialJsonFeed`](../packages/core/src/stream-incremental.ts) appends each finished value and copies the deepest open container plus the spine. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix, and `@adaptate/core/stream` keeps that path. The grocery order is 966 characters. A full rescan was 68,304 character visits |
+| Partial documents fail a full schema, and deep input overflows a recursive walk | The rows below. `JSON.parse` throws on a cut-off tool call. The deep walks covered here keep their frames in an ordinary stack |
+| 100,000 levels. Streamed JSON, including a missing last character | [`reads streamed JSON one hundred thousand levels deep`](../packages/core/src/__tests__/deep-nesting.test.ts) expects the leaf `1` from `createPartialJsonFeed`, `reparseFeed`, `parsePartialJson`, and `parsePartialJson` of the text with the last character removed |
+| 100,000 levels. OpenAPI to Zod, Zod to OpenAPI, and a local `$ref` document | [`converts an OpenAPI schema one hundred thousand levels deep`](../packages/utils/src/__tests__/deep-nesting.test.ts), [`converts a Zod schema one hundred thousand levels deep`](../packages/utils/src/__tests__/deep-nesting.test.ts), and [`dereferences a document one hundred thousand levels deep`](../packages/utils/src/__tests__/deep-nesting.test.ts) |
+| Under 3 seconds. One `$ref` at each of those 100,000 levels | [`resolves one ref at each of one hundred thousand levels`](../packages/utils/src/__tests__/deep-nesting.test.ts) expects `performance.now()` around `dereferenceLocalDocument` to be under `3_000` |
+| `RangeError` past 500. A nested `$ref` chain stops at depth 500 | That same file builds a 2,000-link chain and expects `RangeError` matching `Maximum dereference depth (500)`. [`resolves a local pointer chain and rejects nested refs past 500`](../packages/utils/src/__tests__/dereference-local.test.ts) expects the same error for a chain of 501 |
+| `JSON.parse` throws `SyntaxError`. `check.partial` is `{ title: "Pas" }`. `check.results.card.valid` is `true` | [`readme snippets`](../packages/core/src/__tests__/index.test.ts). The same partial shape is covered for a shorter cut in [`stream.test.ts`](../packages/core/src/__tests__/stream.test.ts) |
+| The same partial reader returns the leaf of a 100,000-level document with the last character missing | The streamed-JSON case above, `parsePartialJson(text.slice(0, -1))` |
+| `{ title: "Pas" }` passes that card. The same schema with `servings: true` rejects it | [`readme snippets`](../packages/core/src/__tests__/index.test.ts). [examples/react-view](../examples/react-view) renders the card and the kitchen |
+| Types ship in the package. CI checks the packed tarballs on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`@adaptate/core` publishes `types`](../packages/core/package.json). [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
+
+`transformSchema` is checked at 1,000 levels in [`walks a schema one thousand levels deep`](../packages/core/src/__tests__/deep-nesting.test.ts). That walk is still recursive. A deeper value overflows inside Zod's own `safeParse`. The 100,000-level rows above do not call it.
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
 

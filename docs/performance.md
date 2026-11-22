@@ -81,7 +81,7 @@ The table below is one local `node bench/ab/run.js` of commit `1a51df50ff0842213
 
 Node v24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6.
 
-Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
+Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas. `deltaCharacters` is 24, and the last delta is the remainder. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
 
 | Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
 | --- | --- | --- | --- | --- | --- |
@@ -122,7 +122,7 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
-`@adaptate/core/stream-incremental` reads each character of that grocery order once: 966 visits. A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
+`@adaptate/core/stream-incremental` reads each character of that grocery order once. Partial JSON tests assert `visits` equals the text length. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
 
 ## Credit
 
