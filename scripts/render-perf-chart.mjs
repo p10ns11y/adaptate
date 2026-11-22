@@ -222,7 +222,7 @@ function chart(theme) {
     `Heap after GC bytes: zod ${group(measurement.heapAfterBytes.zod)}, adaptate ${group(measurement.heapAfterBytes.adaptate)}, valibot ${group(measurement.heapAfterBytes.valibot)}.`,
     `Bundle own min/gzip bytes, zod external: ${measurement.bundleOwn.map((entry) => `${entry.id} ${group(entry.minBytes)}/${group(entry.gzipBytes)}`).join(", ")}. ./effect also keeps effect external.`,
     `Parsed partial µs/chunk: zod ${measurement.parsedPartialMicros.zod.toFixed(3)}, adaptate ${measurement.parsedPartialMicros.adaptate.toFixed(3)}, valibot ${measurement.parsedPartialMicros.valibot.toFixed(3)}.`,
-    `AG-UI adaptate µs/chunk: ${agUiMicros.toFixed(3)} (resumed scan and the check). Zod and valibot: no repair, needs complete JSON.`,
+    `AG-UI adaptate µs/chunk: ${agUiMicros.toFixed(3)} (tokenizer and the check). Zod and valibot: no repair, needs complete JSON.`,
   ].join(" ");
 
   const panelWidth = 296;
@@ -353,7 +353,7 @@ function chart(theme) {
       streamWidth,
       tallHeight,
       "Per chunk",
-      "µs. adaptate AG-UI is the resumed scan and the check",
+      "µs. adaptate AG-UI is the tokenizer and the check",
     ),
   );
   const parsedRows = triples(measurement.parsedPartialMicros, (value) => value.toFixed(3));

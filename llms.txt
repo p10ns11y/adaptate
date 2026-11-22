@@ -9,7 +9,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Docs](docs/index.md): Where to read about views, streaming, OpenAPI, types, and the generated API.
 - [Transform](docs/transform.md): One Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](docs/streaming.md): Check a tool call while the JSON is still arriving.
-- [Incremental partial JSON](docs/incremental-parser.md): Resume the bracket scan of a JSON stream.
+- [Incremental partial JSON](docs/incremental-parser.md): Tokenize a JSON stream once and reuse closed values.
 - [OpenAPI](docs/openapi.md): Turn an OpenAPI schema into Zod, and write a Zod schema back out.
 - [Effect](docs/effect.md): Run the same checks in an Effect pipeline. Effect is an optional peer.
 - [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
