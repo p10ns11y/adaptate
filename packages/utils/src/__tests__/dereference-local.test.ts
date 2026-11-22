@@ -478,6 +478,85 @@ describe('local $ref resolver', () => {
     expect(() => dereferenceLocalDocument(document)).toThrow(/sibling merge/);
   });
 
+  it('merges a sibling child onto a node that points at itself', () => {
+    let document = {
+      Node: {
+        type: 'object',
+        properties: {
+          child: { $ref: '#/Node' },
+        },
+      },
+      Tree: {
+        $ref: '#/Node',
+        properties: {
+          child: {
+            properties: {
+              child: { description: 'g' },
+            },
+          },
+        },
+      },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      Node: { type: string; properties: { child: unknown } };
+      Tree: {
+        type: string;
+        properties: { child: { type: string; properties: { child: { description: string; properties: unknown } } } };
+      };
+    };
+    expect(dereferenced.Node.properties.child).toBe(dereferenced.Node);
+    expect(dereferenced.Tree.type).toBe('object');
+    expect(dereferenced.Tree.properties.child.type).toBe('object');
+    expect(dereferenced.Tree.properties.child.properties.child.description).toBe('g');
+    expect(dereferenced.Tree.properties.child.properties.child.properties).toBe(
+      dereferenced.Node.properties,
+    );
+  });
+
+  it('merges a sibling items chain onto an array that points at itself', () => {
+    let document = {
+      Node: {
+        type: 'array',
+        items: { $ref: '#/Node' },
+      },
+      Tree: {
+        $ref: '#/Node',
+        items: {
+          items: {
+            items: { description: 'g' },
+          },
+        },
+      },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      Node: { type: string; items: unknown };
+      Tree: {
+        type: string;
+        items: { type: string; items: { type: string; items: { description: string; items: unknown } } };
+      };
+    };
+    expect(dereferenced.Node.items).toBe(dereferenced.Node);
+    expect(dereferenced.Tree.type).toBe('array');
+    expect(dereferenced.Tree.items.type).toBe('array');
+    expect(dereferenced.Tree.items.items.items.description).toBe('g');
+    expect(dereferenced.Tree.items.items.items.items).toBe(dereferenced.Node);
+  });
+
+  it('merges a shared anchor into a sibling ref', () => {
+    let shared = { k2: { mark: 1 } };
+    let document = {
+      T: { k: shared },
+      ext: { $ref: '#/T', k: { k2: shared } },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      T: { k: { k2: { mark: number } } };
+      ext: { k: { k2: { mark: number; k2: { mark: number } } } };
+    };
+    expect(dereferenced.T.k.k2.mark).toBe(1);
+    expect(dereferenced.ext.k.k2.mark).toBe(1);
+    expect(dereferenced.ext.k.k2.k2).toBe(dereferenced.T.k.k2);
+  });
+
   it('does not loop when the input object graph is already cyclic', async () => {
     let loop: Record<string, unknown> = { name: 'loop' };
     loop.self = loop;

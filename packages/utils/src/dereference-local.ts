@@ -198,20 +198,15 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
         frame.merged[entryKey] = siblingChild;
         continue;
       }
-      let repeatsAncestor = false;
+      let repeatsSibling = false;
       for (let ancestorIndex = 0; ancestorIndex < stack.length; ancestorIndex += 1) {
         let ancestor = stack[ancestorIndex] as (typeof stack)[number];
-        if (
-          ancestor.resolved === resolvedChild ||
-          ancestor.sibling === siblingChild ||
-          ancestor.resolved === siblingChild ||
-          ancestor.sibling === resolvedChild
-        ) {
-          repeatsAncestor = true;
+        if (ancestor.sibling === siblingChild) {
+          repeatsSibling = true;
           break;
         }
       }
-      if (repeatsAncestor) {
+      if (repeatsSibling) {
         throw new RangeError(
           `Maximum dereference depth (${maximumLocalRefDepth}) exceeded during a sibling merge. This likely indicates an extremely deep or recursive schema.`,
         );
@@ -292,11 +287,28 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     resolving: new Set(),
   };
   let stack: Frame[] = [];
+  let openRefCount = 0;
   let produced: unknown = document;
+
+  function pushFrame(frame: Frame): void {
+    if (frame.kind === 'resolve') {
+      openRefCount += 1;
+      frame.refNesting = openRefCount;
+    }
+    stack.push(frame);
+  }
+
+  function popFrame(): void {
+    let frame = stack.pop() as Frame;
+    if (frame.kind === 'resolve') {
+      openRefCount -= 1;
+    }
+  }
+
   if (isLocalRefObject(document)) {
-    stack.push(resolveFrame(document, '#'));
+    pushFrame(resolveFrame(document, '#'));
   } else {
-    stack.push(crawlFrame(document, '#'));
+    pushFrame(crawlFrame(document, '#'));
   }
 
   function releaseResolving(): void {
@@ -313,7 +325,7 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     if (frame.step === 'enter') {
       if (frame.pointer === '#') {
         produced = state.root;
-        stack.pop();
+        popFrame();
         return;
       }
       frame.tokens = frame.pointer.slice(2).split('/').map(unescapeJsonPointerToken);
@@ -326,7 +338,7 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     }
     if (frame.tokenIndex >= frame.tokens.length) {
       produced = frame.current;
-      stack.pop();
+      popFrame();
       return;
     }
     if (!frame.followed) {
@@ -337,7 +349,7 @@ export function dereferenceLocalDocument(document: unknown): unknown {
         !state.resolving.has(frame.currentPath)
       ) {
         frame.suspended = true;
-        stack.push(resolveFrame(frame.current, frame.currentPath));
+        pushFrame(resolveFrame(frame.current, frame.currentPath));
         return;
       }
     } else {
@@ -356,32 +368,23 @@ export function dereferenceLocalDocument(document: unknown): unknown {
 
   function stepResolve(frame: ResolveFrame): void {
     if (frame.step === 'enter') {
-      let refNesting = 1;
-      for (let index = stack.length - 2; index >= 0; index -= 1) {
-        let stackedFrame = stack[index] as Frame;
-        if (stackedFrame.kind === 'resolve') {
-          refNesting = stackedFrame.refNesting + 1;
-          break;
-        }
-      }
-      frame.refNesting = refNesting;
       throwIfPastMaximumRefNesting(frame.refNesting, frame.refObjectPath);
       let pointer = frame.refObject.$ref;
       frame.pointer = pointer;
       if (pointer === frame.refObjectPath) {
         produced = frame.refObject;
-        stack.pop();
+        popFrame();
         return;
       }
       if (state.resolving.has(frame.refObjectPath)) {
         frame.step = 'after-cycle-read';
-        stack.push(pointerFrame(pointer, false));
+        pushFrame(pointerFrame(pointer, false));
         return;
       }
       state.resolving.add(frame.refObjectPath);
       frame.tracking = true;
       frame.step = 'after-target';
-      stack.push(pointerFrame(pointer, true));
+      pushFrame(pointerFrame(pointer, true));
       return;
     }
     if (frame.step === 'after-cycle-read') {
@@ -390,7 +393,7 @@ export function dereferenceLocalDocument(document: unknown): unknown {
         cycleTarget.$ref = frame.refObjectPath;
       }
       produced = cycleTarget;
-      stack.pop();
+      popFrame();
       return;
     }
     if (frame.step === 'after-target') {
@@ -398,13 +401,13 @@ export function dereferenceLocalDocument(document: unknown): unknown {
       if (isLocalRefObject(frame.target)) {
         frame.nestedWasRef = true;
         frame.step = 'after-nested';
-        stack.push(resolveFrame(frame.target, frame.pointer));
+        pushFrame(resolveFrame(frame.target, frame.pointer));
         return;
       }
       if (isContainer(frame.target)) {
         frame.nestedWasRef = false;
         frame.step = 'after-nested';
-        stack.push(crawlFrame(frame.target, frame.pointer));
+        pushFrame(crawlFrame(frame.target, frame.pointer));
         return;
       }
       frame.resolved = frame.target;
@@ -418,25 +421,25 @@ export function dereferenceLocalDocument(document: unknown): unknown {
       if (hasSiblingProperties(frame.refObject) && isContainer(frame.resolved)) {
         frame.merged = mergeExtendedRef(frame.refObject, frame.resolved);
         frame.step = 'after-merge-crawl';
-        stack.push(crawlFrame(frame.merged as object, frame.refObjectPath));
+        pushFrame(crawlFrame(frame.merged as object, frame.refObjectPath));
         return;
       }
       produced = frame.resolved;
       state.resolving.delete(frame.refObjectPath);
       frame.tracking = false;
-      stack.pop();
+      popFrame();
       return;
     }
     produced = frame.merged;
     state.resolving.delete(frame.refObjectPath);
     frame.tracking = false;
-    stack.pop();
+    popFrame();
   }
 
   function stepCrawl(frame: CrawlFrame): void {
     if (frame.step === 'enter') {
       if (state.processed.has(frame.value)) {
-        stack.pop();
+        popFrame();
         return;
       }
       state.processed.add(frame.value);
@@ -456,7 +459,7 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     }
     let childCount = frame.arrayMode ? (frame.value as unknown[]).length : frame.keys.length;
     if (frame.index >= childCount) {
-      stack.pop();
+      popFrame();
       return;
     }
     let entryKey = frame.arrayMode ? String(frame.index) : (frame.keys[frame.index] as string);
@@ -464,12 +467,12 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     let childPath = joinJsonPointer(frame.path, entryKey);
     if (isLocalRefObject(child)) {
       frame.step = 'after-ref';
-      stack.push(resolveFrame(child, childPath));
+      pushFrame(resolveFrame(child, childPath));
       return;
     }
     if (isContainer(child)) {
       frame.step = 'after-crawl';
-      stack.push(crawlFrame(child, childPath));
+      pushFrame(crawlFrame(child, childPath));
       return;
     }
     frame.index += 1;

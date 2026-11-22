@@ -284,4 +284,27 @@ describe("openapi and dereference recursion elimination", () => {
     expect(() => dereferenceLocalDocument(chain)).toThrow(RangeError);
     expect(() => dereferenceLocalDocument(chain)).toThrow(/Maximum dereference depth \(500\)/);
   }, 180_000);
+
+  it("resolves one ref at each of one hundred thousand levels", () => {
+    let document: Record<string, unknown> = { end: { type: "string" } };
+    let cursor = document;
+    for (let level = 0; level < deepLevelCount; level += 1) {
+      let next: Record<string, unknown> = { marker: { $ref: "#/end" } };
+      cursor.next = next;
+      cursor = next;
+    }
+    let startedAt = performance.now();
+    let dereferenced = dereferenceLocalDocument(document) as {
+      end: { type: string };
+      next: { marker: unknown; next?: unknown };
+    };
+    expect(performance.now() - startedAt).toBeLessThan(3_000);
+    expect(dereferenced.next.marker).toBe(dereferenced.end);
+    let leaf = dereferenced.next;
+    for (let level = 0; level < deepLevelCount - 1; level += 1) {
+      leaf = leaf.next as typeof leaf;
+    }
+    expect(leaf.marker).toBe(dereferenced.end);
+    expect(leaf.next).toBeUndefined();
+  }, 15_000);
 });
