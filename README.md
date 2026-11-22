@@ -45,6 +45,13 @@ flowchart LR
   schema --> stream[Tool call still typing]
 ```
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/stream-demo-dark.gif">
+    <img alt="One recipe feeds a card and a kitchen screen. With only the dish name, the card is ready and the kitchen is not. When the number of servings arrives, the kitchen is ready too." src="assets/stream-demo.gif" width="760">
+  </picture>
+</p>
+
 ## Before and after
 
 The model has sent `{"title":"Pas`.
@@ -70,7 +77,7 @@ The same partial reader returns the leaf of a 100,000-level document with the la
 
 Streams partial JSON without re-reading what it already saw. [Numbers](docs/performance.md#measured).
 
-## 30-second quickstart
+## Quickstart
 
 ```sh
 pnpm add @adaptate/core zod
