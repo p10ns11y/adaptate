@@ -39,6 +39,11 @@ jobs:
       - name: React view example
         run: pnpm --filter adaptate-react-view test
 
+      - name: Live load example
+        run: |
+          pnpm --filter adaptate-live-load build
+          pnpm --filter adaptate-live-load test
+
       - name: Verify @adaptate/core and @adaptate/utils publish types
         run: |
           node scripts/verify-published-types.mjs packages/core
