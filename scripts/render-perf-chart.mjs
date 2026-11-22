@@ -1,48 +1,84 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const assetDirectory = resolve(scriptDirectory, "../assets");
+const sourcePath = resolve(assetDirectory, "perf-run.json");
+const libraryNames = ["zod", "adaptate", "valibot"];
+const bundleIds = [".", "./stream", "./standard", "./effect"];
 
-const measurement = {
-  commit: "233b1ef17f994088cc5687c0c5ea61ff7a7751a9",
-  runId: "44956631113",
-  runtimeVersion: "v24.22.3",
-  runner: "GitHub Actions ubuntu-latest",
-  esbuildVersion: "0.28.2",
-  fullDocument: {
-    zod: 3512913.8056093063,
-    adaptate: 3302795.9045330784,
-    valibot: 694396.3856668127,
-  },
-  importMedianMs: {
-    zod: 35.288281,
-    adaptate: 36.886228,
-    valibot: 5.208925,
-  },
-  heapAfterBytes: {
-    zod: 8292224,
-    adaptate: 8424424,
-    valibot: 5204896,
-  },
-  parsedPartialMicros: {
-    zod: 0.43251842513282834,
-    adaptate: 0.666712790461238,
-    valibot: 0.9262384705506443,
-  },
-  agUiRepair: {
-    commit: "e5f8623c91d6c5ed023ecc826d01e8a2aa0b01b3",
-    runId: "44964564883",
-    micros: 34.9712031358885,
-  },
-  bundleOwn: [
-    { id: ".", minBytes: 2490, gzipBytes: 1207 },
-    { id: "./stream", minBytes: 4278, gzipBytes: 1927 },
-    { id: "./standard", minBytes: 589, gzipBytes: 328 },
-    { id: "./effect", minBytes: 4221, gzipBytes: 1713 },
-  ],
-};
+function requireField(source, path) {
+  let cursor = source;
+  for (const key of path) {
+    if (cursor == null || typeof cursor !== "object" || !(key in cursor)) {
+      throw new Error(`${sourcePath} is missing ${path.join(".")}`);
+    }
+    cursor = cursor[key];
+  }
+  return cursor;
+}
+
+function requireNumber(source, path) {
+  const value = requireField(source, path);
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${sourcePath} field ${path.join(".")} must be a finite number`);
+  }
+  return value;
+}
+
+function requireText(source, path) {
+  const value = requireField(source, path);
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${sourcePath} field ${path.join(".")} must be a non-empty string`);
+  }
+  return value;
+}
+
+function requireLibraryNumbers(source, field) {
+  const values = {};
+  for (const libraryName of libraryNames) {
+    values[libraryName] = requireNumber(source, [field, libraryName]);
+  }
+  return values;
+}
+
+function requireBundles(source) {
+  const entries = requireField(source, ["bundleOwn"]);
+  if (!Array.isArray(entries)) {
+    throw new Error(`${sourcePath} field bundleOwn must be an array`);
+  }
+  return bundleIds.map((id) => {
+    const entry = entries.find((item) => item && item.id === id);
+    if (!entry) {
+      throw new Error(`${sourcePath} is missing bundleOwn ${id}`);
+    }
+    return {
+      id,
+      minBytes: requireNumber(entry, ["minBytes"]),
+      gzipBytes: requireNumber(entry, ["gzipBytes"]),
+    };
+  });
+}
+
+function loadMeasurement() {
+  const source = JSON.parse(readFileSync(sourcePath, "utf8"));
+  return {
+    commit: requireText(source, ["commit"]),
+    runId: requireText(source, ["runId"]),
+    runtimeVersion: requireText(source, ["runtimeVersion"]),
+    runner: requireText(source, ["runner"]),
+    esbuildVersion: requireText(source, ["esbuildVersion"]),
+    fullDocument: requireLibraryNumbers(source, "fullDocument"),
+    importMedianMs: requireLibraryNumbers(source, "importMedianMs"),
+    heapAfterBytes: requireLibraryNumbers(source, "heapAfterBytes"),
+    parsedPartialMicros: requireLibraryNumbers(source, "parsedPartialMicros"),
+    repairMicros: requireNumber(source, ["repairMicros"]),
+    bundleOwn: requireBundles(source),
+  };
+}
+
+const measurement = loadMeasurement();
 
 const light = {
   background: "#ffffff",
@@ -174,7 +210,7 @@ function chart(theme) {
     measurement.heapAfterBytes.adaptate,
     measurement.heapAfterBytes.valibot,
   );
-  const repairMicros = measurement.agUiRepair.micros;
+  const repairMicros = measurement.repairMicros;
   const checkMicros = measurement.parsedPartialMicros.adaptate;
   const streamMaximum = Math.max(
     repairMicros + checkMicros,
@@ -198,7 +234,7 @@ function chart(theme) {
       color,
     }));
   const title = `Node ${measurement.runtimeVersion} on the GitHub Actions runner`;
-  const subtitle = `commit ${measurement.commit} · run ${measurement.runId} · repair run ${measurement.agUiRepair.runId}`;
+  const subtitle = `commit ${measurement.commit} · run ${measurement.runId} · ${measurement.runner}`;
   const summary = [
     title,
     subtitle,
@@ -207,7 +243,7 @@ function chart(theme) {
     `Heap after GC bytes: zod ${group(measurement.heapAfterBytes.zod)}, adaptate ${group(measurement.heapAfterBytes.adaptate)}, valibot ${group(measurement.heapAfterBytes.valibot)}.`,
     `Bundle own min/gzip bytes, zod external: ${measurement.bundleOwn.map((entry) => `${entry.id} ${group(entry.minBytes)}/${group(entry.gzipBytes)}`).join(", ")}. ./effect also keeps effect external.`,
     `Parsed partial µs/chunk: zod ${measurement.parsedPartialMicros.zod.toFixed(3)}, adaptate ${measurement.parsedPartialMicros.adaptate.toFixed(3)}, valibot ${measurement.parsedPartialMicros.valibot.toFixed(3)}.`,
-    `AG-UI adaptate µs/chunk: JSON repair ${repairMicros.toFixed(3)} from run ${measurement.agUiRepair.runId}, check ${checkMicros.toFixed(3)}. Zod and valibot: no repair, needs complete JSON.`,
+    `AG-UI adaptate µs/chunk: JSON repair ${repairMicros.toFixed(3)}, check ${checkMicros.toFixed(3)}. Zod and valibot: no repair, needs complete JSON.`,
   ].join(" ");
 
   const panelWidth = 296;
