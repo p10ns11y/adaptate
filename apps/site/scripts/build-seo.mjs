@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 import { absoluteUrl, indexable, resolveSiteUrl, slugFor } from "../src/site/config.ts";
+import { buildAgentIndexes } from "../../../tools/api-docs/llms.mjs";
 import { renderOgHtml } from "../src/site/og.ts";
 import { rewriteLlms } from "../src/site/llms.ts";
 
@@ -34,10 +35,9 @@ let robots = [
 ].join("\n");
 writeFileSync(join(distDirectory, "robots.txt"), robots);
 
-for (let name of ["llms.txt", "llms-full.txt"]) {
-  let text = readFileSync(join(repositoryRoot, name), "utf8");
-  writeFileSync(join(distDirectory, name), rewriteLlms(text, siteUrl));
-}
+let indexes = buildAgentIndexes(repositoryRoot);
+writeFileSync(join(distDirectory, "llms.txt"), rewriteLlms(indexes.llms, siteUrl));
+writeFileSync(join(distDirectory, "llms-full.txt"), rewriteLlms(indexes.llmsFull, siteUrl));
 
 let browser = await chromium.launch();
 try {

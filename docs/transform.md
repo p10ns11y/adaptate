@@ -90,4 +90,4 @@ Traversal, from `packages/core/src/index.ts`:
 3. An array `'*'` config is applied to the element schema.
 4. The new shape is merged back with `ZodObject.merge()`.
 
-Fields absent from the config are kept. [DESIGN.md](../DESIGN.md) walks through the recursion and states O(N) time and O(D) space.
+Fields absent from the config are kept.

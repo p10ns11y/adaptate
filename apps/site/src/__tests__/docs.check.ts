@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 import { apiRoute, rewriteHref, routeForDoc, slugifyHeading, sourceOnlyDocs } from "../site/docs-model";
 import { guideFrontMatterSchema } from "../site/frontmatter";
 import { rewriteLlms } from "../site/llms";
+import { buildAgentIndexes, guideNames } from "../../../../tools/api-docs/llms.mjs";
 
 let siteRoot = new URL("../../", import.meta.url);
 let repositoryRoot = new URL("../../../../", import.meta.url);
@@ -13,7 +14,7 @@ let repositoryRoot = new URL("../../../../", import.meta.url);
 describe("docs", () => {
   it("gives every guide a valid answer-first front matter", () => {
     let names = readdirSync(new URL("docs/", repositoryRoot)).filter((name) => name.endsWith(".md"));
-    expect(names.length).toBeGreaterThanOrEqual(16);
+    expect(names.length).toBeGreaterThanOrEqual(12);
     for (let name of names) {
       if (sourceOnlyDocs.has(`docs/${name}`)) continue;
       let markdown = readFileSync(new URL(`docs/${name}`, repositoryRoot), "utf8");
@@ -61,6 +62,22 @@ describe("docs", () => {
       exportNames: [],
     });
     expect(documented.answer).toBe("transformSchema: Make fields required/optional based on config. Import it from @adaptate/core.");
+  });
+
+  it("links every guide from the docs index and nothing that is gone", () => {
+    let names = readdirSync(new URL("docs/", repositoryRoot)).filter((name) => name.endsWith(".md") && name !== "index.md");
+    let linked = guideNames(readFileSync(new URL("docs/index.md", repositoryRoot), "utf8"));
+    let guides = names.filter((name) => !sourceOnlyDocs.has(`docs/${name}`)).sort();
+    expect([...linked].filter((name) => !name.startsWith("api/")).sort()).toEqual(guides);
+  });
+
+  it("keeps llms.txt and llms-full.txt in sync with the docs", () => {
+    let { llms, llmsFull } = buildAgentIndexes(new URL(".", repositoryRoot).pathname);
+    expect(readFileSync(new URL("llms.txt", repositoryRoot), "utf8")).toBe(llms);
+    expect(readFileSync(new URL("llms-full.txt", repositoryRoot), "utf8")).toBe(llmsFull);
+    for (let match of llms.matchAll(/\]\((docs\/[\w./-]+\.md)\)/g)) {
+      expect(existsSync(new URL(match[1] ?? "", repositoryRoot)), match[1]).toBe(true);
+    }
   });
 
   it("makes served llms links absolute", () => {

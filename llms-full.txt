@@ -1,6 +1,6 @@
 # Adaptate
 
-> One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.
+> Typed, validated data from OpenAPI, JSON Schema, or Zod, including JSON that is still streaming.
 
 # Docs
 
@@ -8,28 +8,59 @@ Source: docs/index.md
 
 ---
 title: "Docs"
-description: "Where to read about views, streaming, OpenAPI, types, and the generated API."
-answer: "adaptate docs cover views, streaming, OpenAPI, Zod, Effect, web streams, TypeScript, and an API reference generated from the published declaration files."
+description: "Typed, validated data from OpenAPI, JSON Schema, or Zod, including JSON that is still streaming."
+answer: "Install adaptate, turn an OpenAPI or JSON Schema into Zod, and check data against it, including a tool call that is still streaming. Each view can require only its own fields."
 faq:
-  - question: "Where do I start?"
-    answer: "Start with Transform for one schema and a config per view. Read Streaming next if a model sends JSON tool calls."
+  - question: "Which package do I install?"
+    answer: "adaptate for transformSchema, @adaptate/utils for OpenAPI, and @adaptate/core when you need the /stream, /standard, or /effect subpaths. zod is a peer."
   - question: "Is the API reference generated?"
     answer: "Yes. pnpm docs:api writes docs/api from the .d.ts files that ship in @adaptate/core and @adaptate/utils."
 ---
 
 # Docs
 
-One schema. Each part of the app checks only the fields it uses. A screen, a form, an API client, or a stream.
+## Install
 
-A React component that checks its own view is [examples/react-view](../examples/react-view). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
+```sh
+npm i adaptate @adaptate/utils zod
+```
 
-The site builds these pages into /docs/. Each page has a `title` and a `description`. [llms.txt](../llms.txt) lists them for agents. [llms-full.txt](../llms-full.txt) contains the page text.
+`adaptate` ships the root entry of `@adaptate/core`. Install `@adaptate/core` instead when you import a subpath such as `@adaptate/core/stream`.
+
+## Quick start
+
+An OpenAPI or JSON Schema object becomes a Zod schema:
+
+```ts
+import { openAPISchemaToZod } from "@adaptate/utils";
+
+const recipe = openAPISchemaToZod({
+  type: "object",
+  required: ["title"],
+  properties: { title: { type: "string" }, servings: { type: "integer" } },
+});
+recipe.safeParse({ title: "Pasta", servings: 4 }).success; // true
+```
+
+One Zod schema, and a card that requires only the title:
+
+```ts
+import { z } from "zod";
+import { transformSchema, type Config } from "adaptate";
+
+const recipe = z.object({ title: z.string(), servings: z.number() });
+type Recipe = z.infer<typeof recipe>;
+const card = { title: true } satisfies Config<Recipe>;
+const cardSchema = transformSchema(recipe.partial(), card);
+cardSchema.parse({ title: "Pasta" });
+```
+
+Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms-full.txt) for every page.
 
 ## Guides
 
 - [Transform](transform.md): one Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](streaming.md): check a tool call while the JSON is still arriving.
-- [Incremental partial JSON](incremental-parser.md): scan each new character of a JSON stream once.
 - [AG-UI](ag-ui.md): check AG-UI tool-call deltas against each view.
 - [Web streams](web-streams.md): feed a ReadableStream, SSE, or a Node stream into the parser.
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
@@ -38,8 +69,6 @@ The site builds these pages into /docs/. Each page has a `title` and a `descript
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
-- [Performance](performance.md): measured cost of import, a full document, four component views, a streaming check, and bundle size.
-- [Proof](proof.md): each front-page sentence mapped to a test, a script, or a CI job.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
 - [Development](development.md): install, test, and build this repository.
 
@@ -144,7 +173,7 @@ Traversal, from `packages/core/src/index.ts`:
 3. An array `'*'` config is applied to the element schema.
 4. The new shape is merged back with `ZodObject.merge()`.
 
-Fields absent from the config are kept. [DESIGN.md](../DESIGN.md) walks through the recursion and states O(N) time and O(D) space.
+Fields absent from the config are kept.
 
 
 # Streaming
@@ -177,7 +206,7 @@ faq:
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`. See [Incremental partial JSON](incremental-parser.md).
+`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
 
 ```ts
 import { z } from "zod";
@@ -196,70 +225,6 @@ push({
   delta: '{"title":"Pas',
 });
 ```
-
-
-# Incremental partial JSON
-
-Source: docs/incremental-parser.md
-
----
-title: "Incremental partial JSON"
-description: "Tokenize a JSON stream once and reuse closed values."
-answer: "@adaptate/core/stream-incremental tokenizes each JSON chunk once. createPartialJsonFeed appends finished values to the open container and reuses closed values, so a push reads only the new characters."
-faq:
-  - question: "How is it different from @adaptate/core/stream?"
-    answer: "stream re-parses the whole prefix on each chunk. stream-incremental reads each new character once."
-  - question: "Does it accept bytes?"
-    answer: "Yes. fromAsyncIterable takes strings or UTF-8 bytes and decodes bytes with TextDecoder in stream mode."
----
-
-# Incremental partial JSON
-
-```mermaid
-flowchart TD
-  chunk["New chunk"] --> read["Read each new character once"]
-  read --> token["Finish a string, number, literal, or bracket"]
-  token --> stack["Append it to the open container"]
-  stack --> copy["Copy only the containers still open"]
-  copy --> check["Check that value"]
-```
-
-`fromAsyncIterable` reads an async sequence of strings or UTF-8 bytes. Byte chunks go through `TextDecoder` with `stream: true`, and the decoder flushes after the source ends. `push` still receives a string.
-
-```ts
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
-
-await pipeline(readable, async function collect(source) {
-  for await (const partialValue of fromAsyncIterable(source)) {
-    use(partialValue);
-  }
-});
-
-async function* openAiArguments(events) {
-  for await (const event of events) {
-    const delta = event.choices?.[0]?.delta?.tool_calls?.[0]?.function?.arguments;
-    if (typeof delta === "string" && delta.length > 0) yield delta;
-  }
-}
-
-async function* anthropicInputJson(events) {
-  for await (const event of events) {
-    const delta = event.delta;
-    if (delta?.type === "input_json_delta" && typeof delta.partial_json === "string") {
-      yield delta.partial_json;
-    }
-  }
-}
-
-for await (const partialValue of fromAsyncIterable(openAiArguments(events))) use(partialValue);
-for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) use(partialValue);
-```
-
-`Readable` from Node, a Web `ReadableStream`, and either delta mapping are the same input: strings or bytes. No SDK is required.
-
-Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order the caller reads 966 characters. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
 # AG-UI
@@ -350,7 +315,7 @@ export let cardConfig = {
 ```
 <!-- /snippet -->
 
-See [Streaming](streaming.md) for `partial` and `final`, and [Incremental partial JSON](incremental-parser.md) for the tokenizer.
+See [Streaming](streaming.md) for `partial` and `final`.
 
 
 # Web streams
@@ -878,8 +843,6 @@ const cardSchema = transformSchema(recipe.partial(), card);
 
 The CI job `ts7-consumer` runs that script on TypeScript 7 and TypeScript 6, each with `moduleResolution` `bundler`, `node16`, and `nodenext`.
 
-Dev TypeScript in this repo is 7.0.2. Lint is `oxlint --type-aware` (`oxlint-tsgolint`), including `typescript/no-deprecated`.
-
 
 # Subpaths
 
@@ -971,181 +934,6 @@ Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to re
 js-yaml 5 ships its own types. `@types/js-yaml` is not a dependency.
 
 
-# Performance
-
-Source: docs/performance.md
-
----
-title: "Performance"
-description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
-answer: "CI fails a pull request when any benchmark case is more than 5% slower than its base. A local A/B run compares raw Zod, Zod plus adaptate, and valibot on a full document, partial chunks, and bundle size."
-faq:
-  - question: "How much slower is adaptate than raw Zod?"
-    answer: "In the recorded run, a parsed partial chunk costs 0.835 µs against 0.606 µs for raw Zod, and raw Zod cannot check partial JSON."
-  - question: "What does CI gate on?"
-    answer: "scripts/bench-compare.mjs fails when any case is more than 5% slower than the base commit."
----
-
-# Performance
-
-CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`.
-
-The [#53](https://github.com/p10ns11y/adaptate/pull/53) run reported:
-
-| Case | Ratio (head / base) |
-| --- | --- |
-| `transformSchema` | 1.043 |
-| `transformPartialSchema` | 1.002 |
-| `parsePartialJson` | 0.989 |
-| `agUiStream` | 0.996 |
-
-[DESIGN.md](../DESIGN.md) estimates the traversal at O(N) time and O(D) space. That note is not a measured benchmark.
-
-## A/B versus raw Zod
-
-```mermaid
-flowchart LR
-  order[Grocery order JSON]
-  deltas[TOOL_CALL_ARGS deltas]
-  order --> A[A raw zod]
-  order --> B[B zod plus adaptate]
-  order --> C[C valibot]
-  deltas --> A
-  deltas --> B
-  deltas --> C
-  A --> node[Node 24]
-  B --> node
-  C --> node
-  node --> gate[Gate head vs base, 5%]
-  A --> recorded[Bun and Chromium]
-  B --> recorded
-  C --> recorded
-```
-
-One grocery order, three validators. [`agree.js`](../bench/ab/agree.js) checks they accept and reject the same fixtures, including every stream chunk, before a number is kept.
-
-```sh
-pnpm --filter @adaptate/core build && node bench/ab/run.js
-```
-
-| Row | What is timed |
-| --- | --- |
-| Full document | One `safeParse` of a schema built once. B is one `transformSchema` of the all-optional base plus `receiptConfig`. |
-| Import | Module eval plus one full-document validation. Node and Bun: a fresh process per sample, one discarded warmup, then 31 samples. Chromium: a fresh page, no discarded warmup. The browser bundle includes this harness on every variant, so the B minus A import delta cancels it. Node and Bun import the package entry. |
-| Bundle | esbuild, minify, tree-shaking. Full bundle, and a second bundle with `zod` external. `effect` is always external. |
-
-Where the work is not the same:
-
-- AG-UI: B imports `createAgUiPartialValidator` from `@adaptate/core/stream-incremental`. Each chunk is tokenized once ([incremental scan](incremental-parser.md)), then `safeParse`s a lenient schema cached on the base schema when the value is new. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON`. `repairMicros` clocks `parsePartialJson` from `@adaptate/core/stream` on the growing buffer, without the check. That clock is the full-prefix oracle. It is recorded and is not gated.
-- Parsed partial: the same value. B reuses one lenient schema per base schema (`WeakMap`) and `safeParse`s it. A and C reuse one static all-optional schema. The `ab-eval` gate names this row `adaptate cached partial us/chunk` and fails when head is more than 5% slower than base.
-- `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
-- Valibot uses its own schemas for the same accept/reject rules.
-- `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
-- Four views per render: card, line items, delivery, and receipt. The schemas are built once. Each timed render parses the grocery order with all four. Zod and Valibot use static schemas for those fields. Adaptate calls `transformSchema` on one partial schema. The rate is renders per second (`viewsPerSec`). [`agree.js`](../bench/ab/agree.js) requires the full order to pass every view, and an empty object or a card-only object to fail. This row is recorded and is not gated. The README chart does not draw it.
-
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk (`@adaptate/core/stream-incremental`), cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./stream-incremental`, `./standard`, and `./effect` (full bundle and zod-external). `./stream-incremental` is new on this line, so its base is the recorded size in `bench/ab/config.js` until a base commit contains that entry. Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
-
-On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
-
-The table below is one local `node bench/ab/run.js` of commit `1a51df50ff0842213e015b18c5d4240a2e994c0a` against raw Zod and Valibot. It is not the gate. The AG-UI row is `createAgUiPartialValidator` from `@adaptate/core/stream-incremental`. For A and C that full push is the parsed-partial check, because they have no repair step. `repairMicros` is `parsePartialJson` on the growing buffer and is not that row.
-
-Node v24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6.
-
-Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters. Import time includes module evaluation and one full-document validation. Node and Bun use a fresh process per sample, median and p95 of 31 samples after one discarded warmup. Chromium uses a fresh page per sample and no discarded warmup. Full-document and per-chunk rates are the median of 11 passes of 200 ms, one variant per process (Node, Bun) or page (Chromium). Node and Bun clocks are `process.hrtime.bigint`. The browser clock is `performance.now`.
-
-| Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
-| --- | --- | --- | --- | --- | --- |
-| Import median (ms) | Node v24.22.3 | 39.744 | 41.684 | +1.939 ms (+4.879%) | 6.042 |
-| Import p95 (ms) | Node v24.22.3 | 41.752 | 43.983 | +2.230 ms (+5.342%) | 7.341 |
-| Full document (validations/sec) | Node v24.22.3 | 2,425,500 | 2,256,119 | -169,380 /s (-6.983%) | 472,695 |
-| 4 views per render (renders/sec) | Node v24.22.3 | 1,124,133 | 484,695 | -639,438 /s (-56.883%) | 271,223 |
-| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.606 | 3.023 | +2.417 µs (+398.633%) | 1.409 |
-| JSON repair (µs/chunk) | Node v24.22.3 | no repair: needs complete JSON | 24.076 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Node v24.22.3 | 0.606 | 0.835 | +0.229 µs (+37.732%) | 1.409 |
-| Heap after GC (bytes) | Node v24.22.3 | 8,322,872 | 8,510,312 | 187,440 B (+2.252%) | 5,217,008 |
-| Heap delta after GC (bytes) | Node v24.22.3 | 351,048 | 389,264 | 38,216 B (+10.886%) | 52,240 |
-| Import median (ms) | Bun 1.4.5 | 21.966 | 23.289 | +1.323 ms (+6.024%) | 9.014 |
-| Import p95 (ms) | Bun 1.4.5 | 22.838 | 24.682 | +1.845 ms (+8.078%) | 9.509 |
-| Full document (validations/sec) | Bun 1.4.5 | 1,190,317 | 1,161,432 | -28,885 /s (-2.427%) | 1,324,228 |
-| 4 views per render (renders/sec) | Bun 1.4.5 | 570,205 | 221,755 | -348,450 /s (-61.110%) | 402,240 |
-| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.703 | 3.036 | +2.333 µs (+331.741%) | 1.566 |
-| JSON repair (µs/chunk) | Bun 1.4.5 | no repair: needs complete JSON | 18.943 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Bun 1.4.5 | 0.703 | 0.920 | +0.217 µs (+30.799%) | 1.566 |
-| Heap after GC (bytes) | Bun 1.4.5 | 2,109,007 | 2,392,765 | 283,758 B (+13.455%) | 670,300 |
-| Heap delta after GC (bytes) | Bun 1.4.5 | 605,701 | 710,345 | 104,644 B (+17.277%) | 121,899 |
-| Import median (ms) | Chromium 159.0.8154.6 | 21.900 | 22.500 | +0.600 ms (+2.740%) | 4.800 |
-| Import p95 (ms) | Chromium 159.0.8154.6 | 25.200 | 24.300 | -0.900 ms (-3.571%) | 11.600 |
-| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,399,280 | 1,811,705 | -587,575 /s (-24.490%) | 555,445 |
-| 4 views per render (renders/sec) | Chromium 159.0.8154.6 | 1,170,260 | 311,560 | -858,700 /s (-73.377%) | 332,530 |
-| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.720 | 2.602 | +1.882 µs (+261.440%) | 1.084 |
-| JSON repair (µs/chunk) | Chromium 159.0.8154.6 | no repair: needs complete JSON | 23.119 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Chromium 159.0.8154.6 | 0.720 | 0.888 | +0.168 µs (+23.308%) | 1.084 |
-| zod-only min / gzip (bytes) | esbuild 0.28.2 | 455,377 / 93,666 | — | — | baseline |
-| `.` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 456,345 / 93,976 | 968 / 310 B (+0.331% gzip) | — |
-| `.` own min / gzip, zod external | esbuild 0.28.2 | — | 2,490 / 1,207 | +2,490 / +1,207 B | — |
-| `./stream` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 458,164 / 94,634 | 2,787 / 968 B (+1.033% gzip) | — |
-| `./stream` own min / gzip, zod external | esbuild 0.28.2 | — | 4,278 / 1,926 | +4,278 / +1,926 B | — |
-| `./standard` min / gzip | esbuild 0.28.2 | — | 589 / 328 | 589 / 328 B | — |
-| `./standard` own min / gzip, zod external | esbuild 0.28.2 | — | 589 / 328 | +589 / +328 B | — |
-| `./stream-incremental` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 461,003 / 95,833 | 5,626 / 2,167 B (+2.314% gzip) | — |
-| `./stream-incremental` own min / gzip, zod external | esbuild 0.28.2 | — | 7,056 / 3,094 | +7,056 / +3,094 B | — |
-| `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
-| `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
-
-`@adaptate/core/stream-incremental` reads each character of that grocery order once: 966 visits. A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.
-
-## Credit
-
-Measure first, then optimize only the critical path. Donald E. Knuth, "Structured Programming with go to Statements", ACM Computing Surveys 6(4), 1974:
-
-> We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.
-
-The per-chunk re-parse was that critical 3% here: [10.1145/356635.356640](https://doi.org/10.1145/356635.356640).
-
-
-# Proof
-
-Source: docs/proof.md
-
----
-title: "Proof"
-description: "Each front-page sentence mapped to a test, a script, or a CI job."
-answer: "Each claim on the adaptate front page maps to a test, a script, or a CI job in the repository. This page lists every claim next to its proof."
-faq:
-  - question: "Where is the partial-stream invariant tested?"
-    answer: "In packages/core/src/__tests__/partial-stream.invariants.property.test.ts."
-  - question: "How are the published types checked?"
-    answer: "verify-published-types.mjs runs in the verify job, and ts7-consumer typechecks the packed tarballs."
----
-
-# Proof
-
-Each sentence on the front page maps to something in the repo.
-
-| Sentence | Proof |
-| --- | --- |
-| One schema. Each part of the app checks only the fields it uses | [`transformSchema` makes the configured fields required](../packages/core/src/__tests__/index.test.ts). A title-only value passes the card and fails the kitchen: [examples/react-view](../examples/react-view) |
-| A screen, a form, an API client, or a stream | The rows below. The stream is one of those cases |
-| A React component checks the fields it renders | [examples/react-view](../examples/react-view) renders a card and a kitchen from one schema. The card shows `Pasta` when the value is `{ title: "Pasta" }`. The kitchen stays waiting until `servings` is present |
-| A Vue, Svelte, or Solid component can call `transformSchema` the same way | [`transformSchema`](../packages/core/src/index.ts) returns a Zod schema. [`@adaptate/core` has no React, Vue, Svelte, or Solid dependency](../packages/core/package.json). The repository includes the React example only |
-| A form can require the fields collected so far and leave the rest optional | `transformSchema(recipe.partial(), { title: true })` accepts `{ title: "Pas" }` and rejects `{}` ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts), [examples/react-view](../examples/react-view)) |
-| An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out | [YAML load and JSON-schema round trip](../packages/utils/src/__tests__/openapi.test.ts) |
-| A config names the fields each view requires | The card config is `{ title: true }` checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
-| A chat can check a tool call while the model is still typing | [AG-UI tool-call deltas, including a cut-off string](../packages/core/src/__tests__/stream.test.ts) and [every parsed prefix keeps the partial-stream invariant](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts) |
-| `JSON.parse` throws on that cut-off text, and Adaptate returns `{ title: "Pas" }` with the card check passing | The same test, and [examples/streaming-tool-call](../examples/streaming-tool-call) which installs published `@adaptate/core@2.3.0` and checks both results |
-| With only the dish name, the card is ready and the kitchen is not | [`final`](../packages/core/src/__tests__/effect.test.ts) on `{"title":"Pasta"}`: card valid, kitchen invalid |
-| When the number of servings arrives, the kitchen is ready too | The same test, on `{"title":"Pasta","servings":2}` |
-| The same checks run in plain code or in an Effect pipeline | [`final(text)` reports every named config; `final(text, "card")` checks that one](../packages/core/src/__tests__/effect.test.ts). `final` agrees with `transformSchema` per config ([I2](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts)) |
-| Core ships without extra runtime libraries | [`@adaptate/core` `package.json` has no `dependencies`; `zod` is the peer](../packages/core/package.json). [The main entry and `./stream` load when `effect` is missing](../packages/core/src/__tests__/effect.test.ts) |
-| The published types match the build | [`verify-published-types.mjs`](../scripts/verify-published-types.mjs) in the [verify job](../.github/workflows/ci.yml) |
-| The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
-| CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
-| Node v24.22.3. Commit 1a51df5. One local node bench/ab/run.js | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn. AG-UI on `@adaptate/core/stream-incremental` is 3.023 µs/chunk |
-| A partial JSON stream is tokenized once on `@adaptate/core/stream-incremental` | [`createPartialJsonFeed`](../packages/core/src/stream-incremental.ts) appends each finished value and copies the deepest open container plus the spine. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix, and `@adaptate/core/stream` keeps that path. The grocery order is 966 characters. A full rescan was 68,304 character visits |
-
-Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
-
-
 # Migration 2.4
 
 Source: docs/migration-2.4.md
@@ -1212,24 +1000,7 @@ pnpm build         # turbo run build
 pnpm typecheck
 ```
 
-`turbo.json` makes `build` depend on dependency `check-types` and dependency `test`.
-
-```
-├── .devcontainer/   # Node 24 + pnpm
-├── bench/ab/        # A/B runtime eval
-├── docs/
-├── packages/core/   # @adaptate/core
-├── packages/utils/  # @adaptate/utils
-├── skills/
-├── tools/api-docs/  # TypeDoc markdown from the published .d.ts files
-├── AGENTS.md
-├── CODING_STYLE.md
-└── turbo.json
-```
-
 Agent procedures: [AGENTS.md](../AGENTS.md), [skills/](../skills/). Dev container: [.devcontainer/README.md](../.devcontainer/README.md).
-
-The pattern comes from [Oneflow AB](https://oneflow.com): one data model, several components, different required fields. The first prototype was a ChatGPT Canvas. PR [#21](https://github.com/p10ns11y/adaptate/pull/21) is the first agent-written change in the repo.
 
 License: MIT.
 

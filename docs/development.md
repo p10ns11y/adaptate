@@ -28,23 +28,6 @@ pnpm build         # turbo run build
 pnpm typecheck
 ```
 
-`turbo.json` makes `build` depend on dependency `check-types` and dependency `test`.
-
-```
-├── .devcontainer/   # Node 24 + pnpm
-├── bench/ab/        # A/B runtime eval
-├── docs/
-├── packages/core/   # @adaptate/core
-├── packages/utils/  # @adaptate/utils
-├── skills/
-├── tools/api-docs/  # TypeDoc markdown from the published .d.ts files
-├── AGENTS.md
-├── CODING_STYLE.md
-└── turbo.json
-```
-
 Agent procedures: [AGENTS.md](../AGENTS.md), [skills/](../skills/). Dev container: [.devcontainer/README.md](../.devcontainer/README.md).
-
-The pattern comes from [Oneflow AB](https://oneflow.com): one data model, several components, different required fields. The first prototype was a ChatGPT Canvas. PR [#21](https://github.com/p10ns11y/adaptate/pull/21) is the first agent-written change in the repo.
 
 License: MIT.

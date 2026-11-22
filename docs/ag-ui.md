@@ -82,4 +82,4 @@ export let cardConfig = {
 ```
 <!-- /snippet -->
 
-See [Streaming](streaming.md) for `partial` and `final`, and [Incremental partial JSON](incremental-parser.md) for the tokenizer.
+See [Streaming](streaming.md) for `partial` and `final`.
