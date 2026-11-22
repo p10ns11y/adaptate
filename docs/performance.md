@@ -64,7 +64,7 @@ The `ab-eval` job gates Node only, head build against the base commit, and fails
 
 On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
 
-The table below is one local `node bench/ab/run.js` of commit `233627cfaf8e67424ed612ec2320c7b1eb657742` against raw Zod and Valibot. It is not the gate. The AG-UI row is the full push. For A and C that full push is the parsed-partial check, because they have no repair step. `repairMicros` is `parsePartialJson` on the growing buffer and is not that row.
+The table below is one local `node bench/ab/run.js` of commit `ff4c7853d40090573172a56133911530c890fbcb` against raw Zod and Valibot. It is not the gate. The AG-UI row is the full push. For A and C that full push is the parsed-partial check, because they have no repair step. `repairMicros` is `parsePartialJson` on the growing buffer and is not that row.
 
 Node v24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6.
 
@@ -72,31 +72,31 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 
 | Metric | Runtime | A raw zod | B zod + adaptate | B vs A | C valibot |
 | --- | --- | --- | --- | --- | --- |
-| Import median (ms) | Node v24.22.3 | 41.075 | 43.196 | +2.121 ms (+5.163%) | 6.329 |
-| Import p95 (ms) | Node v24.22.3 | 46.119 | 49.500 | +3.381 ms (+7.331%) | 7.015 |
-| Full document (validations/sec) | Node v24.22.3 | 2,482,969 | 2,248,814 | -234,155 /s (-9.430%) | 478,375 |
-| 4 views per render (renders/sec) | Node v24.22.3 | 1,169,159 | 472,221 | -696,938 /s (-59.610%) | 267,328 |
-| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.623 | 17.240 | +16.616 µs (+2666.065%) | 1.410 |
-| JSON repair (µs/chunk) | Node v24.22.3 | no repair: needs complete JSON | 24.096 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Node v24.22.3 | 0.623 | 0.843 | +0.220 µs (+35.284%) | 1.410 |
-| Heap after GC (bytes) | Node v24.22.3 | 8,312,992 | 8,461,992 | 149,000 B (+1.792%) | 5,213,360 |
-| Heap delta after GC (bytes) | Node v24.22.3 | 351,048 | 356,288 | 5,240 B (+1.493%) | 50,768 |
-| Import median (ms) | Bun 1.4.5 | 22.122 | 23.354 | +1.232 ms (+5.567%) | 9.129 |
-| Import p95 (ms) | Bun 1.4.5 | 22.639 | 24.237 | +1.598 ms (+7.060%) | 9.545 |
-| Full document (validations/sec) | Bun 1.4.5 | 1,208,839 | 1,168,329 | -40,510 /s (-3.351%) | 1,289,998 |
-| 4 views per render (renders/sec) | Bun 1.4.5 | 592,448 | 220,692 | -371,756 /s (-62.749%) | 400,080 |
-| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.699 | 7.768 | +7.070 µs (+1012.040%) | 1.316 |
-| JSON repair (µs/chunk) | Bun 1.4.5 | no repair: needs complete JSON | 19.678 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Bun 1.4.5 | 0.699 | 0.939 | +0.240 µs (+34.392%) | 1.316 |
-| Heap after GC (bytes) | Bun 1.4.5 | 2,108,538 | 2,320,187 | 211,649 B (+10.038%) | 669,666 |
-| Heap delta after GC (bytes) | Bun 1.4.5 | 606,037 | 647,984 | 41,947 B (+6.922%) | 122,235 |
-| Import median (ms) | Chromium 159.0.8154.6 | 22.200 | 22.800 | +0.600 ms (+2.703%) | 4.800 |
-| Import p95 (ms) | Chromium 159.0.8154.6 | 25.500 | 27.000 | +1.500 ms (+5.882%) | 6.900 |
-| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,381,765 | 1,828,805 | -552,960 /s (-23.216%) | 595,220 |
-| 4 views per render (renders/sec) | Chromium 159.0.8154.6 | 1,161,290 | 302,790 | -858,500 /s (-73.926%) | 342,155 |
-| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.709 | 17.254 | +16.545 µs (+2332.112%) | 1.077 |
-| JSON repair (µs/chunk) | Chromium 159.0.8154.6 | no repair: needs complete JSON | 22.959 | n/a | no repair: needs complete JSON |
-| Parsed partial check, cached schema (µs/chunk) | Chromium 159.0.8154.6 | 0.709 | 0.893 | +0.183 µs (+25.842%) | 1.077 |
+| Import median (ms) | Node v24.22.3 | 39.612 | 39.499 | -0.113 ms (-0.286%) | 6.004 |
+| Import p95 (ms) | Node v24.22.3 | 41.267 | 42.688 | +1.421 ms (+3.444%) | 6.582 |
+| Full document (validations/sec) | Node v24.22.3 | 2,457,258 | 2,260,164 | -197,094 /s (-8.021%) | 487,754 |
+| 4 views per render (renders/sec) | Node v24.22.3 | 1,174,399 | 488,050 | -686,349 /s (-58.443%) | 278,846 |
+| AG-UI stream (µs/chunk) | Node v24.22.3 | 0.612 | 16.251 | +15.639 µs (+2554.077%) | 1.410 |
+| JSON repair (µs/chunk) | Node v24.22.3 | no repair: needs complete JSON | 23.698 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Node v24.22.3 | 0.612 | 0.834 | +0.221 µs (+36.148%) | 1.410 |
+| Heap after GC (bytes) | Node v24.22.3 | 8,320,904 | 8,462,032 | 141,128 B (+1.696%) | 5,214,848 |
+| Heap delta after GC (bytes) | Node v24.22.3 | 351,048 | 356,288 | 5,240 B (+1.493%) | 52,256 |
+| Import median (ms) | Bun 1.4.5 | 22.148 | 23.330 | +1.182 ms (+5.338%) | 9.145 |
+| Import p95 (ms) | Bun 1.4.5 | 23.504 | 24.508 | +1.004 ms (+4.270%) | 9.603 |
+| Full document (validations/sec) | Bun 1.4.5 | 1,200,154 | 1,183,987 | -16,168 /s (-1.347%) | 1,370,945 |
+| 4 views per render (renders/sec) | Bun 1.4.5 | 581,664 | 220,134 | -361,530 /s (-62.155%) | 404,246 |
+| AG-UI stream (µs/chunk) | Bun 1.4.5 | 0.696 | 7.600 | +6.905 µs (+992.585%) | 1.331 |
+| JSON repair (µs/chunk) | Bun 1.4.5 | no repair: needs complete JSON | 19.837 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Bun 1.4.5 | 0.696 | 0.926 | +0.230 µs (+33.107%) | 1.331 |
+| Heap after GC (bytes) | Bun 1.4.5 | 2,108,346 | 2,319,955 | 211,609 B (+10.037%) | 664,462 |
+| Heap delta after GC (bytes) | Bun 1.4.5 | 605,941 | 646,320 | 40,379 B (+6.664%) | 118,306 |
+| Import median (ms) | Chromium 159.0.8154.6 | 21.600 | 22.200 | +0.600 ms (+2.778%) | 4.800 |
+| Import p95 (ms) | Chromium 159.0.8154.6 | 24.400 | 26.800 | +2.400 ms (+9.836%) | 6.700 |
+| Full document (validations/sec) | Chromium 159.0.8154.6 | 2,411,025 | 1,840,655 | -570,370 /s (-23.657%) | 596,100 |
+| 4 views per render (renders/sec) | Chromium 159.0.8154.6 | 1,175,320 | 303,155 | -872,165 /s (-74.207%) | 341,025 |
+| AG-UI stream (µs/chunk) | Chromium 159.0.8154.6 | 0.716 | 16.107 | +15.391 µs (+2149.309%) | 1.064 |
+| JSON repair (µs/chunk) | Chromium 159.0.8154.6 | no repair: needs complete JSON | 22.970 | n/a | no repair: needs complete JSON |
+| Parsed partial check, cached schema (µs/chunk) | Chromium 159.0.8154.6 | 0.716 | 0.903 | +0.187 µs (+26.148%) | 1.064 |
 | zod-only min / gzip (bytes) | esbuild 0.28.2 | 455,377 / 93,666 | — | — | baseline |
 | `.` min / gzip | esbuild 0.28.2 | 455,377 / 93,666 | 456,345 / 93,976 | 968 / 310 B (+0.331% gzip) | — |
 | `.` own min / gzip, zod external | esbuild 0.28.2 | — | 2,490 / 1,207 | +2,490 / +1,207 B | — |
@@ -105,6 +105,6 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./standard` min / gzip | esbuild 0.28.2 | — | 589 / 328 | 589 / 328 B | — |
 | `./standard` own min / gzip, zod external | esbuild 0.28.2 | — | 589 / 328 | +589 / +328 B | — |
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,246 / 94,453 | 2,869 / 787 B (+0.840% gzip) | — |
-| `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,340 / 1,789 | +4,340 / +1,789 B | — |
+| `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,340 / 1,790 | +4,340 / +1,790 B | — |
 
 Characters passed to `JSON.parse` on that grocery order, 41 chunks: 68,714 across 130 parses. The bracket scan visits each new character once (966). A full rescan of the buffer was 68,304 character visits. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing.

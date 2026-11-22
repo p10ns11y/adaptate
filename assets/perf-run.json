@@ -1,35 +1,35 @@
 {
-  "commit": "233627cfaf8e67424ed612ec2320c7b1eb657742",
+  "commit": "ff4c7853d40090573172a56133911530c890fbcb",
   "runId": "local",
   "runtimeVersion": "v24.22.3",
   "runner": "local",
   "esbuildVersion": "0.28.2",
   "fullDocument": {
-    "zod": 2482968.96770979,
-    "adaptate": 2248814.2241590926,
-    "valibot": 478374.5670710168
+    "zod": 2457258.1570563824,
+    "adaptate": 2260163.9151213206,
+    "valibot": 487753.5099130272
   },
   "importMedianMs": {
-    "zod": 41.075402,
-    "adaptate": 43.195967,
-    "valibot": 6.328699
+    "zod": 39.612431,
+    "adaptate": 39.499074,
+    "valibot": 6.003557
   },
   "heapAfterBytes": {
-    "zod": 8312992,
-    "adaptate": 8461992,
-    "valibot": 5213360
+    "zod": 8320904,
+    "adaptate": 8462032,
+    "valibot": 5214848
   },
   "parsedPartialMicros": {
-    "zod": 0.623252789749055,
-    "adaptate": 0.8431584227698482,
-    "valibot": 1.4102747022613331
+    "zod": 0.6122993445523761,
+    "adaptate": 0.8336338212493539,
+    "valibot": 1.4098409699703933
   },
   "agUiMicros": {
-    "zod": 0.623252789749055,
-    "adaptate": 17.239578040162026,
-    "valibot": 1.4102747022613331
+    "zod": 0.6122993445523761,
+    "adaptate": 16.250893039461957,
+    "valibot": 1.4098409699703933
   },
-  "repairMicros": 24.09570899915896,
+  "repairMicros": 23.69778628936775,
   "bundleOwn": [
     {
       "id": ".",
@@ -49,7 +49,7 @@
     {
       "id": "./effect",
       "minBytes": 4340,
-      "gzipBytes": 1789
+      "gzipBytes": 1790
     }
   ]
 }
