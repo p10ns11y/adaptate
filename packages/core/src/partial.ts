@@ -32,18 +32,10 @@ export type PartialValidationResult = {
 type ConfigNode = boolean | { [key: string]: ConfigNode | undefined };
 
 function unwrapOptional(schema: z.ZodType): z.ZodType {
-  let current = schema;
-  while (!(current instanceof z.ZodObject) && !(current instanceof z.ZodArray)) {
-    if (
-      current instanceof z.ZodOptional ||
-      (current.safeParse(undefined).success && "unwrap" in current)
-    ) {
-      current = (current as unknown as z.ZodOptional<z.ZodType>).unwrap();
-      continue;
-    }
-    return current;
-  }
-  return current;
+  if (schema instanceof z.ZodObject || schema instanceof z.ZodArray) return schema;
+  return schema.safeParse(undefined).success && "unwrap" in schema
+    ? unwrapOptional((schema as unknown as z.ZodOptional<z.ZodType>).unwrap())
+    : schema;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -52,67 +44,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const lenientSchemaCache = new WeakMap<z.ZodType, z.ZodType>();
 
-function rememberLenient(schema: z.ZodType, inner: z.ZodType, built: z.ZodType): void {
+function lenientSchema(schema: z.ZodType): z.ZodType {
+  const cached = lenientSchemaCache.get(schema);
+  if (cached) return cached;
+  const inner = unwrapOptional(schema);
+  let built: z.ZodType;
+  if (inner instanceof z.ZodObject) {
+    const shape = Object.fromEntries(
+      Object.entries(inner.shape as Record<string, z.ZodType>).map(
+        ([fieldKey, fieldSchema]) => [
+          fieldKey,
+          lenientSchema(fieldSchema).optional(),
+        ],
+      ),
+    );
+    built = z.object(shape);
+  } else if (inner instanceof z.ZodArray) {
+    built = z.array(lenientSchema(inner.element as z.ZodType));
+  } else {
+    built = inner;
+  }
   lenientSchemaCache.set(schema, built);
   if (inner !== schema) lenientSchemaCache.set(inner, built);
-}
-
-function lenientSchema(schema: z.ZodType): z.ZodType {
-  let produced: z.ZodType = schema;
-  let stack: any[][] = [[schema, 0]];
-  while (stack.length > 0) {
-    let frame = stack[stack.length - 1] as any[];
-    if (frame[1] === 0) {
-      let cached = lenientSchemaCache.get(frame[0]);
-      if (cached) {
-        produced = cached;
-        stack.pop();
-        continue;
-      }
-      let inner = unwrapOptional(frame[0]);
-      frame[2] = inner;
-      if (inner instanceof z.ZodObject) {
-        frame[1] = 1;
-        frame[3] = Object.entries(inner.shape as Record<string, z.ZodType>);
-        frame[4] = {};
-        frame[5] = 0;
-        continue;
-      }
-      if (inner instanceof z.ZodArray) {
-        frame[1] = 2;
-        stack.push([inner.element as z.ZodType, 0]);
-        continue;
-      }
-      rememberLenient(frame[0], inner, inner);
-      produced = inner;
-      stack.pop();
-      continue;
-    }
-    if (frame[1] === 2) {
-      let built = z.array(produced);
-      rememberLenient(frame[0], frame[2], built);
-      produced = built;
-      stack.pop();
-      continue;
-    }
-    if (frame[6] !== undefined) {
-      frame[4][frame[6]] = produced.optional();
-      frame[6] = undefined;
-    }
-    let entries = frame[3] as [string, z.ZodType][];
-    if (frame[5] >= entries.length) {
-      let built = z.object(frame[4]);
-      rememberLenient(frame[0], frame[2], built);
-      produced = built;
-      stack.pop();
-      continue;
-    }
-    let entry = entries[frame[5]] as [string, z.ZodType];
-    frame[5] += 1;
-    frame[6] = entry[0];
-    stack.push([entry[1], 0]);
-  }
-  return produced;
+  return built;
 }
 
 export function cacheLenientSchema(schema: z.ZodType): void {
@@ -126,74 +80,31 @@ function partialSchemaFor(
   config: ConfigNode | undefined,
   value: unknown,
 ): z.ZodType {
-  let produced: z.ZodType = schema;
-  let stack: any[][] = [[schema, config, value, 0]];
-  while (stack.length > 0) {
-    let frame = stack[stack.length - 1] as any[];
-    if (frame[3] === 0) {
-      let inner = unwrapOptional(frame[0]);
-      frame[4] = inner;
-      if (inner instanceof z.ZodObject && isRecord(frame[2])) {
-        frame[3] = 1;
-        frame[5] = isRecord(frame[1]) ? frame[1] : {};
-        frame[6] = Object.entries(inner.shape as Record<string, z.ZodType>);
-        frame[7] = {};
-        frame[8] = 0;
-        continue;
-      }
-      if (inner instanceof z.ZodArray && Array.isArray(frame[2])) {
-        frame[3] = 2;
-        frame[5] = isRecord(frame[1]) ? frame[1]["*"] : undefined;
-        frame[8] = 0;
-        frame[9] = [];
-        continue;
-      }
-      produced = inner;
-      stack.pop();
-      continue;
-    }
-    if (frame[3] === 1) {
-      if (frame[10] !== undefined) {
-        frame[7][frame[10]] = frame[11] === false ? produced.optional() : produced;
-        frame[10] = undefined;
-      }
-      let entries = frame[6] as [string, z.ZodType][];
-      if (frame[8] >= entries.length) {
-        produced = z.object(frame[7]);
-        stack.pop();
-        continue;
-      }
-      let entry = entries[frame[8]] as [string, z.ZodType];
-      frame[8] += 1;
-      let fieldKey = entry[0];
-      let fieldSchema = entry[1];
-      let fieldValue = (frame[2] as Record<string, unknown>)[fieldKey];
-      if (fieldValue === undefined) {
-        frame[7][fieldKey] = unwrapOptional(fieldSchema).optional();
-        continue;
-      }
-      let fieldConfig = (frame[5] as Record<string, ConfigNode | undefined>)[fieldKey];
-      frame[10] = fieldKey;
-      frame[11] = fieldConfig;
-      stack.push([fieldSchema, fieldConfig, fieldValue, 0]);
-      continue;
-    }
-    if (frame[10] !== undefined) {
-      (frame[9] as z.ZodType[]).push(produced);
-      frame[10] = undefined;
-    }
-    let elements = frame[2] as unknown[];
-    if (frame[8] >= elements.length) {
-      produced = z.tuple(frame[9] as [z.ZodType, ...z.ZodType[]]);
-      stack.pop();
-      continue;
-    }
-    let element = elements[frame[8]];
-    frame[8] += 1;
-    frame[10] = true;
-    stack.push([(frame[4] as z.ZodArray<z.ZodType>).element, frame[5], element, 0]);
+  const inner = unwrapOptional(schema);
+  if (inner instanceof z.ZodObject && isRecord(value)) {
+    const objectConfig = isRecord(config) ? config : {};
+    const shape = Object.fromEntries(
+      Object.entries(inner.shape as Record<string, z.ZodType>).map(
+        ([key, fieldSchema]) => {
+          if (value[key] === undefined) {
+            return [key, unwrapOptional(fieldSchema).optional()];
+          }
+          const fieldConfig = objectConfig[key];
+          const nested = partialSchemaFor(fieldSchema, fieldConfig, value[key]);
+          return [key, fieldConfig === false ? nested.optional() : nested];
+        },
+      ),
+    );
+    return z.object(shape);
   }
-  return produced;
+  if (inner instanceof z.ZodArray && Array.isArray(value)) {
+    const elementConfig = isRecord(config) ? config["*"] : undefined;
+    const elements = value.map((element) =>
+      partialSchemaFor(inner.element as z.ZodType, elementConfig, element),
+    );
+    return z.tuple(elements as [z.ZodType, ...z.ZodType[]]);
+  }
+  return inner;
 }
 
 export function transformPartialSchema<

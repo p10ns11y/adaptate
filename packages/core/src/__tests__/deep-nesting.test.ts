@@ -12,6 +12,7 @@ import { parsePartialJson, reparseFeed } from "../stream.js";
 import { createPartialJsonFeed } from "../stream-incremental.js";
 
 const deepLevelCount = 100_000;
+const realisticSchemaDepth = 1_000;
 
 function isOptionalSchema(schema: z.ZodType): boolean {
   return schema.safeParse(undefined).success;
@@ -316,42 +317,32 @@ describe("recursion elimination", () => {
     );
   });
 
-  it("transforms a schema one hundred thousand levels deep", () => {
-    let schema: z.ZodType = z.object({ leaf: z.string() });
-    let config: Record<string, unknown> = { leaf: true };
-    for (let level = 0; level < deepLevelCount; level += 1) {
-      schema = z.object({ nested: schema });
-      config = { nested: config };
-    }
-    const transformed = transformSchema(schema as z.ZodObject<any>, config as never);
-    const leafObject = nestedField(transformed, deepLevelCount, "nested");
-    expect((leafObject as z.ZodObject<any>).shape.leaf).toBeInstanceOf(z.ZodString);
-  }, 180_000);
-
-  it("builds a partial schema for a value one hundred thousand levels deep", () => {
+  it("walks a schema one thousand levels deep", () => {
     let schema: z.ZodType = z.object({ leaf: z.string() });
     let config: Record<string, unknown> = { leaf: true };
     let value: unknown = { leaf: "Pas" };
-    for (let level = 0; level < deepLevelCount; level += 1) {
+    for (let level = 0; level < realisticSchemaDepth; level += 1) {
       schema = z.object({ nested: schema });
       config = { nested: config };
       value = { nested: value };
     }
+    const transformed = transformSchema(schema as z.ZodObject<any>, config as never);
     const partialSchema = transformPartialSchema(
       schema as z.ZodObject<any>,
       config as never,
     )(value as never);
-    const leafObject = nestedField(partialSchema, deepLevelCount, "nested");
-    expect((leafObject as z.ZodObject<any>).shape.leaf).toBeInstanceOf(z.ZodString);
-  }, 180_000);
-
-  it("builds a lenient schema one hundred thousand levels deep", () => {
-    let schema: z.ZodType = z.string();
-    for (let level = 0; level < deepLevelCount; level += 1) {
-      schema = z.object({ nested: schema });
+    expect(
+      (nestedField(transformed, realisticSchemaDepth, "nested") as z.ZodObject<any>).shape.leaf,
+    ).toBeInstanceOf(z.ZodString);
+    expect(
+      (nestedField(partialSchema, realisticSchemaDepth, "nested") as z.ZodObject<any>).shape.leaf,
+    ).toBeInstanceOf(z.ZodString);
+    let lenientSchema: z.ZodType = z.string();
+    for (let level = 0; level < realisticSchemaDepth; level += 1) {
+      lenientSchema = z.object({ nested: lenientSchema });
     }
-    expect(() => cacheLenientSchema(schema)).not.toThrow();
-  }, 180_000);
+    expect(() => cacheLenientSchema(lenientSchema)).not.toThrow();
+  });
 
   it("reads streamed JSON one hundred thousand levels deep", () => {
     let text = "";

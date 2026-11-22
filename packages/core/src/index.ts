@@ -6,8 +6,6 @@ import { z } from "zod";
  * not Zod's deprecated `schema.isOptional()` instance method.
  */
 function isOptional(schema: z.ZodType): boolean {
-  if (schema instanceof z.ZodObject || schema instanceof z.ZodArray) return false;
-  if (schema instanceof z.ZodOptional) return true;
   return schema.safeParse(undefined).success;
 }
 
@@ -50,110 +48,73 @@ export function transformSchema<
   TSchema extends z.ZodType,
   TConfig extends Config<z.infer<TSchema>>,
 >(schema: TSchema, config: TConfig): TSchema {
-  let produced: any;
-  let stack: any[][] = [[0, schema, config]];
-  while (stack.length > 0) {
-    let frame = stack[stack.length - 1] as any[];
-    let tag = frame[0];
-    if (tag === 0) {
-      let schemaNode = frame[1];
-      let configNode = frame[2];
-      if (
-        !(schemaNode instanceof z.ZodObject) &&
-        !(schemaNode instanceof z.ZodArray && configNode["*"])
-      ) {
-        throw new Error("The given schema must be a Zod object.");
-      }
-      if (schemaNode instanceof z.ZodArray && configNode["*"]) {
-        frame[0] = 1;
-        stack.push([0, schemaNode.element, configNode["*"]]);
-        continue;
-      }
-      frame[0] = 2;
-      stack.push([3, schemaNode, configNode]);
-      continue;
-    }
-    if (tag === 1) {
-      let elementSchema = frame[1].element;
-      produced = z.array(
-        z.object({
-          ...elementSchema.shape,
-          ...produced.shape,
+  // Runtime implementation (existing logic)
+  function extendSchema(
+    partialSchema: z.ZodObject<any>,
+    partialConfig: any,
+  ): z.ZodObject<any> {
+    const unwrappedPartialSchema = isOptional(partialSchema)
+      ? (partialSchema as any).unwrap()
+      : partialSchema;
+
+    if (
+      unwrappedPartialSchema instanceof z.ZodObject &&
+      typeof partialConfig === "object" &&
+      !Array.isArray(partialConfig)
+    ) {
+      const shape = unwrappedPartialSchema.shape;
+      const newShape = Object.fromEntries(
+        Object.entries(shape).map(([key, value]: [string, any]) => {
+          let unwrappedValue = isOptional(value) ? value.unwrap() : value;
+          if (partialConfig[key] === true) {
+            return [key, unwrappedValue];
+          } else if (partialConfig[key] === false) {
+            return [key, unwrappedValue.optional()];
+          } else if (typeof partialConfig[key] === "object") {
+            return [key, extendSchema(value, partialConfig[key])];
+          }
+          return [key, value];
         }),
       );
-      stack.pop();
-      continue;
+      return z.object({ ...shape, ...newShape });
     }
-    if (tag === 2) {
-      produced = z.object({
-        ...frame[1].shape,
-        ...produced.shape,
-      });
-      stack.pop();
-      continue;
+
+    if (unwrappedPartialSchema instanceof z.ZodArray && partialConfig["*"]) {
+      const elementSchema = unwrappedPartialSchema.element as z.ZodObject<any>;
+      let updatedPartialSchema = z.array(
+        extendSchema(elementSchema, partialConfig["*"]),
+      );
+      return updatedPartialSchema as any;
     }
-    if (tag === 4) {
-      produced = z.array(produced);
-      stack.pop();
-      continue;
-    }
-    if (frame[3] === undefined) {
-      let schemaNode = frame[1];
-      let configNode = frame[2];
-      let unwrappedSchema = isOptional(schemaNode) ? schemaNode.unwrap() : schemaNode;
-      frame[1] = unwrappedSchema;
-      if (
-        unwrappedSchema instanceof z.ZodObject &&
-        typeof configNode === "object" &&
-        !Array.isArray(configNode)
-      ) {
-        frame[3] = 1;
-        frame[4] = Object.entries(unwrappedSchema.shape);
-        frame[5] = {};
-        frame[6] = 0;
-        continue;
-      }
-      if (unwrappedSchema instanceof z.ZodArray && configNode["*"]) {
-        frame[0] = 4;
-        stack.push([3, unwrappedSchema.element, configNode["*"]]);
-        continue;
-      }
-      produced = unwrappedSchema;
-      stack.pop();
-      continue;
-    }
-    if (frame[7] !== undefined) {
-      frame[5][frame[7]] = produced;
-      frame[7] = undefined;
-    }
-    let entries = frame[4] as [string, any][];
-    if (frame[6] >= entries.length) {
-      produced = z.object({
-        ...frame[1].shape,
-        ...frame[5],
-      });
-      stack.pop();
-      continue;
-    }
-    let entry = entries[frame[6]] as [string, any];
-    frame[6] += 1;
-    let fieldKey = entry[0];
-    let fieldSchema = entry[1];
-    let fieldConfig = frame[2][fieldKey];
-    if (fieldConfig === true || fieldConfig === false) {
-      let unwrappedField = isOptional(fieldSchema) ? fieldSchema.unwrap() : fieldSchema;
-      frame[5][fieldKey] =
-        fieldConfig === true ? unwrappedField : unwrappedField.optional();
-      continue;
-    }
-    if (typeof fieldConfig === "object") {
-      frame[7] = fieldKey;
-      stack.push([3, fieldSchema, fieldConfig]);
-      continue;
-    }
-    frame[5][fieldKey] = fieldSchema;
+    return unwrappedPartialSchema;
   }
-  return produced as TSchema;
+
+  if (
+    !(schema instanceof z.ZodObject) &&
+    !(schema instanceof z.ZodArray && (config as Record<string, unknown>)["*"])
+  ) {
+    throw new Error("The given schema must be a Zod object.");
+  }
+
+  if (schema instanceof z.ZodArray && (config as any)["*"]) {
+    let transformedElement = transformSchema(
+      schema.element as z.ZodType,
+      (config as any)["*"],
+    );
+    let updatedSchema: z.ZodType = z.array(
+      z.object({
+        ...(schema.element as z.ZodObject<any>).shape,
+        ...(transformedElement as z.ZodObject<any>).shape,
+      }),
+    );
+    return updatedSchema as TSchema;
+  }
+  let objectSchema = schema as z.ZodObject<any>;
+  let updatedSchema: z.ZodType = z.object({
+    ...objectSchema.shape,
+    ...extendSchema(objectSchema, config).shape,
+  });
+  return updatedSchema as TSchema;
 }
 
 export function makeConditionalSchemaTransformer(data: any) {
