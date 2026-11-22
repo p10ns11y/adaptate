@@ -8,13 +8,11 @@ description: "Exported from @adaptate/core/stream."
 ## Type Aliases
 
 - [AgUiDeltaEvent](type-aliases/AgUiDeltaEvent.md)
-- [PartialJsonParser](type-aliases/PartialJsonParser.md)
 
 ## Functions
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createFrameThrottle](functions/createFrameThrottle.md)
-- [createPartialJsonParser](functions/createPartialJsonParser.md)
 - [createStreamValidator](functions/createStreamValidator.md)
 - [parsePartialJson](functions/parsePartialJson.md)
 - [validateStructuredOutput](functions/validateStructuredOutput.md)

@@ -56,6 +56,11 @@
       "import": "./build/index.es.js",
       "default": "./build/index.es.js"
     },
+    "./stream-incremental": {
+      "types": "./build/stream-incremental.d.ts",
+      "import": "./build/stream-incremental.es.js",
+      "default": "./build/stream-incremental.es.js"
+    },
     "./*": {
       "types": "./build/*.d.ts",
       "default": "./build/*.es.js"

@@ -211,8 +211,11 @@ export async function agree() {
     }
   }
   const stream = await import(libraryHref("", "@adaptate/core/stream"));
+  const incremental = await import(
+    libraryHref("", "@adaptate/core/stream-incremental"),
+  );
   const orderText = JSON.stringify(orderDocument);
-  const oneChunk = stream.createPartialJsonParser();
+  const oneChunk = incremental.createPartialJsonParser();
   const oneValue = oneChunk.push(orderText);
   if (JSON.stringify(oneValue) !== JSON.stringify(stream.parsePartialJson(orderText))) {
     throw new Error("one large chunk disagreed with parsePartialJson");
@@ -221,7 +224,7 @@ export async function agree() {
     throw new Error(`one large chunk parsed ${oneChunk.visits} characters`);
   }
   const badText = `${orderText.slice(0, -1)}!`;
-  const badChunk = stream.createPartialJsonParser();
+  const badChunk = incremental.createPartialJsonParser();
   const badValue = badChunk.push(badText);
   if (JSON.stringify(badValue) !== JSON.stringify(stream.parsePartialJson(badText))) {
     throw new Error("one large bad chunk disagreed with parsePartialJson");

@@ -1,6 +1,6 @@
 ---
 title: "Type Alias: PartialJsonParser"
-description: "Exported from @adaptate/core/stream."
+description: "Exported from @adaptate/core/stream-incremental."
 ---
 
 # Type Alias: PartialJsonParser

@@ -1,3 +1,15 @@
+import { z } from "zod";
+
+import { type Config } from "./index.js";
+import {
+  type DeepPartial,
+  type PartialValidationResult,
+} from "./partial.js";
+import {
+  createStreamValidator,
+  type AgUiDeltaEvent,
+} from "./stream.js";
+
 const frameItems = 0;
 const frameArray = 1;
 const framePhase = 2;
@@ -64,7 +76,7 @@ function parsedString(body: string): string {
   return decoded;
 }
 
-export function createPartialJsonFeed(): (chunk: string) => unknown {
+function createPartialJsonFeed(): (chunk: string) => unknown {
   let source = "";
   let cursor = 0;
   let sealed = false;
@@ -290,5 +302,46 @@ export function createPartialJsonParser(): PartialJsonParser {
       visits += chunk.length;
       return pushChunk(chunk);
     },
+  };
+}
+
+type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
+
+type AgUiSlot<TConfigs> = [
+  (chunk: string) => unknown,
+  unknown,
+  Results<TConfigs> | undefined,
+];
+
+export function createAgUiPartialValidator<
+  TSchema extends z.ZodType,
+  TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
+>(schema: TSchema, configs: TConfigs) {
+  const validator = createStreamValidator(schema, configs);
+  const slots = new Map<string, AgUiSlot<TConfigs>>();
+  return function push(event: AgUiDeltaEvent) {
+    const id =
+      event.type === "TOOL_CALL_ARGS"
+        ? event.toolCallId
+        : event.type === "TEXT_MESSAGE_CONTENT"
+          ? event.messageId
+          : undefined;
+    if (id === undefined || typeof event.delta !== "string") return undefined;
+    let slot = slots.get(id);
+    if (!slot) {
+      slot = [createPartialJsonFeed(), undefined, undefined];
+      slots.set(id, slot);
+    }
+    const value = slot[0](event.delta);
+    if (value === undefined) return undefined;
+    if (value !== slot[1]) {
+      slot[1] = value;
+      slot[2] = validator.partial(value as DeepPartial<z.infer<TSchema>>);
+    }
+    return {
+      id,
+      partial: value as DeepPartial<z.infer<TSchema>>,
+      results: slot[2] as Results<TConfigs>,
+    };
   };
 }

@@ -48,15 +48,17 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: StandardIssue](docs/api/core/standard/type-aliases/StandardIssue.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardResult\<Output\>](docs/api/core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardValidationResult\<Output\>](docs/api/core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
+- [Function: createAgUiPartialValidator()](docs/api/core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createPartialJsonParser()](docs/api/core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [stream-incremental](docs/api/core/stream-incremental/index.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: PartialJsonParser](docs/api/core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](docs/api/core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.
-- [Function: createPartialJsonParser()](docs/api/core/stream/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream.
 - [Function: createStreamValidator()](docs/api/core/stream/functions/createStreamValidator.md): Exported from @adaptate/core/stream.
 - [Function: parsePartialJson()](docs/api/core/stream/functions/parsePartialJson.md): Exported from @adaptate/core/stream.
 - [Function: validateStructuredOutput()](docs/api/core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [stream](docs/api/core/stream/index.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](docs/api/core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
-- [Type Alias: PartialJsonParser](docs/api/core/stream/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream.
 - [API](docs/api/index.md): API reference generated from the published declaration files.
 - [@adaptate/utils](docs/api/utils/index.md): Exported from @adaptate/utils.
 - [index](docs/api/utils/index/index.md): Exported from @adaptate/utils.

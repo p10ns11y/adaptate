@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { heapValidations } from "./config.js";
-import { libraryHref } from "./load.js";
+import { adaptateStreamForBench, libraryHref } from "./load.js";
 import { decodePartials, orderDocument, toolCallDeltas } from "./order.js";
 
 function collectGarbage() {
@@ -31,9 +31,7 @@ if (variant === "zod") {
 } else if (variant === "adaptate") {
   const zodModule = await import(libraryHref(root, "zod"));
   const adaptateCore = await import(libraryHref(root, "@adaptate/core"));
-  const adaptateStream = await import(
-    libraryHref(root, "@adaptate/core/stream")
-  );
+  const adaptateStream = await adaptateStreamForBench(root);
   const { createAdaptateApp } = await import("./adaptate-app.js");
   app = createAdaptateApp(zodModule.z, adaptateCore, adaptateStream);
 } else if (variant === "valibot") {

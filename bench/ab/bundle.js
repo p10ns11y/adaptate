@@ -36,6 +36,13 @@ const entries = [
     adaptate: true,
   },
   {
+    id: "./stream-incremental",
+    file: "stream-incremental.js",
+    importsZod: true,
+    importsEffect: false,
+    adaptate: true,
+  },
+  {
     id: "./effect",
     file: "effect.js",
     importsZod: true,
@@ -56,6 +63,7 @@ function aliasFor(root) {
   const build = resolve(root, "packages/core/build");
   return {
     "@adaptate/core/stream": resolve(build, "stream.es.js"),
+    "@adaptate/core/stream-incremental": resolve(build, "stream-incremental.es.js"),
     "@adaptate/core/standard": resolve(build, "standard.es.js"),
     "@adaptate/core/effect": resolve(build, "effect.es.js"),
     "@adaptate/core": resolve(build, "index.es.js"),

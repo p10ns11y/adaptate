@@ -4,11 +4,14 @@ import { z } from "zod";
 import {
   createAgUiPartialValidator,
   createFrameThrottle,
-  createPartialJsonParser,
   createStreamValidator,
   parsePartialJson,
   validateStructuredOutput,
 } from "../stream";
+import {
+  createAgUiPartialValidator as createIncrementalAgUiPartialValidator,
+  createPartialJsonParser,
+} from "../stream-incremental";
 
 const recipe = z.object({
   title: z.string(),
@@ -213,7 +216,7 @@ describe("createAgUiPartialValidator", () => {
       toolCallId: "t1",
       delta: "",
     });
-    expect(repeated?.partial).toBe(first?.partial);
+    expect(repeated?.partial).toEqual(first?.partial);
     const second = push({
       type: "TOOL_CALL_ARGS",
       toolCallId: "t1",
@@ -258,6 +261,32 @@ describe("createAgUiPartialValidator", () => {
     expect(
       push({ type: "TEXT_MESSAGE_CONTENT", messageId: "m", delta: "{" })?.partial,
     ).toEqual({});
+  });
+});
+
+describe("createIncrementalAgUiPartialValidator", () => {
+  it("reuses the previous value when the chunk adds no characters", () => {
+    const push = createIncrementalAgUiPartialValidator(recipe, configs);
+    expect(push({ type: "RUN_STARTED" })).toBeUndefined();
+    expect(push({ type: "TOOL_CALL_ARGS", toolCallId: "t1" })).toBeUndefined();
+    const first = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "t1",
+      delta: '{"title":"Pa',
+    });
+    const repeated = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "t1",
+      delta: "",
+    });
+    expect(repeated?.partial).toBe(first?.partial);
+    expect(repeated?.results).toBe(first?.results);
+    const text = push({
+      type: "TEXT_MESSAGE_CONTENT",
+      messageId: "m1",
+      delta: "t",
+    });
+    expect(text).toBeUndefined();
   });
 });
 

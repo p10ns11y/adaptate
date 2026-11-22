@@ -152,7 +152,7 @@ description: "Check a tool call while the JSON is still arriving."
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`. Each push resumes the partial-JSON scan from the previous chunk. A parsed value is checked with `partial`. A chunk that does not parse keeps the previous value and its check. Other event types return `undefined`. The push time includes JSON repair and the partial check. See [Incremental partial JSON](incremental-parser.md).
+`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. Other event types return `undefined`. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once. See [Incremental partial JSON](incremental-parser.md).
 
 ```ts
 import { z } from "zod";
@@ -193,7 +193,7 @@ flowchart TD
   copy --> check["Check that value"]
 ```
 
-Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container, and `push` copies only the containers still open. Closed values stay the same object. `visits` is the number of characters read, which is the length of the stream. On the grocery order that is 966. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix. `createAgUiPartialValidator` uses the tokenizer. A value is checked with the lenient partial. An empty chunk keeps the previous value and its check. `createFrameThrottle` keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
+Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container, and `push` copies only the containers still open. Closed values stay the same object. `visits` is the number of characters read, which is the length of the stream. On the grocery order that is 966. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonParser` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. An empty chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
 # OpenAPI
@@ -299,7 +299,7 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 
 `validatePartial(schema, configs, partial)` fails on the first config that has errors, keeping that config's Zod issues. A thrown `ZodError` is kept as issues. Any other thrown cause becomes one custom issue with the error message.
 
-`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator`.
+`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`.
 
 
 # TypeScript
@@ -343,12 +343,13 @@ description: "The published entry points, and which peers each one loads."
 
 # Subpaths
 
-`@adaptate/core` publishes four entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
+`@adaptate/core` publishes five entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
 
 ```mermaid
 flowchart LR
   zod["zod peer"] --> core["@adaptate/core"]
   zod --> stream["@adaptate/core/stream"]
+  zod --> incremental["@adaptate/core/stream-incremental"]
   zod --> standard["@adaptate/core/standard"]
   zod --> effect["@adaptate/core/effect"]
   effectPeer["effect optional peer"] -.-> effect
@@ -357,7 +358,8 @@ flowchart LR
 | Entry | Exports |
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer` |
-| `@adaptate/core/stream` | `parsePartialJson`, `createPartialJsonParser`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `createFrameThrottle` |
+| `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `createFrameThrottle` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonParser`, `createAgUiPartialValidator` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError` |
 
@@ -467,14 +469,14 @@ pnpm --filter @adaptate/core build && node bench/ab/run.js
 
 Where the work is not the same:
 
-- AG-UI: B appends the delta and resumes the partial-JSON scan from the previous chunk ([incremental scan](incremental-parser.md)), then `safeParse`s a lenient schema cached on the base schema when the value is new. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON`. `repairMicros` clocks `parsePartialJson` on the growing buffer, without the check. That clock is the full-prefix oracle. It is recorded and is not gated.
+- AG-UI: B imports `createAgUiPartialValidator` from `@adaptate/core/stream-incremental`. Each chunk is tokenized once ([incremental scan](incremental-parser.md)), then `safeParse`s a lenient schema cached on the base schema when the value is new. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON`. `repairMicros` clocks `parsePartialJson` from `@adaptate/core/stream` on the growing buffer, without the check. That clock is the full-prefix oracle. It is recorded and is not gated.
 - Parsed partial: the same value. B reuses one lenient schema per base schema (`WeakMap`) and `safeParse`s it. A and C reuse one static all-optional schema. The `ab-eval` gate names this row `adaptate cached partial us/chunk` and fails when head is more than 5% slower than base.
 - `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
 - Valibot uses its own schemas for the same accept/reject rules.
 - `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
 - Four views per render: card, line items, delivery, and receipt. The schemas are built once. Each timed render parses the grocery order with all four. Zod and Valibot use static schemas for those fields. Adaptate calls `transformSchema` on one partial schema. The rate is renders per second (`viewsPerSec`). [`agree.js`](../bench/ab/agree.js) requires the full order to pass every view, and an empty object or a card-only object to fail. This row is recorded and is not gated. The README chart does not draw it.
 
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk (`@adaptate/core/stream-incremental`), cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./stream-incremental`, `./standard`, and `./effect` (full bundle and zod-external). `./stream-incremental` is new on this line, so its base is the recorded size in `bench/ab/config.js` until a base commit contains that entry. Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
 
 On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
 
@@ -556,7 +558,7 @@ Each sentence on the front page maps to something in the repo.
 | The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
 | CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
 | Node v24.22.3. Commit 1682601. One local node bench/ab/run.js | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn. AG-UI on that run is 3.073 µs/chunk |
-| A partial JSON stream is tokenized once | [`createPartialJsonParser`](../packages/core/src/partial-json.ts) appends each finished value and copies only the open containers. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits |
+| A partial JSON stream is tokenized once on `@adaptate/core/stream-incremental` | [`createPartialJsonParser`](../packages/core/src/stream-incremental.ts) appends each finished value and copies only the open containers. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix, and `@adaptate/core/stream` keeps that path. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits |
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
 
@@ -1084,6 +1086,7 @@ description: "Exported from @adaptate/core."
 - [index](index/index.md)
 - [standard](standard/index.md)
 - [stream](stream/index.md)
+- [stream-incremental](stream-incremental/index.md)
 
 
 # Function: makeConditionalSchemaTransformer()
@@ -1622,6 +1625,119 @@ description: "Exported from @adaptate/core/standard."
 
 # Function: createAgUiPartialValidator()
 
+Source: docs/api/core/stream-incremental/functions/createAgUiPartialValidator.md
+
+---
+title: "Function: createAgUiPartialValidator()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: createAgUiPartialValidator()
+
+> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): (`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+
+## Type Parameters
+
+### TSchema
+
+`TSchema` *extends* `ZodType`\<`unknown`, `unknown`, `$ZodTypeInternals`\<`unknown`, `unknown`\>\>
+
+### TConfigs
+
+`TConfigs` *extends* `Record`\<`string`, [`Config`](../../index/type-aliases/Config.md)\<[`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>\>\>
+
+## Parameters
+
+### schema
+
+`TSchema`
+
+### configs
+
+`TConfigs`
+
+## Returns
+
+(`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+
+
+# Function: createPartialJsonParser()
+
+Source: docs/api/core/stream-incremental/functions/createPartialJsonParser.md
+
+---
+title: "Function: createPartialJsonParser()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: createPartialJsonParser()
+
+> **createPartialJsonParser**(): [`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
+
+## Returns
+
+[`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
+
+
+# stream-incremental
+
+Source: docs/api/core/stream-incremental/index.md
+
+---
+title: "stream-incremental"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# stream-incremental
+
+## Type Aliases
+
+- [PartialJsonParser](type-aliases/PartialJsonParser.md)
+
+## Functions
+
+- [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
+- [createPartialJsonParser](functions/createPartialJsonParser.md)
+
+
+# Type Alias: PartialJsonParser
+
+Source: docs/api/core/stream-incremental/type-aliases/PartialJsonParser.md
+
+---
+title: "Type Alias: PartialJsonParser"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Type Alias: PartialJsonParser
+
+> **PartialJsonParser** = `object`
+
+## Properties
+
+### visits
+
+> **visits**: `number`
+
+## Methods
+
+### push()
+
+> **push**(`chunk`): `unknown`
+
+#### Parameters
+
+##### chunk
+
+`string`
+
+#### Returns
+
+`unknown`
+
+
+# Function: createAgUiPartialValidator()
+
 Source: docs/api/core/stream/functions/createAgUiPartialValidator.md
 
 ---
@@ -1686,24 +1802,6 @@ description: "Exported from @adaptate/core/stream."
 ## Returns
 
 (`value`) => `void`
-
-
-# Function: createPartialJsonParser()
-
-Source: docs/api/core/stream/functions/createPartialJsonParser.md
-
----
-title: "Function: createPartialJsonParser()"
-description: "Exported from @adaptate/core/stream."
----
-
-# Function: createPartialJsonParser()
-
-> **createPartialJsonParser**(): [`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
-
-## Returns
-
-[`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
 
 
 # Function: createStreamValidator()
@@ -1866,13 +1964,11 @@ description: "Exported from @adaptate/core/stream."
 ## Type Aliases
 
 - [AgUiDeltaEvent](type-aliases/AgUiDeltaEvent.md)
-- [PartialJsonParser](type-aliases/PartialJsonParser.md)
 
 ## Functions
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createFrameThrottle](functions/createFrameThrottle.md)
-- [createPartialJsonParser](functions/createPartialJsonParser.md)
 - [createStreamValidator](functions/createStreamValidator.md)
 - [parsePartialJson](functions/parsePartialJson.md)
 - [validateStructuredOutput](functions/validateStructuredOutput.md)
@@ -1916,42 +2012,6 @@ description: "Exported from @adaptate/core/stream."
 > **type**: `string`
 
 
-# Type Alias: PartialJsonParser
-
-Source: docs/api/core/stream/type-aliases/PartialJsonParser.md
-
----
-title: "Type Alias: PartialJsonParser"
-description: "Exported from @adaptate/core/stream."
----
-
-# Type Alias: PartialJsonParser
-
-> **PartialJsonParser** = `object`
-
-## Properties
-
-### visits
-
-> **visits**: `number`
-
-## Methods
-
-### push()
-
-> **push**(`chunk`): `unknown`
-
-#### Parameters
-
-##### chunk
-
-`string`
-
-#### Returns
-
-`unknown`
-
-
 # API
 
 Source: docs/api/index.md
@@ -1989,14 +2049,15 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardIssue](core/standard/type-aliases/StandardIssue.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardResult\<Output\>](core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
+- [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createPartialJsonParser()](core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: PartialJsonParser](core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.
-- [Function: createPartialJsonParser()](core/stream/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream.
 - [Function: createStreamValidator()](core/stream/functions/createStreamValidator.md): Exported from @adaptate/core/stream.
 - [Function: parsePartialJson()](core/stream/functions/parsePartialJson.md): Exported from @adaptate/core/stream.
 - [Function: validateStructuredOutput()](core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
-- [Type Alias: PartialJsonParser](core/stream/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream.
 
 ## @adaptate/utils
 

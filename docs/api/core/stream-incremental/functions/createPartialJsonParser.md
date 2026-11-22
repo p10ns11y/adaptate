@@ -1,6 +1,6 @@
 ---
 title: "Function: createPartialJsonParser()"
-description: "Exported from @adaptate/core/stream."
+description: "Exported from @adaptate/core/stream-incremental."
 ---
 
 # Function: createPartialJsonParser()

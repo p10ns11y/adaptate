@@ -11,3 +11,4 @@ description: "Exported from @adaptate/core."
 - [index](index/index.md)
 - [standard](standard/index.md)
 - [stream](stream/index.md)
+- [stream-incremental](stream-incremental/index.md)

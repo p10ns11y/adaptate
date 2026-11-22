@@ -6,7 +6,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const assetDirectory = resolve(scriptDirectory, "../assets");
 const sourcePath = resolve(assetDirectory, "perf-run.json");
 const libraryNames = ["zod", "adaptate", "valibot"];
-const bundleIds = [".", "./stream", "./standard", "./effect"];
+const bundleIds = [".", "./stream", "./stream-incremental", "./standard", "./effect"];
 
 function requireField(source, path) {
   let cursor = source;
@@ -174,7 +174,7 @@ function libraryBars(theme, x, y, width, rows, maximum) {
 
 function chart(theme) {
   const width = 960;
-  const height = 700;
+  const height = 820;
   const fullMaximum = Math.max(
     measurement.fullDocument.zod,
     measurement.fullDocument.adaptate,
@@ -222,7 +222,7 @@ function chart(theme) {
     `Heap after GC bytes: zod ${group(measurement.heapAfterBytes.zod)}, adaptate ${group(measurement.heapAfterBytes.adaptate)}, valibot ${group(measurement.heapAfterBytes.valibot)}.`,
     `Bundle own min/gzip bytes, zod external: ${measurement.bundleOwn.map((entry) => `${entry.id} ${group(entry.minBytes)}/${group(entry.gzipBytes)}`).join(", ")}. ./effect also keeps effect external.`,
     `Parsed partial µs/chunk: zod ${measurement.parsedPartialMicros.zod.toFixed(3)}, adaptate ${measurement.parsedPartialMicros.adaptate.toFixed(3)}, valibot ${measurement.parsedPartialMicros.valibot.toFixed(3)}.`,
-    `AG-UI adaptate µs/chunk: ${agUiMicros.toFixed(3)} (tokenizer and the check). Zod and valibot: no repair, needs complete JSON.`,
+    `AG-UI adaptate µs/chunk: ${agUiMicros.toFixed(3)} (@adaptate/core/stream-incremental). Zod and valibot: no repair, needs complete JSON.`,
   ].join(" ");
 
   const panelWidth = 296;
@@ -230,7 +230,7 @@ function chart(theme) {
   const left = 20;
   const top = 78;
   const shortHeight = 168;
-  const tallHeight = 360;
+  const tallHeight = 470;
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">`,
     `<title>${escapeXml(summary)}</title>`,
@@ -313,7 +313,7 @@ function chart(theme) {
       kind: "gzip",
     });
   }
-  const bundleLabelWidth = 92;
+  const bundleLabelWidth = 168;
   const bundleValueWidth = 52;
   const bundleTrack = bundleWidth - 32 - bundleLabelWidth - bundleValueWidth;
   bundleRows.forEach((row, index) => {
@@ -353,7 +353,7 @@ function chart(theme) {
       streamWidth,
       tallHeight,
       "Per chunk",
-      "µs. adaptate AG-UI is the tokenizer and the check",
+      "µs. AG-UI is @adaptate/core/stream-incremental",
     ),
   );
   const parsedRows = triples(measurement.parsedPartialMicros, (value) => value.toFixed(3));
