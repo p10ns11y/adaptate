@@ -1,4 +1,4 @@
-let maximumLocalRefDepth = 500;
+const maximumLocalRefDepth = 500;
 
 let missingRefParserPackageMessage =
   'Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to resolve remote or file $ref pointers. Install it with `pnpm add @apidevtools/json-schema-ref-parser`.';
@@ -10,6 +10,45 @@ type CrawlState = {
   processed: Set<object>;
   resolving: Set<string>;
 };
+
+type PointerFrame = {
+  kind: 'pointer';
+  pointer: string;
+  followIntermediateRefs: boolean;
+  step: 'enter' | 'walk';
+  tokens: string[];
+  tokenIndex: number;
+  current: unknown;
+  currentPath: string;
+  followed: boolean;
+  suspended: boolean;
+};
+
+type ResolveFrame = {
+  kind: 'resolve';
+  refObject: JsonRecord & { $ref: string };
+  refObjectPath: string;
+  step: 'enter' | 'after-cycle-read' | 'after-target' | 'after-nested' | 'merge' | 'after-merge-crawl';
+  refNesting: number;
+  tracking: boolean;
+  pointer: string;
+  target: unknown;
+  resolved: unknown;
+  merged: unknown;
+  nestedWasRef: boolean;
+};
+
+type CrawlFrame = {
+  kind: 'crawl';
+  value: object;
+  path: string;
+  step: 'enter' | 'next' | 'after-ref' | 'after-crawl';
+  index: number;
+  keys: string[];
+  arrayMode: boolean;
+};
+
+type Frame = PointerFrame | ResolveFrame | CrawlFrame;
 
 function isContainer(value: unknown): value is object {
   return Boolean(value) && typeof value === 'object';
@@ -64,7 +103,7 @@ function joinJsonPointer(basePointer: string, token: string): string {
   return `${basePointer}/${escapedToken}`;
 }
 
-function throwIfPastMaximumDepth(depth: number, pointer: string): void {
+function throwIfPastMaximumRefNesting(depth: number, pointer: string): void {
   if (depth > maximumLocalRefDepth) {
     throw new RangeError(
       `Maximum dereference depth (${maximumLocalRefDepth}) exceeded at ${pointer}. This likely indicates an extremely deep or recursive schema.`,
@@ -76,65 +115,114 @@ function missingPointerMessage(pointer: string, token: string): string {
   return `Missing $ref pointer "${pointer}". Token "${token}" does not exist.`;
 }
 
-function readJsonPointer(
-  pointer: string,
-  depth: number,
-  state: CrawlState,
-  followIntermediateRefs: boolean,
-): unknown {
-  if (pointer === '#') {
-    return state.root;
-  }
-
-  let tokens = pointer.slice(2).split('/').map(unescapeJsonPointerToken);
-  let current: unknown = state.root;
-  let currentPath = '#';
-
-  for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
-    if (followIntermediateRefs) {
-      current = followLocalRef(current, currentPath, depth, state);
-    }
-    let token = tokens[tokenIndex];
-    if (!isContainer(current) || !Object.hasOwn(current, token)) {
-      throw new Error(missingPointerMessage(pointer, token));
-    }
-    current = (current as JsonRecord)[token];
-    currentPath = joinJsonPointer(currentPath, token);
-  }
-
-  return current;
+function pointerFrame(pointer: string, followIntermediateRefs: boolean): PointerFrame {
+  return {
+    kind: 'pointer',
+    pointer,
+    followIntermediateRefs,
+    step: 'enter',
+    tokens: [],
+    tokenIndex: 0,
+    current: undefined,
+    currentPath: '#',
+    followed: false,
+    suspended: false,
+  };
 }
 
-function followLocalRef(value: unknown, path: string, depth: number, state: CrawlState): unknown {
-  if (!isLocalRefObject(value) || state.resolving.has(path)) {
-    return value;
-  }
-  return resolveLocalRef(value, path, depth, state);
+function resolveFrame(refObject: JsonRecord & { $ref: string }, refObjectPath: string): ResolveFrame {
+  return {
+    kind: 'resolve',
+    refObject,
+    refObjectPath,
+    step: 'enter',
+    refNesting: 0,
+    tracking: false,
+    pointer: '',
+    target: undefined,
+    resolved: undefined,
+    merged: undefined,
+    nestedWasRef: false,
+  };
+}
+
+function crawlFrame(value: object, path: string): CrawlFrame {
+  return {
+    kind: 'crawl',
+    value,
+    path,
+    step: 'enter',
+    index: 0,
+    keys: [],
+    arrayMode: false,
+  };
 }
 
 function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): unknown {
-  if (!isContainer(resolvedValue)) {
-    return siblingValue;
-  }
-
-  let merged: JsonRecord | unknown[] = Array.isArray(resolvedValue)
+  let rootMerged: JsonRecord | unknown[] = Array.isArray(resolvedValue)
     ? [...resolvedValue]
-    : { ...resolvedValue };
-  let siblingRecord = siblingValue as JsonRecord;
-  let resolvedRecord = resolvedValue as JsonRecord;
+    : { ...(resolvedValue as JsonRecord) };
+  let activeSiblings = new Set<object>([siblingValue]);
+  let stack: Array<{
+    merged: JsonRecord;
+    resolved: object;
+    sibling: object;
+    keys: string[];
+    index: number;
+  }> = [
+    {
+      merged: rootMerged as JsonRecord,
+      resolved: resolvedValue as object,
+      sibling: siblingValue,
+      keys: Object.keys(siblingValue),
+      index: 0,
+    },
+  ];
 
-  for (let key of Object.keys(siblingRecord)) {
-    let siblingChild = siblingRecord[key];
-    if (Array.isArray(siblingChild)) {
-      (merged as JsonRecord)[key] = [...siblingChild];
-    } else if (isContainer(siblingChild)) {
-      (merged as JsonRecord)[key] = deepMergeResolvedValue(resolvedRecord[key], siblingChild);
-    } else {
-      (merged as JsonRecord)[key] = siblingChild;
+  while (stack.length > 0) {
+    let frame = stack[stack.length - 1] as (typeof stack)[number];
+    if (frame.index >= frame.keys.length) {
+      activeSiblings.delete(frame.sibling);
+      stack.pop();
+      continue;
     }
+    let entryKey = frame.keys[frame.index] as string;
+    frame.index += 1;
+    let siblingRecord = frame.sibling as JsonRecord;
+    let siblingChild = siblingRecord[entryKey];
+    if (Array.isArray(siblingChild)) {
+      frame.merged[entryKey] = [...siblingChild];
+      continue;
+    }
+    if (isContainer(siblingChild)) {
+      let resolvedChild = (frame.resolved as JsonRecord)[entryKey];
+      if (!isContainer(resolvedChild)) {
+        frame.merged[entryKey] = siblingChild;
+        continue;
+      }
+      if (activeSiblings.has(siblingChild)) {
+        throw new RangeError(
+          `Maximum dereference depth (${maximumLocalRefDepth}) exceeded during a sibling merge. This likely indicates an extremely deep or recursive schema.`,
+        );
+      }
+      let childMerged: JsonRecord | unknown[] = Array.isArray(resolvedChild)
+        ? [...resolvedChild]
+        : { ...resolvedChild };
+      frame.merged[entryKey] = childMerged;
+      activeSiblings.add(siblingChild);
+      stack.push({
+        merged: childMerged as JsonRecord,
+        resolved: resolvedChild,
+        sibling: siblingChild,
+        keys: Object.keys(siblingChild),
+        index: 0,
+      });
+      continue;
+    }
+    frame.merged[entryKey] = siblingChild as JsonRecord[string];
   }
 
-  return merged;
+  return rootMerged;
 }
 
 function mergeExtendedRef(refObject: JsonRecord, resolvedValue: object): JsonRecord {
@@ -157,119 +245,30 @@ function mergeExtendedRef(refObject: JsonRecord, resolvedValue: object): JsonRec
   return merged;
 }
 
-function resolveLocalRef(
-  refObject: JsonRecord & { $ref: string },
-  refObjectPath: string,
-  depth: number,
-  state: CrawlState,
-): unknown {
-  throwIfPastMaximumDepth(depth, refObjectPath);
-
-  let pointer = refObject.$ref;
-  if (pointer === refObjectPath) {
-    return refObject;
-  }
-
-  if (state.resolving.has(refObjectPath)) {
-    let cycleTarget = readJsonPointer(pointer, depth, state, false);
-    if (isLocalRefObject(cycleTarget)) {
-      cycleTarget.$ref = refObjectPath;
-    }
-    return cycleTarget;
-  }
-
-  state.resolving.add(refObjectPath);
-  try {
-    let target = readJsonPointer(pointer, depth, state, true);
-    let resolved: unknown;
-    if (isLocalRefObject(target)) {
-      resolved = resolveLocalRef(target, pointer, depth + 1, state);
-    } else if (isContainer(target)) {
-      crawl(target, pointer, depth + 1, state);
-      resolved = target;
-    } else {
-      resolved = target;
-    }
-
-    if (hasSiblingProperties(refObject) && isContainer(resolved)) {
-      let merged = mergeExtendedRef(refObject, resolved);
-      crawl(merged, refObjectPath, depth + 1, state);
-      return merged;
-    }
-
-    return resolved;
-  } finally {
-    state.resolving.delete(refObjectPath);
-  }
-}
-
-function crawl(value: object, path: string, depth: number, state: CrawlState): void {
-  if (state.processed.has(value)) {
-    return;
-  }
-  throwIfPastMaximumDepth(depth, path);
-  state.processed.add(value);
-
-  if (Array.isArray(value)) {
-    for (let index = 0; index < value.length; index += 1) {
-      let childPath = joinJsonPointer(path, String(index));
-      let child = value[index];
-      if (isLocalRefObject(child)) {
-        value[index] = resolveLocalRef(child, childPath, depth + 1, state);
-      } else if (isContainer(child)) {
-        crawl(child, childPath, depth + 1, state);
-      } else {
-        throwIfPastMaximumDepth(depth + 1, childPath);
-      }
-    }
-    return;
-  }
-
-  let record = value as JsonRecord;
-  for (let key of Object.keys(record)) {
-    let childPath = joinJsonPointer(path, key);
-    let child = record[key];
-    if (isLocalRefObject(child)) {
-      record[key] = resolveLocalRef(child, childPath, depth + 1, state);
-    } else if (isContainer(child)) {
-      crawl(child, childPath, depth + 1, state);
-    } else {
-      throwIfPastMaximumDepth(depth + 1, childPath);
-    }
-  }
-}
-
 function documentContainsExternalRef(document: unknown): boolean {
   let seen = new Set<object>();
-
-  function visit(value: unknown): boolean {
-    if (!isContainer(value)) {
-      return false;
-    }
-    if (seen.has(value)) {
-      return false;
+  let pending: unknown[] = [document];
+  while (pending.length > 0) {
+    let value = pending.pop();
+    if (!isContainer(value) || seen.has(value)) {
+      continue;
     }
     seen.add(value);
     if (isExternalRefObject(value)) {
       return true;
     }
     if (Array.isArray(value)) {
-      for (let item of value) {
-        if (visit(item)) {
-          return true;
-        }
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        pending.push(value[index]);
       }
-      return false;
+      continue;
     }
-    for (let child of Object.values(value as JsonRecord)) {
-      if (visit(child)) {
-        return true;
-      }
+    let children = Object.values(value as JsonRecord);
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      pending.push(children[index]);
     }
-    return false;
   }
-
-  return visit(document);
+  return false;
 }
 
 export function dereferenceLocalDocument(document: unknown): unknown {
@@ -282,12 +281,219 @@ export function dereferenceLocalDocument(document: unknown): unknown {
     processed: new Set(),
     resolving: new Set(),
   };
+  let stack: Frame[] = [];
+  let openRefCount = 0;
+  let produced: unknown = document;
 
-  if (isLocalRefObject(document)) {
-    return resolveLocalRef(document, '#', 0, state);
+  function pushFrame(frame: Frame): void {
+    if (frame.kind === 'resolve') {
+      openRefCount += 1;
+      frame.refNesting = openRefCount;
+    }
+    stack.push(frame);
   }
 
-  crawl(document, '#', 0, state);
+  function popFrame(): void {
+    let frame = stack.pop() as Frame;
+    if (frame.kind === 'resolve') {
+      openRefCount -= 1;
+    }
+  }
+
+  if (isLocalRefObject(document)) {
+    pushFrame(resolveFrame(document, '#'));
+  } else {
+    pushFrame(crawlFrame(document, '#'));
+  }
+
+  function releaseResolving(): void {
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+      let frame = stack[index];
+      if (frame && frame.kind === 'resolve' && frame.tracking) {
+        state.resolving.delete(frame.refObjectPath);
+        frame.tracking = false;
+      }
+    }
+  }
+
+  function stepPointer(frame: PointerFrame): void {
+    if (frame.step === 'enter') {
+      if (frame.pointer === '#') {
+        produced = state.root;
+        popFrame();
+        return;
+      }
+      frame.tokens = frame.pointer.slice(2).split('/').map(unescapeJsonPointerToken);
+      frame.tokenIndex = 0;
+      frame.current = state.root;
+      frame.currentPath = '#';
+      frame.followed = false;
+      frame.suspended = false;
+      frame.step = 'walk';
+    }
+    if (frame.tokenIndex >= frame.tokens.length) {
+      produced = frame.current;
+      popFrame();
+      return;
+    }
+    if (!frame.followed) {
+      frame.followed = true;
+      if (
+        frame.followIntermediateRefs &&
+        isLocalRefObject(frame.current) &&
+        !state.resolving.has(frame.currentPath)
+      ) {
+        frame.suspended = true;
+        pushFrame(resolveFrame(frame.current, frame.currentPath));
+        return;
+      }
+    } else {
+      frame.current = produced;
+      frame.suspended = false;
+    }
+    let token = frame.tokens[frame.tokenIndex] as string;
+    if (!isContainer(frame.current) || !Object.hasOwn(frame.current, token)) {
+      throw new Error(missingPointerMessage(frame.pointer, token));
+    }
+    frame.current = (frame.current as JsonRecord)[token];
+    frame.currentPath = joinJsonPointer(frame.currentPath, token);
+    frame.tokenIndex += 1;
+    frame.followed = false;
+  }
+
+  function stepResolve(frame: ResolveFrame): void {
+    if (frame.step === 'enter') {
+      throwIfPastMaximumRefNesting(frame.refNesting, frame.refObjectPath);
+      let pointer = frame.refObject.$ref;
+      frame.pointer = pointer;
+      if (pointer === frame.refObjectPath) {
+        produced = frame.refObject;
+        popFrame();
+        return;
+      }
+      if (state.resolving.has(frame.refObjectPath)) {
+        frame.step = 'after-cycle-read';
+        pushFrame(pointerFrame(pointer, false));
+        return;
+      }
+      state.resolving.add(frame.refObjectPath);
+      frame.tracking = true;
+      frame.step = 'after-target';
+      pushFrame(pointerFrame(pointer, true));
+      return;
+    }
+    if (frame.step === 'after-cycle-read') {
+      let cycleTarget = produced;
+      if (isLocalRefObject(cycleTarget)) {
+        cycleTarget.$ref = frame.refObjectPath;
+      }
+      produced = cycleTarget;
+      popFrame();
+      return;
+    }
+    if (frame.step === 'after-target') {
+      frame.target = produced;
+      if (isLocalRefObject(frame.target)) {
+        frame.nestedWasRef = true;
+        frame.step = 'after-nested';
+        pushFrame(resolveFrame(frame.target, frame.pointer));
+        return;
+      }
+      if (isContainer(frame.target)) {
+        frame.nestedWasRef = false;
+        frame.step = 'after-nested';
+        pushFrame(crawlFrame(frame.target, frame.pointer));
+        return;
+      }
+      frame.resolved = frame.target;
+      frame.step = 'merge';
+    }
+    if (frame.step === 'after-nested') {
+      frame.resolved = frame.nestedWasRef ? produced : frame.target;
+      frame.step = 'merge';
+    }
+    if (frame.step === 'merge') {
+      if (hasSiblingProperties(frame.refObject) && isContainer(frame.resolved)) {
+        frame.merged = mergeExtendedRef(frame.refObject, frame.resolved);
+        frame.step = 'after-merge-crawl';
+        pushFrame(crawlFrame(frame.merged as object, frame.refObjectPath));
+        return;
+      }
+      produced = frame.resolved;
+      state.resolving.delete(frame.refObjectPath);
+      frame.tracking = false;
+      popFrame();
+      return;
+    }
+    produced = frame.merged;
+    state.resolving.delete(frame.refObjectPath);
+    frame.tracking = false;
+    popFrame();
+  }
+
+  function stepCrawl(frame: CrawlFrame): void {
+    if (frame.step === 'enter') {
+      if (state.processed.has(frame.value)) {
+        popFrame();
+        return;
+      }
+      state.processed.add(frame.value);
+      frame.arrayMode = Array.isArray(frame.value);
+      frame.keys = frame.arrayMode ? [] : Object.keys(frame.value as JsonRecord);
+      frame.index = 0;
+      frame.step = 'next';
+    }
+    if (frame.step === 'after-ref') {
+      let entryKey = frame.arrayMode ? String(frame.index) : (frame.keys[frame.index] as string);
+      (frame.value as JsonRecord)[entryKey] = produced;
+      frame.index += 1;
+      frame.step = 'next';
+    } else if (frame.step === 'after-crawl') {
+      frame.index += 1;
+      frame.step = 'next';
+    }
+    let childCount = frame.arrayMode ? (frame.value as unknown[]).length : frame.keys.length;
+    if (frame.index >= childCount) {
+      popFrame();
+      return;
+    }
+    let entryKey = frame.arrayMode ? String(frame.index) : (frame.keys[frame.index] as string);
+    let child = (frame.value as JsonRecord)[entryKey];
+    let childPath = joinJsonPointer(frame.path, entryKey);
+    if (isLocalRefObject(child)) {
+      frame.step = 'after-ref';
+      pushFrame(resolveFrame(child, childPath));
+      return;
+    }
+    if (isContainer(child)) {
+      frame.step = 'after-crawl';
+      pushFrame(crawlFrame(child, childPath));
+      return;
+    }
+    frame.index += 1;
+  }
+
+  try {
+    while (stack.length > 0) {
+      let frame = stack[stack.length - 1] as Frame;
+      if (frame.kind === 'pointer') {
+        stepPointer(frame);
+        continue;
+      }
+      if (frame.kind === 'resolve') {
+        stepResolve(frame);
+        continue;
+      }
+      stepCrawl(frame);
+    }
+  } catch (error) {
+    releaseResolving();
+    throw error;
+  }
+
+  if (isLocalRefObject(document)) {
+    return produced;
+  }
   return document;
 }
 

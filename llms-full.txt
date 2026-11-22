@@ -456,7 +456,20 @@ description: "Measured cost of import, a full document, four component views, a 
 
 # Performance
 
-CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`.
+CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`, `deepTransform`. `deepTransform` builds one 200-level object schema outside the timed loop and times `transformSchema` only.
+
+Zod's own `safeParse` still walks a schema by recursion. The 100,000-level checks walk documents and partial JSON. They do not call it.
+
+| Function | Walk | Reason |
+| --- | --- | --- |
+| `completeJson`, `parsePartialJson`, `reparseFeed` | loop | Partial JSON text can nest without bound |
+| `createPartialJsonFeed` | loop | A stream chunk can deepen the same document |
+| `openAPISchemaToZod`, `zodToOpenAPISchema` | loop | An OpenAPI document is runtime input |
+| `dereferenceLocalDocument`, `deepMergeResolvedValue`, `documentContainsExternalRef` | loop | A local `$ref` document is runtime input |
+| `transformSchema`, `extendSchema` | recursive | Schema depth is the source that declares it |
+| `unwrapOptional`, `lenientSchema`, `partialSchemaFor` | recursive | Same bound. A deeper value overflows inside `safeParse` |
+| `makeConditionalSchemaTransformer`, `schemasForConfigs` | one level | They do not walk nested fields |
+| `isOptional` | one check | It does not walk children |
 
 The [#53](https://github.com/p10ns11y/adaptate/pull/53) run reported:
 
@@ -568,7 +581,7 @@ Measure first, then optimize only the critical path. Donald E. Knuth, "Structure
 
 > We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.
 
-The per-chunk re-parse was that critical 3% here: [10.1145/356635.356640](https://doi.org/10.1145/356635.356640).
+The per-chunk re-parse was that critical 3% here: [10.1145/356635.356640](https://doi.org/10.1145/356635.356640). Section 2 (pp. 280-285) replaces nested calls with loops and an explicit stack, so a document nested without bound does not overflow the host call stack.
 
 
 # Proof

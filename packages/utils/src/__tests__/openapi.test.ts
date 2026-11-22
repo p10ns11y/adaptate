@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { z } from 'zod';
 
+import { dereferenceLocalDocument } from '../dereference-local';
 import {
   fetchYamlContent,
   getDereferencedOpenAPIDocument,
@@ -620,6 +621,27 @@ describe('openAPISchemaToZod (edge contracts)', () => {
     expect(() => schema.parse({} as never)).toThrow();
   });
 
+  it('throws when a dereferenced schema points at an ancestor', () => {
+    let document = {
+      components: {
+        schemas: {
+          Node: {
+            type: 'object',
+            properties: {
+              child: { $ref: '#/components/schemas/Node' },
+            },
+          },
+        },
+      },
+    };
+    let dereferenced = dereferenceLocalDocument(structuredClone(document)) as {
+      components: { schemas: { Node: { properties: { child: object } } } };
+    };
+    let node = dereferenced.components.schemas.Node;
+    expect(node.properties.child).toBe(node);
+    expect(() => openAPISchemaToZod(node)).toThrow(RangeError);
+  });
+
   it('treats objects without a properties bag as empty shapes', () => {
     let schema = openAPISchemaToZod({
       type: 'object',
@@ -702,6 +724,15 @@ describe('zodToOpenAPISchema (runtime shape contracts)', () => {
     let nullable = z.string().nullable();
     delete (nullable as any).unwrap;
     expect(zodToOpenAPISchema(nullable).type).toEqual(['string', 'null']);
+  });
+
+  it('throws when an object getter refers to its own schema', () => {
+    let nodeSchema: z.ZodType = z.object({
+      get child() {
+        return nodeSchema.optional();
+      },
+    });
+    expect(() => zodToOpenAPISchema(nodeSchema)).toThrow(RangeError);
   });
 
   it('treats unions without an options bag as empty anyOf', () => {

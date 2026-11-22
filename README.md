@@ -42,6 +42,8 @@
 
 ## What it's for
 
+**Deep input does not overflow the call stack.** Streamed JSON, partial JSON, OpenAPI conversion, and local `$ref` dereferencing walk with a loop. Tests run each of them 100,000 levels deep. One `$ref` at each of those 100,000 levels finishes in under 3 seconds. A nested `$ref` past 500 throws `RangeError`.
+
 - A React component checks the fields it renders. A Vue, Svelte, or Solid component can call `transformSchema` the same way. The runnable example is [examples/react-view](examples/react-view).
 - A form can require the fields collected so far and leave the rest optional.
 - An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out.
@@ -155,5 +157,19 @@ One walk of the schema. [DESIGN.md](DESIGN.md) records O(N) time and O(D) space.
 The lines above are about the check being right. The chart is that one run. [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
 
 [Docs](docs/index.md) · [Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [API](docs/api/index.md)
+
+## Credits
+
+The loops above follow [Donald E. Knuth, "Structured Programming with go to Statements"](https://doi.org/10.1145/356635.356640), ACM Computing Surveys 6(4), 1974.
+
+Recursion is a function that calls itself on the next nested piece, then continues after that call returns. JavaScript engines, including V8, do not remove those tail calls, so each level keeps a frame on the call stack until a deep document throws `RangeError`. Knuth's method does that walk in a loop and keeps the frames in an ordinary stack, so a deep document uses memory instead of the call stack.
+
+```mermaid
+flowchart TD
+  nested[Nested value] --> loop[Loop]
+  loop --> frame[Push a frame]
+  frame --> loop
+  loop --> done[Built value]
+```
 
 MIT

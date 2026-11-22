@@ -188,6 +188,25 @@ describe("cacheLenientSchema", () => {
     expect(childParses).toBe(0);
     expect(itemParses).toBe(0);
   });
+
+  it("reuses one lenient schema when a field schema is shared", () => {
+    const label = z.string();
+    const recipe = z.object({ title: label, note: label });
+    const result = validatePartialAgainstConfigs(recipe, { title: "Pas" }, { card: true });
+    expect(result.card).toEqual({ valid: true, errors: null });
+  });
+
+  it("unwraps a defaulted field without treating the default as the value schema", () => {
+    const recipe = z.object({ title: z.string().default("Pas") });
+    const result = validatePartialAgainstConfigs(recipe, {}, { card: true });
+    expect(result.card).toEqual({ valid: true, errors: null });
+    const wrong = validatePartialAgainstConfigs(
+      recipe,
+      { title: 1 } as unknown as { title?: string },
+      { card: true },
+    );
+    expect(wrong.card.valid).toBe(false);
+  });
 });
 
 describe("makeStreamingConditionalTransformer", () => {

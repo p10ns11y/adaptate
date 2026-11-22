@@ -9,24 +9,89 @@ import { describe, expect, it, vi } from 'vitest';
 import { dereferenceLocalDocument, dereferenceOpenApiDocument } from '../dereference-local.js';
 import { getDereferencedOpenAPIDocument } from '../openapi.js';
 
-function describeGraph(value: unknown, seen = new Map<object, string>(), pointer = '$'): string {
-  if (isContainer(value)) {
-    let existingPath = seen.get(value);
-    if (existingPath) {
-      return `[[ref ${existingPath}]]`;
+function describeGraph(value: unknown): string {
+  let seen = new Map<object, string>();
+  type GraphFrame = {
+    value: unknown;
+    pointer: string;
+    step: 'enter' | 'array' | 'object';
+    index: number;
+    entries: [string, unknown][];
+    parts: string[];
+  };
+  let stack: GraphFrame[] = [
+    { value, pointer: '$', step: 'enter', index: 0, entries: [], parts: [] },
+  ];
+  let produced = '';
+  while (stack.length > 0) {
+    let frame = stack[stack.length - 1] as GraphFrame;
+    if (frame.step === 'enter') {
+      if (!isContainer(frame.value)) {
+        produced = JSON.stringify(frame.value);
+        stack.pop();
+        let parent = stack[stack.length - 1];
+        if (parent) parent.parts.push(produced);
+        continue;
+      }
+      let existingPath = seen.get(frame.value);
+      if (existingPath) {
+        produced = `[[ref ${existingPath}]]`;
+        stack.pop();
+        let parent = stack[stack.length - 1];
+        if (parent) parent.parts.push(produced);
+        continue;
+      }
+      seen.set(frame.value, frame.pointer);
+      if (Array.isArray(frame.value)) {
+        frame.step = 'array';
+      } else {
+        frame.entries = Object.entries(frame.value);
+        frame.step = 'object';
+      }
+      frame.index = 0;
+      frame.parts = [];
     }
-    seen.set(value, pointer);
-    if (Array.isArray(value)) {
-      return `[${value
-        .map((item, itemIndex) => describeGraph(item, seen, `${pointer}[${itemIndex}]`))
-        .join(', ')}]`;
+    if (frame.step === 'array') {
+      let items = frame.value as unknown[];
+      if (frame.index < items.length) {
+        let itemIndex = frame.index;
+        frame.index += 1;
+        stack.push({
+          value: items[itemIndex],
+          pointer: `${frame.pointer}[${itemIndex}]`,
+          step: 'enter',
+          index: 0,
+          entries: [],
+          parts: [],
+        });
+        continue;
+      }
+      produced = `[${frame.parts.join(', ')}]`;
+    } else {
+      if (frame.index < frame.entries.length) {
+        let entry = frame.entries[frame.index] as [string, unknown];
+        frame.index += 1;
+        stack.push({
+          value: entry[1],
+          pointer: `${frame.pointer}.${entry[0]}`,
+          step: 'enter',
+          index: 0,
+          entries: [],
+          parts: [],
+        });
+        continue;
+      }
+      let rendered = frame.parts.map((part, partIndex) => {
+        let entryKey = frame.entries[partIndex]?.[0] ?? '';
+        return `${entryKey}: ${part}`;
+      });
+      produced = `{${rendered.join(', ')}}`;
     }
-    let parts = Object.entries(value).map(([entryKey, child]) => {
-      return `${entryKey}: ${describeGraph(child, seen, `${pointer}.${entryKey}`)}`;
-    });
-    return `{${parts.join(', ')}}`;
+    stack.pop();
+    let parent = stack[stack.length - 1];
+    if (parent) parent.parts.push(produced);
   }
-  return JSON.stringify(value);
+  return produced;
 }
 
 function isContainer(value: unknown): value is object {
@@ -280,6 +345,18 @@ describe('local $ref resolver', () => {
     await matchesOptionalParser(document);
   });
 
+  it('merges an object sibling into an array-valued property', () => {
+    let document = {
+      target: { box: { items: ['red'] } },
+      extended: { $ref: '#/target', box: { items: { note: 'x' } } },
+    };
+    let dereferenced = dereferenceLocalDocument(structuredClone(document)) as {
+      extended: { box: { items: string[] & { note?: string } } };
+    };
+    expect(dereferenced.extended.box.items[0]).toBe('red');
+    expect(dereferenced.extended.box.items.note).toBe('x');
+  });
+
   it('leaves non-pointer fragments in place', async () => {
     let document = {
       named: { $ref: '#foo' },
@@ -340,24 +417,144 @@ describe('local $ref resolver', () => {
     );
   });
 
-  it('stops at the same object depth as the optional parser', async () => {
-    let withinLimit = nestedObjects(499);
-    let overLimit = nestedObjects(500);
+  it('dereferences documents deeper than the optional parser', async () => {
+    let withinParserLimit = nestedObjects(40);
+    let pastParserLimit = nestedObjects(500);
 
-    await expect($RefParser.dereference(structuredClone(withinLimit))).resolves.toBeTruthy();
-    expect(() => dereferenceLocalDocument(structuredClone(withinLimit))).not.toThrow();
-    await expect($RefParser.dereference(structuredClone(overLimit))).rejects.toThrow(
+    await expect($RefParser.dereference(structuredClone(withinParserLimit))).resolves.toBeTruthy();
+    expect(() => dereferenceLocalDocument(structuredClone(withinParserLimit))).not.toThrow();
+    await expect($RefParser.dereference(structuredClone(pastParserLimit))).rejects.toThrow(
       /Maximum dereference depth/,
     );
-    expect(() => dereferenceLocalDocument(structuredClone(overLimit))).toThrow(
-      /Maximum dereference depth \(500\)/,
+    expect(() => dereferenceLocalDocument(structuredClone(pastParserLimit))).not.toThrow();
+  });
+
+  it('resolves a local pointer chain and rejects nested refs past 500', () => {
+    let dereferenced = dereferenceLocalDocument(refChain(20)) as { start: { type: string }; end: { type: string } };
+    expect(dereferenced.start).toBe(dereferenced.end);
+    expect(dereferenced.end).toEqual({ type: 'string' });
+    expect(() => dereferenceLocalDocument(refChain(501))).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(refChain(501))).toThrow(/Maximum dereference depth \(500\)/);
+  });
+
+  it('throws when a sibling ref expands without repeating a path', () => {
+    let document = {
+      A: {
+        properties: {
+          p: {
+            $ref: '#/A',
+            properties: { p: { description: 'd' } },
+          },
+        },
+      },
+    };
+    expect(() => dereferenceLocalDocument(document)).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(document)).toThrow(
+      /Maximum dereference depth \(500\) exceeded at #\/A\/properties\/p/,
     );
   });
 
-  it('caps a long local pointer chain', () => {
-    let dereferenced = dereferenceLocalDocument(refChain(20)) as { start: { type: string }; end: { type: string } };
-    expect(dereferenced.start).toBe(dereferenced.end);
-    expect(() => dereferenceLocalDocument(refChain(501))).toThrow(/Maximum dereference depth \(500\)/);
+  it('throws when a sibling merge walks back into an ancestor', () => {
+    let document = {
+      box: {
+        box: { $ref: '#', properties: { p: { $ref: '#' } } },
+        child: {
+          child: [
+            {
+              p: {
+                p: {
+                  properties: {
+                    $ref: '#/box/box',
+                    properties: { p: { $ref: '#/box/box' } },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+    expect(() => dereferenceLocalDocument(document)).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(document)).toThrow(/sibling merge/);
+  });
+
+  it('merges a sibling child onto a node that points at itself', () => {
+    let document = {
+      Node: {
+        type: 'object',
+        properties: {
+          child: { $ref: '#/Node' },
+        },
+      },
+      Tree: {
+        $ref: '#/Node',
+        properties: {
+          child: {
+            properties: {
+              child: { description: 'g' },
+            },
+          },
+        },
+      },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      Node: { type: string; properties: { child: unknown } };
+      Tree: {
+        type: string;
+        properties: { child: { type: string; properties: { child: { description: string; properties: unknown } } } };
+      };
+    };
+    expect(dereferenced.Node.properties.child).toBe(dereferenced.Node);
+    expect(dereferenced.Tree.type).toBe('object');
+    expect(dereferenced.Tree.properties.child.type).toBe('object');
+    expect(dereferenced.Tree.properties.child.properties.child.description).toBe('g');
+    expect(dereferenced.Tree.properties.child.properties.child.properties).toBe(
+      dereferenced.Node.properties,
+    );
+  });
+
+  it('merges a sibling items chain onto an array that points at itself', () => {
+    let document = {
+      Node: {
+        type: 'array',
+        items: { $ref: '#/Node' },
+      },
+      Tree: {
+        $ref: '#/Node',
+        items: {
+          items: {
+            items: { description: 'g' },
+          },
+        },
+      },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      Node: { type: string; items: unknown };
+      Tree: {
+        type: string;
+        items: { type: string; items: { type: string; items: { description: string; items: unknown } } };
+      };
+    };
+    expect(dereferenced.Node.items).toBe(dereferenced.Node);
+    expect(dereferenced.Tree.type).toBe('array');
+    expect(dereferenced.Tree.items.type).toBe('array');
+    expect(dereferenced.Tree.items.items.items.description).toBe('g');
+    expect(dereferenced.Tree.items.items.items.items).toBe(dereferenced.Node);
+  });
+
+  it('merges a shared anchor into a sibling ref', () => {
+    let shared = { k2: { mark: 1 } };
+    let document = {
+      T: { k: shared },
+      ext: { $ref: '#/T', k: { k2: shared } },
+    };
+    let dereferenced = dereferenceLocalDocument(document) as {
+      T: { k: { k2: { mark: number } } };
+      ext: { k: { k2: { mark: number; k2: { mark: number } } } };
+    };
+    expect(dereferenced.T.k.k2.mark).toBe(1);
+    expect(dereferenced.ext.k.k2.mark).toBe(1);
+    expect(dereferenced.ext.k.k2.k2).toBe(dereferenced.T.k.k2);
   });
 
   it('does not loop when the input object graph is already cyclic', async () => {
