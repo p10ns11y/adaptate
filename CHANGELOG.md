@@ -42,12 +42,6 @@ All notable changes to this project will be documented in this file.
 
 **Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
 
-## Unreleased
-
-- `createPartialJsonParser` repairs a JSON stream in one scan of the text. `createAgUiPartialValidator` uses it.
-- `createFrameThrottle` emits the latest value on the next frame.
-- `parsePartialJson` is unchanged.
-
 ## Unreleased 2.4.0
 
 - `@adaptate/utils` resolves in-document `$ref` pointers locally and has no required runtime dependencies.
@@ -66,6 +60,8 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
 - `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
 - Validation is pure, so this integration does not retry.
+- `createPartialJsonParser` repairs a JSON stream in one scan of the text. `createAgUiPartialValidator` uses it. `parsePartialJson` is unchanged.
+- `createFrameThrottle` emits the latest value on the next frame.
 
 ### Changed
 - `final(text)` parses strict JSON, requires the base schema, and returns `{ value, configs }` for every named config. `final(text, configName)` validates that one config, and fails with `AdaptateValidationError` when `configName` is not an own key of `configs`. `validatePartial` keeps issues from a thrown `ZodError`.
