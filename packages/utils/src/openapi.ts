@@ -62,7 +62,7 @@ function finishOpenApiNode(
   return finished;
 }
 
-function planOpenApiSchema(schema: any, propertyKey: string, required: string[]): OpenApiPlan {
+function planOpenApiSchema(schema: any): OpenApiPlan {
   if (!schema || typeof schema !== 'object') {
     return {
       isNullable: false,
@@ -206,7 +206,7 @@ function planOpenApiSchema(schema: any, propertyKey: string, required: string[])
 
   if (schema.type === 'array') {
     let children: OpenApiChild[] = schema.items
-      ? [{ schema: schema.items, propertyKey, required }]
+      ? [{ schema: schema.items, propertyKey: '', required: [] }]
       : [];
     return {
       isNullable,
@@ -243,7 +243,10 @@ function planOpenApiSchema(schema: any, propertyKey: string, required: string[])
         for (let index = 0; index < propertyEntries.length; index += 1) {
           let key = propertyEntries[index]?.[0] as string;
           let propertySchema = childSchemas[index] as z.ZodType;
-          if (!requiredProperties.includes(key)) {
+          if (
+            !requiredProperties.includes(key) &&
+            !unwrapOptional(propertySchema).isOptional
+          ) {
             propertySchema = propertySchema.optional();
           }
           shape[key] = propertySchema;
@@ -333,7 +336,7 @@ export function openAPISchemaToZod(
       if (frame.schema && typeof frame.schema === 'object') {
         ancestorSchemas.add(frame.schema);
       }
-      frame.plan = planOpenApiSchema(frame.schema, frame.propertyKey, frame.required);
+      frame.plan = planOpenApiSchema(frame.schema);
     }
     let plan = frame.plan;
     if (frame.childIndex < plan.children.length) {
