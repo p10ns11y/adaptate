@@ -1,11 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { partialPathIsValid } from "../partial";
 import {
-  parsePartialJson,
-  createStreamValidator,
-  validateStructuredOutput,
   createAgUiPartialValidator,
+  createFrameThrottle,
+  createPartialJsonParser,
+  createStreamValidator,
+  parsePartialJson,
+  validateStructuredOutput,
 } from "../stream";
 
 const recipe = z.object({
@@ -222,5 +225,138 @@ describe("createAgUiPartialValidator", () => {
       partial: { steps: [{ minutes: 3 }] },
     });
     expect(text?.results.timer.valid).toBe(true);
+  });
+
+  it("keeps each id on its own parser and matches a full partial check", () => {
+    const push = createAgUiPartialValidator(recipe, configs);
+    const fresh = createStreamValidator(recipe, configs);
+    let buffer = "";
+    const text = '{"title":"Pasta","servings":2,"steps":[{"text":"boil","minutes":4}]}';
+    for (const character of text) {
+      buffer += character;
+      const outcome = push({
+        type: "TOOL_CALL_ARGS",
+        toolCallId: "t",
+        delta: character,
+      });
+      const expected = parsePartialJson(buffer);
+      if (expected === undefined) {
+        expect(outcome).toBeUndefined();
+        continue;
+      }
+      expect(outcome?.partial).toEqual(expected);
+      const checked = fresh.partial(expected as never);
+      expect(outcome?.results.card.valid).toBe(checked.card.valid);
+      expect(outcome?.results.timer.valid).toBe(checked.timer.valid);
+      expect(outcome?.results.card.errors === null).toBe(checked.card.errors === null);
+    }
+    expect(
+      push({ type: "TEXT_MESSAGE_CONTENT", messageId: "m", delta: "{" })?.partial,
+    ).toEqual({});
+  });
+});
+
+describe("createPartialJsonParser", () => {
+  it("visits each character once and agrees with parsePartialJson", () => {
+    const samples = [
+      '{"title":"a\\',
+      '{"a":"hi\\"',
+      "1.0",
+      "12",
+      "[1,2]",
+      '{"a":1,"b":2}',
+      '{"a":{"b":12}}',
+      " ",
+      "x",
+      "{]",
+      "-0",
+      "true",
+      "[1,2,3]",
+    ];
+    for (const text of samples) {
+      for (const width of [1, 2, text.length || 1]) {
+        const parser = createPartialJsonParser();
+        let buffer = "";
+        for (let index = 0; index < text.length; index += width) {
+          const piece = text.slice(index, index + width);
+          buffer += piece;
+          const got = parser.push(piece);
+          const expected = parsePartialJson(buffer);
+          expect(got).toEqual(expected);
+          if (typeof expected === "number") expect(Object.is(got, expected)).toBe(true);
+        }
+        expect(parser.push("")).toEqual(parsePartialJson(text));
+        expect(parser.visits).toBe(text.length);
+      }
+    }
+  });
+});
+
+describe("partialPathIsValid", () => {
+  it("checks only the value at the path", () => {
+    expect(partialPathIsValid(recipe, { title: "Pasta" }, ["title"])).toBe(true);
+    expect(partialPathIsValid(recipe, { title: 1 }, ["title"])).toBe(false);
+    expect(partialPathIsValid(recipe, { title: "Pasta" }, [])).toBe(true);
+    expect(partialPathIsValid(recipe, { servings: "x" }, [])).toBe(false);
+    expect(partialPathIsValid(recipe, { extra: 1 }, ["extra"])).toBe(true);
+    expect(partialPathIsValid(recipe, {}, ["title"])).toBe(true);
+    expect(partialPathIsValid(recipe, { title: undefined }, ["title"])).toBe(true);
+    expect(partialPathIsValid(recipe, { steps: "no" }, ["steps", 0])).toBe(true);
+    expect(partialPathIsValid(recipe, { steps: [] }, ["steps", 0])).toBe(true);
+    expect(
+      partialPathIsValid(recipe, { steps: [{ minutes: 3 }] }, ["steps", 0, "minutes"]),
+    ).toBe(true);
+    expect(
+      partialPathIsValid(recipe, { steps: [{ minutes: "x" }] }, ["steps", 0, "minutes"]),
+    ).toBe(false);
+    expect(partialPathIsValid(recipe, { title: null }, ["title", "extra"])).toBe(true);
+    expect(partialPathIsValid(recipe, { title: "Pasta" }, ["title", "extra"])).toBe(true);
+    expect(partialPathIsValid(recipe, "no", ["title"])).toBe(true);
+    expect(partialPathIsValid(recipe, { title: "x" }, [0])).toBe(true);
+    expect(partialPathIsValid(z.string(), "hi", ["missing"])).toBe(true);
+    const wrapped = z.object({ title: z.string().optional() });
+    expect(partialPathIsValid(wrapped, { title: "Pasta" }, ["title"])).toBe(true);
+    expect(partialPathIsValid(wrapped, { title: 1 }, ["title"])).toBe(false);
+  });
+});
+
+describe("createFrameThrottle", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("keeps the latest value for the next animation frame", () => {
+    const frames: Array<() => void> = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: () => void) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const seen: string[] = [];
+    const push = createFrameThrottle((value: string) => {
+      seen.push(value);
+    });
+    push("one");
+    push("two");
+    expect(seen).toEqual([]);
+    frames[0]?.();
+    expect(seen).toEqual(["two"]);
+    push("three");
+    frames[1]?.();
+    expect(seen).toEqual(["two", "three"]);
+  });
+
+  it("uses a zero-delay timer when animation frames are unavailable", () => {
+    vi.stubGlobal("requestAnimationFrame", undefined);
+    vi.useFakeTimers();
+    const seen: number[] = [];
+    const push = createFrameThrottle((value: number) => {
+      seen.push(value);
+    });
+    push(1);
+    push(2);
+    expect(seen).toEqual([]);
+    vi.runAllTimers();
+    expect(seen).toEqual([2]);
   });
 });

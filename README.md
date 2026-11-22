@@ -103,9 +103,24 @@ import { createAgUiPartialValidator } from "@adaptate/core/stream";
 const push = createAgUiPartialValidator(z.object({ title: z.string(), servings: z.number() }), { card: { title: true } });
 ```
 
+## Design
+
+One walk of the schema. [DESIGN.md](DESIGN.md) records O(N) time and O(D) space. A partial JSON stream scans each new character once. [Incremental partial JSON](docs/incremental-parser.md)
+
+## Measured
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
+    <img alt="Node v24.22.3. Full-document validations per second: raw Zod 2,455,728, Adaptate 2,294,074, Valibot 480,429. Import median milliseconds: 39.542, 41.353, 6.031. Heap after GC bytes: 8,293,200, 8,426,872, 5,204,232. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,397 and 1,999, ./standard 589 and 328, ./effect 4,340 and 1,789. Parsed partial microseconds per chunk: 0.605, 0.840, 1.407. AG-UI microseconds per chunk: 0.605, 17.137, 1.407." src="assets/perf.svg" width="960">
+  </picture>
+</p>
+
+Node v24.22.3. One `node bench/ab/run.js`. Parsed partial 0.840 µs/chunk against raw Zod 0.605 µs/chunk. AG-UI 17.137 µs/chunk. [Performance](docs/performance.md)
+
 ## Why trust it
 
-The lines above are about the check being right. With the schema cached, the streaming check is within about 1.5× of raw Zod per chunk (0.667 µs against 0.433 µs, parsed partial). JSON repair is separate, about 23 µs/chunk. [Performance](docs/performance.md) · [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
+The lines above are about the check being right. [Proof](docs/proof.md) · [CI](https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml)
 
 [Views](docs/transform.md) · [Streaming](docs/streaming.md) · [OpenAPI](docs/openapi.md) · [Effect](docs/effect.md) · [Peers and subpaths](docs/subpaths.md)
 

@@ -7,6 +7,11 @@ import {
   type DeepPartial,
   type PartialValidationResult,
 } from "./partial.js";
+import {
+  createPartialJsonFeed,
+  createPartialJsonParser,
+  type PartialJsonParser,
+} from "./partial-json.js";
 
 type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
 
@@ -96,12 +101,18 @@ export type AgUiDeltaEvent = {
   messageId?: string;
 };
 
+type AgUiSlot<TConfigs> = [
+  (chunk: string) => unknown,
+  unknown,
+  Results<TConfigs> | undefined,
+];
+
 export function createAgUiPartialValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
   const validator = createStreamValidator(schema, configs);
-  const buffers = new Map<string, string>();
+  const slots = new Map<string, AgUiSlot<TConfigs>>();
   return function push(event: AgUiDeltaEvent) {
     const id =
       event.type === "TOOL_CALL_ARGS"
@@ -110,14 +121,50 @@ export function createAgUiPartialValidator<
           ? event.messageId
           : undefined;
     if (id === undefined || typeof event.delta !== "string") return undefined;
-    const text = (buffers.get(id) ?? "") + event.delta;
-    buffers.set(id, text);
-    const partial = parsePartialJson(text);
-    if (partial === undefined) return undefined;
+    let slot = slots.get(id);
+    if (!slot) {
+      slot = [createPartialJsonFeed(), undefined, undefined];
+      slots.set(id, slot);
+    }
+    const value = slot[0](event.delta);
+    if (value === undefined) return undefined;
+    if (value !== slot[1]) {
+      slot[1] = value;
+      slot[2] = validator.partial(value as DeepPartial<z.infer<TSchema>>);
+    }
     return {
       id,
-      partial: partial as DeepPartial<z.infer<TSchema>>,
-      results: validator.partial(partial as DeepPartial<z.infer<TSchema>>),
+      partial: value as DeepPartial<z.infer<TSchema>>,
+      results: slot[2] as Results<TConfigs>,
     };
   };
 }
+
+type FrameClock = (callback: () => void) => number;
+
+function frameClock(): FrameClock {
+  const requestFrame = (
+    globalThis as { requestAnimationFrame?: FrameClock }
+  ).requestAnimationFrame;
+  if (typeof requestFrame === "function") {
+    return (callback) => requestFrame(callback);
+  }
+  return (callback) => setTimeout(callback, 0) as unknown as number;
+}
+
+export function createFrameThrottle<T>(emit: (value: T) => void): (value: T) => void {
+  let latest: T | undefined;
+  let pending = false;
+  const clock = frameClock();
+  return function pushFrame(value: T) {
+    latest = value;
+    if (pending) return;
+    pending = true;
+    clock(() => {
+      pending = false;
+      emit(latest as T);
+    });
+  };
+}
+
+export { createPartialJsonParser, type PartialJsonParser };

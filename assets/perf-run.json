@@ -1,0 +1,52 @@
+{
+  "commit": "HEAD",
+  "runtimeVersion": "v24.22.3",
+  "esbuildVersion": "0.28.2",
+  "fullDocument": {
+    "zod": 2455727.568829707,
+    "adaptate": 2294073.8873741645,
+    "valibot": 480429.47633187077
+  },
+  "importMedianMs": {
+    "zod": 39.54215,
+    "adaptate": 41.353074,
+    "valibot": 6.03059
+  },
+  "heapAfterBytes": {
+    "zod": 8293200,
+    "adaptate": 8426872,
+    "valibot": 5204232
+  },
+  "parsedPartialMicros": {
+    "zod": 0.6049289374032133,
+    "adaptate": 0.8404753786287001,
+    "valibot": 1.4074285603704277
+  },
+  "agUiMicros": {
+    "zod": 0.6049289374032133,
+    "adaptate": 17.136950449293966,
+    "valibot": 1.4074285603704277
+  },
+  "bundleOwn": [
+    {
+      "id": ".",
+      "minBytes": 2490,
+      "gzipBytes": 1207
+    },
+    {
+      "id": "./stream",
+      "minBytes": 4397,
+      "gzipBytes": 1999
+    },
+    {
+      "id": "./standard",
+      "minBytes": 589,
+      "gzipBytes": 328
+    },
+    {
+      "id": "./effect",
+      "minBytes": 4340,
+      "gzipBytes": 1789
+    }
+  ]
+}

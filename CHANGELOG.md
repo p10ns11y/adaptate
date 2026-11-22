@@ -42,6 +42,12 @@ All notable changes to this project will be documented in this file.
 
 **Development note**: Initial prototype was created with ChatGPT Canvas. All important caveats and refinements were manually corrected by the author. The PR (#21) marks the first use of AI coding agents (Grok) in the project. Cursor Cloud Agent prepared the repo for agentic development workflows.
 
+## Unreleased
+
+- `createPartialJsonParser` repairs a JSON stream in one scan of the text. `createAgUiPartialValidator` uses it.
+- `createFrameThrottle` emits the latest value on the next frame.
+- `parsePartialJson` is unchanged.
+
 ## Unreleased 2.4.0
 
 - `@adaptate/utils` resolves in-document `$ref` pointers locally and has no required runtime dependencies.
