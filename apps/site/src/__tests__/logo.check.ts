@@ -20,9 +20,10 @@ describe("logo", () => {
   });
 
   it("leaves no trace of the old logo geometry", () => {
+    let needle = ["M22 36H36", "M36 24V48"].join("");
     let hits = "";
     try {
-      hits = execFileSync("git", ["grep", "-l", "-e", "M22 36H36M36 24V48"], { cwd: repositoryRoot, encoding: "utf8" });
+      hits = execFileSync("git", ["grep", "-l", "-F", "-e", needle], { cwd: repositoryRoot, encoding: "utf8" });
     } catch {
       hits = "";
     }

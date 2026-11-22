@@ -37,16 +37,80 @@ function measure(label, bytes, limit) {
   if (bytes > limit) failures.push(`${label} is ${format(bytes)}, over ${format(limit)}`);
 }
 
+let isSpace = (character) => character === " " || character === "\t" || character === "\n" || character === "\r" || character === "\f";
+
+function readAttributes(html, start) {
+  let attributes = new Map();
+  let index = start;
+  while (index < html.length) {
+    while (index < html.length && (isSpace(html[index]) || html[index] === "/")) index += 1;
+    if (index >= html.length || html[index] === ">") return { attributes, end: index + 1 };
+    let nameStart = index;
+    while (index < html.length && !isSpace(html[index]) && html[index] !== "=" && html[index] !== ">" && html[index] !== "/") index += 1;
+    let name = html.slice(nameStart, index).toLowerCase();
+    while (index < html.length && isSpace(html[index])) index += 1;
+    let value = "";
+    if (html[index] === "=") {
+      index += 1;
+      while (index < html.length && isSpace(html[index])) index += 1;
+      let quote = html[index];
+      if (quote === '"' || quote === "'") {
+        let close = html.indexOf(quote, index + 1);
+        if (close < 0) close = html.length;
+        value = html.slice(index + 1, close);
+        index = close + 1;
+      } else {
+        let valueStart = index;
+        while (index < html.length && !isSpace(html[index]) && html[index] !== ">") index += 1;
+        value = html.slice(valueStart, index);
+      }
+    }
+    if (name && !attributes.has(name)) attributes.set(name, value);
+  }
+  return { attributes, end: html.length };
+}
+
+function* startTags(html) {
+  let lower = html.toLowerCase();
+  let index = 0;
+  while (index < html.length) {
+    let open = html.indexOf("<", index);
+    if (open < 0) return;
+    if (html.startsWith("<!--", open)) {
+      let close = html.indexOf("-->", open + 4);
+      index = close < 0 ? html.length : close + 3;
+      continue;
+    }
+    let nameEnd = open + 1;
+    while (nameEnd < html.length && /[a-z0-9-]/i.test(html[nameEnd])) nameEnd += 1;
+    if (nameEnd === open + 1) {
+      let close = html.indexOf(">", open + 1);
+      index = close < 0 ? html.length : close + 1;
+      continue;
+    }
+    let name = lower.slice(open + 1, nameEnd);
+    let { attributes, end } = readAttributes(html, nameEnd);
+    yield { name, attributes };
+    index = end;
+    if (name === "script" || name === "style") {
+      let close = lower.indexOf(`</${name}`, index);
+      index = close < 0 ? html.length : close;
+    }
+  }
+}
+
 function pageScripts(htmlPath) {
   let html = readFileSync(htmlPath, "utf8");
   let sources = new Set();
-  for (let match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
-    let attributes = match[1] ?? "";
-    if (/type="application\/ld\+json"/.test(attributes)) continue;
-    let source = attributes.match(/src="([^"]+)"/);
-    sources.add(source ? source[1] : "inline");
+  for (let { name, attributes } of startTags(html)) {
+    if (name === "script") {
+      if ((attributes.get("type") ?? "").trim().toLowerCase() === "application/ld+json") continue;
+      sources.add(attributes.get("src") || "inline");
+    } else if (name === "link") {
+      let rel = (attributes.get("rel") ?? "").toLowerCase().split(/\s+/);
+      if (rel.includes("modulepreload") && attributes.get("href")) sources.add(attributes.get("href"));
+    }
   }
-  for (let match of html.matchAll(/<link\b[^>]*rel="modulepreload"[^>]*href="([^"]+)"/g)) sources.add(match[1]);
   return [...sources];
 }
 

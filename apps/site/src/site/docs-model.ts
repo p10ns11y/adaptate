@@ -35,11 +35,41 @@ export function rewriteHref(href: string, sourcePath: string): string {
   return `${repositoryUrl}/${kind}/main/${resolved}${hash}`;
 }
 
+function withoutTags(html: string): string {
+  let text = "";
+  let index = 0;
+  while (index < html.length) {
+    let close = html[index] === "<" ? html.indexOf(">", index + 1) : -1;
+    if (close > index + 1) {
+      index = close + 1;
+      continue;
+    }
+    text += html[index];
+    index += 1;
+  }
+  return text;
+}
+
+function withoutNamedEntities(html: string): string {
+  let text = "";
+  let index = 0;
+  while (index < html.length) {
+    if (html[index] === "&") {
+      let end = index + 1;
+      while (end < html.length && /[a-z]/i.test(html[end] ?? "")) end += 1;
+      if (end > index + 1 && html[end] === ";") {
+        index = end + 1;
+        continue;
+      }
+    }
+    text += html[index];
+    index += 1;
+  }
+  return text;
+}
+
 export function slugifyHeading(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/<[^>]+>/g, "")
-    .replace(/&[a-z]+;/g, "")
+  return withoutNamedEntities(withoutTags(text.toLowerCase()))
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-");

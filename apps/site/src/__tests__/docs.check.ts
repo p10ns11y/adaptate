@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
-import { apiRoute, rewriteHref, routeForDoc, sourceOnlyDocs } from "../site/docs-model";
+import { apiRoute, rewriteHref, routeForDoc, slugifyHeading, sourceOnlyDocs } from "../site/docs-model";
 import { guideFrontMatterSchema } from "../site/frontmatter";
 import { rewriteLlms } from "../site/llms";
 
@@ -66,6 +66,16 @@ describe("docs", () => {
   it("makes served llms links absolute", () => {
     let served = rewriteLlms("- [Zod](docs/zod.md): views\n\nSource: docs/api/index.md\n", "https://preview.invalid");
     expect(served).toBe("- [Zod](https://preview.invalid/docs/zod/): views\n\nSource: https://preview.invalid/docs/api/\n");
+  });
+
+  it("slugifies heading HTML without leaving markup", () => {
+    expect(slugifyHeading("Use <code>transformSchema</code> &amp; Zod")).toBe("use-transformschema-zod");
+    expect(slugifyHeading("A&lt;b&gt; tag")).toBe("ab-tag");
+    expect(slugifyHeading("<scr<script>ipt>alert(1)</script>")).toBe("iptalert1");
+    expect(slugifyHeading("&am<b>p;lt;script")).toBe("ltscript");
+    for (let heading of ["<<b>>x", "a < b > c", "x <unclosed", "&&amp;;", "<scr<script>ipt>"]) {
+      expect(slugifyHeading(heading)).toMatch(/^[a-z0-9-]*$/);
+    }
   });
 
   it("has no snippet drift", () => {
