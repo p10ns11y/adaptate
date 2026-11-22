@@ -307,4 +307,28 @@ describe("openapi and dereference recursion elimination", () => {
     expect(leaf.marker).toBe(dereferenced.end);
     expect(leaf.next).toBeUndefined();
   }, 15_000);
+
+  it("merges a sibling chain fifty thousand levels deep", () => {
+    const siblingChainDepth = 50_000;
+    let resolvedChild: Record<string, unknown> = { type: "string" };
+    let siblingChild: Record<string, unknown> = { description: "g" };
+    for (let level = 0; level < siblingChainDepth; level += 1) {
+      resolvedChild = { child: resolvedChild };
+      siblingChild = { child: siblingChild };
+    }
+    let document = {
+      Node: { child: resolvedChild },
+      Tree: { $ref: "#/Node", child: siblingChild },
+    };
+    let startedAt = performance.now();
+    let dereferenced = dereferenceLocalDocument(document) as {
+      Tree: { child: { child: unknown } };
+    };
+    expect(performance.now() - startedAt).toBeLessThan(1_500);
+    let leaf: Record<string, unknown> = dereferenced.Tree;
+    for (let level = 0; level < siblingChainDepth + 1; level += 1) {
+      leaf = leaf.child as Record<string, unknown>;
+    }
+    expect(leaf).toEqual({ type: "string", description: "g" });
+  }, 15_000);
 });

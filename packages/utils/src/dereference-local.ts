@@ -162,6 +162,7 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
   let rootMerged: JsonRecord | unknown[] = Array.isArray(resolvedValue)
     ? [...resolvedValue]
     : { ...(resolvedValue as JsonRecord) };
+  let activeSiblings = new Set<object>([siblingValue]);
   let stack: Array<{
     merged: JsonRecord;
     resolved: object;
@@ -181,6 +182,7 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
   while (stack.length > 0) {
     let frame = stack[stack.length - 1] as (typeof stack)[number];
     if (frame.index >= frame.keys.length) {
+      activeSiblings.delete(frame.sibling);
       stack.pop();
       continue;
     }
@@ -198,15 +200,7 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
         frame.merged[entryKey] = siblingChild;
         continue;
       }
-      let repeatsSibling = false;
-      for (let ancestorIndex = 0; ancestorIndex < stack.length; ancestorIndex += 1) {
-        let ancestor = stack[ancestorIndex] as (typeof stack)[number];
-        if (ancestor.sibling === siblingChild) {
-          repeatsSibling = true;
-          break;
-        }
-      }
-      if (repeatsSibling) {
+      if (activeSiblings.has(siblingChild)) {
         throw new RangeError(
           `Maximum dereference depth (${maximumLocalRefDepth}) exceeded during a sibling merge. This likely indicates an extremely deep or recursive schema.`,
         );
@@ -215,6 +209,7 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
         ? [...resolvedChild]
         : { ...resolvedChild };
       frame.merged[entryKey] = childMerged;
+      activeSiblings.add(siblingChild);
       stack.push({
         merged: childMerged as JsonRecord,
         resolved: resolvedChild,
