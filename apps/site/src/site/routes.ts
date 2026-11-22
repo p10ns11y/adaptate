@@ -45,7 +45,7 @@ export let journeyRoute: SiteRoute = {
   description:
     "Public git and npm history of adaptate: a rebuild from recursion and mutual recursion, first published in 2024, then CI, OIDC, streaming, and 2.4.",
   answer:
-    "The problem started at Oneflow, where entity schemas did not match across endpoints while I was building features. I wrote the precursor by hand, alone. After I lost access to the code (nothing secret was kept), I rebuilt adaptate from general programming concepts — recursion and mutual recursion. No Oneflow code is in adaptate.",
+    "The problem started at Oneflow, where entity schemas did not match across endpoints while I was building features. I wrote the precursor by hand, alone. I wanted to open-source it back then; it didn't happen. After I lost access to the code (nothing secret was kept), I rebuilt adaptate from general programming concepts — recursion and mutual recursion. No Oneflow code is in adaptate.",
   faq: [],
 };
 
