@@ -23,27 +23,40 @@
   <a href="./.devcontainer/README.md"><img alt="dev container" src="https://img.shields.io/badge/dev%20container-ready-2496ED?logo=docker&logoColor=white"></a>
 </p>
 
-<p align="center">
-  <strong>Partial documents fail a full schema, and deep input overflows a recursive walk.</strong>
-</p>
+<h3 align="center">Typed, validated data from any schema or stream, safely.</h3>
 
-## What you can count on
+<p align="center">Zod, OpenAPI, or any Standard Schema. A finished document, or JSON that is still arriving.</p>
 
-| | |
-| --- | --- |
-| **100,000 levels** | Streamed JSON, including a missing last character. OpenAPI to Zod, Zod to OpenAPI, and a local `$ref` document. |
-| **Under 3 seconds** | One `$ref` at each of those 100,000 levels. |
-| **`RangeError` past 500** | A nested `$ref` chain stops at depth 500. |
-
-[Core deep-nesting test](packages/core/src/__tests__/deep-nesting.test.ts) · [Utils deep-nesting test](packages/utils/src/__tests__/deep-nesting.test.ts) · [Local `$ref` test](packages/utils/src/__tests__/dereference-local.test.ts) · [Proof](docs/proof.md)
-
-```mermaid
-flowchart LR
-  openapi[OpenAPI schema] --> schema[One Zod schema]
-  schema --> card[Card]
-  schema --> kitchen[Kitchen]
-  schema --> stream[Tool call still typing]
+```sh
+pnpm add @adaptate/core zod
 ```
+
+## See it in 10 seconds
+
+A model is streaming a tool call. So far it has sent `{"title":"Pas`.
+
+**Before**
+
+```ts
+JSON.parse('{"title":"Pas');
+```
+
+`SyntaxError`. There is nothing to show until the last byte arrives.
+
+**After**
+
+```ts
+import { z } from "zod";
+import { createAgUiPartialValidator } from "@adaptate/core/stream";
+
+const recipe = z.object({ title: z.string(), servings: z.number() });
+const push = createAgUiPartialValidator(recipe, { card: { title: true } });
+
+const check = push({ type: "TOOL_CALL_ARGS", toolCallId: "call-1", delta: '{"title":"Pas' });
+console.log(check?.partial, check?.results.card.valid);
+```
+
+Prints `{ title: 'Pas' } true`. `check.partial` is typed from `recipe`, so the card can show the title now.
 
 <p align="center">
   <picture>
@@ -52,60 +65,263 @@ flowchart LR
   </picture>
 </p>
 
-## Before and after
+## One schema, one view per screen
 
-The model has sent `{"title":"Pas`.
-
-| `JSON.parse` | `@adaptate/core/stream` |
-| --- | --- |
-| Throws `SyntaxError`. | `check.partial` is `{ title: "Pas" }`. `check.results.card.valid` is `true`. |
-
-```ts
-import { z } from "zod";
-import { createAgUiPartialValidator } from "@adaptate/core/stream";
-
-const recipe = z.object({ title: z.string(), servings: z.number() });
-const push = createAgUiPartialValidator(recipe, { card: { title: true } });
-const check = push({
-  type: "TOOL_CALL_ARGS",
-  toolCallId: "call-1",
-  delta: '{"title":"Pas',
-});
-```
-
-The same partial reader returns the leaf of a 100,000-level document with the last character missing. [Streaming tool call](examples/streaming-tool-call)
-
-Streams partial JSON without re-reading what it already saw. [Numbers](docs/performance.md#measured).
-
-## Quickstart
-
-```sh
-pnpm add @adaptate/core zod
-```
+The smallest win needs no stream. Write the schema once, then say which fields each screen needs.
 
 ```ts
 import { z } from "zod";
 import { transformSchema } from "@adaptate/core";
-const recipe = z.object({ title: z.string(), servings: z.number() });
-const card = transformSchema(recipe.partial(), { title: true });
-card.parse({ title: "Pasta" });
+
+const recipe = z.object({ title: z.string(), servings: z.number() }).partial();
+const card = transformSchema(recipe, { title: true });
+const kitchen = transformSchema(recipe, { title: true, servings: true });
+
+console.log(card.safeParse({ title: "Pasta" }).success, kitchen.safeParse({ title: "Pasta" }).success);
 ```
 
-`{ title: "Pas" }` passes that card. The same schema with `servings: true` rejects it. [React view](examples/react-view)
+Prints `true false`. Each result is still a Zod schema with the same inferred type.
 
-## Where it fits
+<details>
+<summary>Nested fields, arrays, typed configs, and conditional fields</summary>
 
-| You have | You call | Read |
-| --- | --- | --- |
-| A screen or a form that needs some fields | `transformSchema` | [Transform](docs/transform.md) |
-| A tool call that is still typing | `createAgUiPartialValidator` | [Streaming](docs/streaming.md) |
-| An OpenAPI schema | `openAPISchemaToZod` | [OpenAPI](docs/openapi.md) |
-| An Effect pipeline | `createEffectStreamValidator` | [Effect](docs/effect.md) |
+`true` makes a field required, `false` keeps it optional, a nested object goes one level down, and `{ "*": config }` applies to every array item. `satisfies Config<T>` makes a misspelled key a type error.
 
-Types ship in the package. CI checks the packed tarballs on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext`. [TypeScript](docs/typescript.md) · [API](docs/api/index.md) · [Docs](docs/index.md)
+```ts
+import { z } from "zod";
+import { transformSchema, makeConditionalSchemaTransformer, type Config } from "@adaptate/core";
+
+const order = z
+  .object({
+    items: z.array(z.object({ name: z.string(), qty: z.number() }).partial()),
+    delivery: z.object({ address: z.string(), notes: z.string() }).partial(),
+  })
+  .partial();
+
+const checkout = {
+  items: { "*": { name: true, qty: true } },
+  delivery: { address: true },
+} satisfies Config<z.infer<typeof order>>;
+
+const draft = { items: [{ name: "Milk" }], delivery: { address: "Main St 1" } };
+console.log(transformSchema(order, checkout).safeParse(draft).success);
+
+const pickup = z.object({ pickup: z.boolean(), address: z.string().optional() });
+const rule = { address: { requiredIf: (data: { pickup: boolean }) => !data.pickup } };
+console.log(makeConditionalSchemaTransformer({ pickup: false })(pickup, rule).schema.safeParse({ pickup: false }).success);
+```
+
+Prints `false` twice: the item has no `qty`, and a delivery needs an address. [Transform guide](docs/transform.md) · [React view example](examples/react-view)
+
+</details>
+
+## From an OpenAPI spec
+
+Already have an API description? `@adaptate/utils` turns its schemas into Zod, and writes Zod back out.
+
+```sh
+pnpm add @adaptate/utils
+```
+
+```ts
+import { openAPISchemaToZod, zodToOpenAPISchema } from "@adaptate/utils";
+
+const recipe = openAPISchemaToZod({
+  type: "object",
+  required: ["title"],
+  properties: { title: { type: "string", minLength: 1 }, servings: { type: "integer", minimum: 1 } },
+});
+
+console.log(recipe.safeParse({ title: "Pasta" }).success, recipe.safeParse({ servings: 2 }).success);
+console.log(zodToOpenAPISchema(recipe).required);
+```
+
+Prints `true false`, then `[ 'title' ]`.
+
+<details>
+<summary>Load a spec file, resolve <code>$ref</code>s, and handle deep or circular documents</summary>
+
+```ts
+import { writeFile } from "node:fs/promises";
+import { getDereferencedOpenAPIDocument, openAPISchemaToZod } from "@adaptate/utils/openapi";
+
+await writeFile(
+  new URL("./api-spec.json", import.meta.url),
+  JSON.stringify({
+    components: {
+      schemas: {
+        Recipe: { type: "object", required: ["title"], properties: { title: { $ref: "#/components/schemas/Title" } } },
+        Title: { type: "string", minLength: 1 },
+      },
+    },
+  }),
+);
+
+const doc = await getDereferencedOpenAPIDocument({
+  location: "filesystem",
+  callSiteURL: import.meta.url,
+  relativePathToSpecFile: "./api-spec.json",
+});
+console.log(openAPISchemaToZod(doc.components.schemas.Recipe).safeParse({ title: "" }).success);
+```
+
+Prints `false`: the `$ref` was resolved, so `minLength: 1` applies.
+
+- In-document `$ref`s use a built-in resolver. YAML needs the optional peer `js-yaml`, and remote or file `$ref`s need `@apidevtools/json-schema-ref-parser`. [Optional peers](docs/optional-peers.md)
+- The resolver and both converters walk with loops, not recursion. Tests run each of them on a document 100,000 levels deep. [Utils deep-nesting test](packages/utils/src/__tests__/deep-nesting.test.ts)
+- A `$ref` chain nested past 500 throws `RangeError`. A circular schema passed to either converter throws `RangeError` instead of running out of memory. [Local `$ref` test](packages/utils/src/__tests__/dereference-local.test.ts) · [Converter test](packages/utils/src/__tests__/openapi.test.ts)
+- Supported keywords and formats: [OpenAPI guide](docs/openapi.md)
+
+</details>
+
+## A tool call that is still typing
+
+Back to the stream. Each `TOOL_CALL_ARGS` delta returns what has arrived so far, typed and checked. When the call ends, `final` says which screens are ready.
+
+```ts
+import { z } from "zod";
+import { createAgUiPartialValidator, createStreamValidator } from "@adaptate/core/stream";
+
+const recipe = z.object({ title: z.string(), servings: z.number() }).partial();
+const views = { card: { title: true }, kitchen: { title: true, servings: true } };
+const push = createAgUiPartialValidator(recipe, views);
+
+for (const delta of ['{"title":"Pa', 'sta","serv', 'ings":2}']) {
+  console.log(push({ type: "TOOL_CALL_ARGS", toolCallId: "call-1", delta })?.partial);
+}
+
+const ready = createStreamValidator(recipe, views).final({ title: "Pasta" });
+console.log(ready.card.valid, ready.kitchen.valid);
+```
+
+Prints `{ title: 'Pa' }`, `{ title: 'Pasta' }`, `{ title: 'Pasta', servings: 2 }`, then `true false`.
+
+<details>
+<summary>Partial results, other event shapes, and render throttling</summary>
+
+- While the call is open, `results` reports whether the value so far still fits the schema. Readiness per screen comes from `final`.
+- Deltas are kept per `toolCallId`. `TOOL_CALL_END` drops that call. `TEXT_MESSAGE_CONTENT` is read by `messageId`.
+- `validateStructuredOutput({ partial, final }, schema, views)` takes TanStack AI style output.
+- `createFrameThrottle(emit)` keeps the latest value and emits it once per animation frame, or on `setTimeout(0)` without `requestAnimationFrame`.
+- `parsePartialJson` is the plain function underneath. A test reads a 100,000-level document with the last character missing. [Core deep-nesting test](packages/core/src/__tests__/deep-nesting.test.ts)
+
+[Streaming guide](docs/streaming.md) · [Streaming tool call example](examples/streaming-tool-call)
+
+</details>
+
+## Read each character once
+
+`@adaptate/core/stream` re-reads the whole buffer on every delta. `@adaptate/core/stream-incremental` keeps its place, so each new chunk is scanned once. It takes strings or bytes from any async iterable: a Node `Readable`, a Web `ReadableStream`, or a mapped SDK event stream.
+
+```ts
+import { Readable } from "node:stream";
+import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
+
+const bytes = Readable.from([new TextEncoder().encode('{"title":"Pas'), new TextEncoder().encode('ta","servings":2}')]);
+
+for await (const partial of fromAsyncIterable(bytes)) console.log(partial);
+```
+
+Prints `{ title: 'Pas' }`, then `{ title: 'Pasta', servings: 2 }`.
+
+<details>
+<summary>Same validator API, push-style feed, and the measured difference</summary>
+
+`createAgUiPartialValidator` from `@adaptate/core/stream-incremental` has the same signature as the one in `/stream`. `createPartialJsonFeed()` returns a `feed(chunk)` function for push-style sources.
+
+On the 966-character grocery order from the bench, the incremental feed makes 966 character visits. Re-parsing the growing buffer made 68,304. Property tests assert that visits equal the text length. [Measured run](docs/performance.md#measured) · [Incremental parser](docs/incremental-parser.md)
+
+</details>
+
+## Bring any Standard Schema
+
+`@adaptate/core/standard` validates through the shared `~standard.validate` interface and adds no dependency. A transformed Zod schema is a Standard Schema too.
+
+```ts
+import { z } from "zod";
+import { transformSchema } from "@adaptate/core";
+import { validateAgainstStandardSchemas } from "@adaptate/core/standard";
+
+const recipe = z.object({ title: z.string(), servings: z.number() }).partial();
+const report = await validateAgainstStandardSchemas({ title: "Pasta" }, {
+  card: transformSchema(recipe, { title: true }),
+  kitchen: transformSchema(recipe, { title: true, servings: true }),
+});
+
+console.log(report.card.valid, report.kitchen.valid);
+```
+
+Prints `true false`. [Standard Schema test](packages/core/src/__tests__/standard.test.ts)
+
+## Inside an Effect pipeline
+
+`@adaptate/core/effect` runs the same checks as typed effects. `effect@^4.0.0` is an optional peer, loaded only by this entry.
+
+```ts
+import { Effect } from "effect";
+import { z } from "zod";
+import { createEffectStreamValidator } from "@adaptate/core/effect";
+
+const recipe = z.object({ title: z.string().optional(), servings: z.number().optional() });
+const validator = createEffectStreamValidator(recipe, { card: { title: true }, kitchen: { servings: true } });
+
+const report = Effect.runSync(validator.final('{"title":"Pasta"}'));
+console.log(report.configs.card.valid, report.configs.kitchen.valid);
+```
+
+Prints `true false`.
+
+<details>
+<summary>Errors as values</summary>
+
+Bad or truncated JSON fails with `AdaptateParseError`. A value that fails the base schema fails with `AdaptateValidationError`. An unmet screen config does not fail the effect. `final(text, "card")` validates one config and fails if it is not met. [Effect guide](docs/effect.md)
+
+</details>
+
+## Types, TypeScript 7, and Zod 3 or 4
+
+- Types ship in both packages, inferred from the Zod schema you pass in. [TypeScript](docs/typescript.md)
+- CI packs the tarballs npm would get and typechecks a consumer on TypeScript 7 and 6, each with `bundler`, `node16`, and `nodenext`. [ts-consumer-check.mjs](scripts/ts-consumer-check.mjs)
+- The Zod peer range is `^3.25.0 || ^4.0.0`. CI runs the suite on the locked Zod 4 and again on `zod@latest`. [CI workflow](.github/workflows/ci.yml)
+- `@adaptate/core` needs Node `>=24` and has no `dependencies`. `@adaptate/utils` needs Node `>=20`. [Subpaths](docs/subpaths.md)
+
+## Measured, not guessed
+
+Every pull request runs two performance gates against its base commit and fails when a gated case is more than 5% slower or larger.
+
+| Gate | What it times |
+| --- | --- |
+| `bench` | `transformSchema`, `transformPartialSchema`, `parsePartialJson`, the AG-UI stream, and a 200-level transform |
+| `ab-eval` | Import, full-document validation, AG-UI and parsed-partial µs per chunk, and min and gzip bytes for every entry |
+
+<details>
+<summary>Recorded numbers</summary>
+
+- Caching the lenient partial schema took the parsed-partial check from 178.740 to 0.731 µs per chunk on the `ab-eval` runner.
+- One local `bench/ab/run.js` at commit `1a51df5` (Node 24.22.3): a parsed-partial check costs 0.835 µs per chunk against 0.606 µs for raw Zod. With Zod external, `@adaptate/core` adds 1,207 bytes gzip.
+
+Full tables, including where adaptate is slower than raw Zod: [Performance](docs/performance.md)
+
+</details>
+
+## Where to go next
+
+| You want | Read |
+| --- | --- |
+| Every guide | [Docs](docs/index.md) |
+| Each claim on this page and its test | [Proof](docs/proof.md) |
+| The generated API reference | [API](docs/api/index.md) |
+| Runnable apps | [React view](examples/react-view) · [Streaming tool call](examples/streaming-tool-call) · [Live load](examples/live-load) |
 
 ## Credits
 
-Donald E. Knuth, "Structured Programming with go to Statements", ACM Computing Surveys 6(4), 1974. The deep walks above keep their frames in an ordinary stack. The quotation is in [Performance](docs/performance.md).
+Ideas this library borrows, and where to read more.
+
+- **Donald E. Knuth, 1974.** Section 2 of [Structured Programming with go to Statements](https://doi.org/10.1145/356635.356640) turns recursion into a loop with an explicit stack. That is why a document 100,000 levels deep does not overflow. The same paper's "critical 3%" is why the gates above measure before anything is tuned.
+- **[Standard Schema](https://standardschema.dev).** One `~standard` interface shared by Zod, Valibot, and ArkType, so `@adaptate/core/standard` can check any of them without depending on one.
+- **[AG-UI](https://docs.ag-ui.com).** An open event protocol for agent UIs. Its `TOOL_CALL_ARGS` deltas, keyed by `toolCallId`, are the shape the stream validator reads.
+- **[Zod](https://zod.dev).** `z.infer` turns a schema into a type, which lets `Config<T>` reject a misspelled field before anything runs.
+- **[Effect](https://effect.website).** Failures are typed values, not thrown exceptions. `AdaptateParseError` and `AdaptateValidationError` follow that model.
+- **[json-schema-ref-parser](https://github.com/APIDevTools/json-schema-ref-parser).** The reference behaviour for `$ref` resolution. It handles remote and file `$ref`s here, and the built-in resolver keeps its depth error message.
 
 MIT

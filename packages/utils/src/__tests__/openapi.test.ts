@@ -741,3 +741,16 @@ describe('zodToOpenAPISchema (runtime shape contracts)', () => {
     expect(zodToOpenAPISchema(union)).toEqual({ anyOf: [] });
   });
 });
+
+describe('readme snippets', () => {
+  it('converts an OpenAPI schema to Zod and back', () => {
+    let recipe = openAPISchemaToZod({
+      type: 'object',
+      required: ['title'],
+      properties: { title: { type: 'string', minLength: 1 }, servings: { type: 'integer', minimum: 1 } },
+    });
+    expect(recipe.safeParse({ title: 'Pasta' }).success).toBe(true);
+    expect(recipe.safeParse({ servings: 2 }).success).toBe(false);
+    expect(zodToOpenAPISchema(recipe).required).toEqual(['title']);
+  });
+});
