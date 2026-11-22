@@ -7,7 +7,18 @@ description: "Measured cost of import, a full document, four component views, a 
 
 CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`, `deepTransform`. `deepTransform` builds one 200-level object schema outside the timed loop and times `transformSchema` only.
 
-Zod's own `safeParse` still walks a schema by recursion. The 100,000-level checks do not call it.
+Zod's own `safeParse` still walks a schema by recursion. The 100,000-level checks walk documents and partial JSON. They do not call it.
+
+| Function | Walk | Reason |
+| --- | --- | --- |
+| `completeJson`, `parsePartialJson`, `reparseFeed` | loop | Partial JSON text can nest without bound |
+| `createPartialJsonFeed` | loop | A stream chunk can deepen the same document |
+| `openAPISchemaToZod`, `zodToOpenAPISchema` | loop | An OpenAPI document is runtime input |
+| `dereferenceLocalDocument`, `deepMergeResolvedValue`, `documentContainsExternalRef` | loop | A local `$ref` document is runtime input |
+| `transformSchema`, `extendSchema` | recursive | Schema depth is the source that declares it |
+| `unwrapOptional`, `lenientSchema`, `partialSchemaFor` | recursive | Same bound. A deeper value overflows inside `safeParse` |
+| `makeConditionalSchemaTransformer`, `schemasForConfigs` | one level | They do not walk nested fields |
+| `isOptional` | one check | It does not walk children |
 
 The [#53](https://github.com/p10ns11y/adaptate/pull/53) run reported:
 
