@@ -52,7 +52,13 @@ function fixtures(z) {
   const half = JSON.parse(JSON.stringify(final));
   half.items = half.items.slice(0, 10);
   delete half.count;
-  return { schema, config, final, text, half };
+  let deepSchema = z.object({ leaf: z.string() });
+  let deepConfig = { leaf: true };
+  for (let level = 0; level < 200; level += 1) {
+    deepSchema = z.object({ nested: deepSchema });
+    deepConfig = { nested: deepConfig };
+  }
+  return { schema, config, final, text, half, deepSchema, deepConfig };
 }
 
 const cases = {
@@ -87,6 +93,9 @@ const cases = {
           delta: text.slice(i, i + 40),
         });
     }),
+  deepTransform: (m) =>
+    m.transformSchema &&
+    (() => m.transformSchema(m.fixtures.deepSchema, m.fixtures.deepConfig)),
 };
 
 function nsPerOp(fn) {
