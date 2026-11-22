@@ -193,6 +193,41 @@ flowchart TD
   copy --> check["Check that value"]
 ```
 
+`fromAsyncIterable` reads an async sequence of strings or UTF-8 bytes. Byte chunks go through `TextDecoder` with `stream: true`, and the decoder flushes after the source ends. `push` still receives a string.
+
+```ts
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { fromAsyncIterable } from "@adaptate/core/stream-incremental";
+
+await pipeline(readable, async function collect(source) {
+  for await (const partialValue of fromAsyncIterable(source)) {
+    use(partialValue);
+  }
+});
+
+async function* openAiArguments(events) {
+  for await (const event of events) {
+    const delta = event.choices?.[0]?.delta?.tool_calls?.[0]?.function?.arguments;
+    if (typeof delta === "string" && delta.length > 0) yield delta;
+  }
+}
+
+async function* anthropicInputJson(events) {
+  for await (const event of events) {
+    const delta = event.delta;
+    if (delta?.type === "input_json_delta" && typeof delta.partial_json === "string") {
+      yield delta.partial_json;
+    }
+  }
+}
+
+for await (const partialValue of fromAsyncIterable(openAiArguments(events))) use(partialValue);
+for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) use(partialValue);
+```
+
+`Readable` from Node, a Web `ReadableStream`, and either delta mapping are the same input: strings or bytes. No SDK is required.
+
 Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container, and `push` copies only the containers still open. Closed values stay the same object. `visits` is the number of characters read, which is the length of the stream. On the grocery order that is 966. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonParser` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. An empty chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
@@ -359,7 +394,7 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `createFrameThrottle` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonParser`, `createAgUiPartialValidator` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonParser`, `fromAsyncIterable`, `createAgUiPartialValidator` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError` |
 
@@ -1681,6 +1716,30 @@ description: "Exported from @adaptate/core/stream-incremental."
 [`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
 
 
+# Function: fromAsyncIterable()
+
+Source: docs/api/core/stream-incremental/functions/fromAsyncIterable.md
+
+---
+title: "Function: fromAsyncIterable()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: fromAsyncIterable()
+
+> **fromAsyncIterable**(`source`): `AsyncGenerator`\<`unknown`\>
+
+## Parameters
+
+### source
+
+`AsyncIterable`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
+
+## Returns
+
+`AsyncGenerator`\<`unknown`\>
+
+
 # stream-incremental
 
 Source: docs/api/core/stream-incremental/index.md
@@ -1700,6 +1759,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createPartialJsonParser](functions/createPartialJsonParser.md)
+- [fromAsyncIterable](functions/fromAsyncIterable.md)
 
 
 # Type Alias: PartialJsonParser
@@ -2053,6 +2113,7 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonParser()](core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonParser](core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.

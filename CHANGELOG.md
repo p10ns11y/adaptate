@@ -60,7 +60,7 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/standard`: validate with any Standard Schema (zod, Valibot, ArkType), no new dependencies.
 - `@adaptate/core/effect` (optional Effect 4 peer): `validate`, `validatePartial`, and a stream helper, with tagged `AdaptateValidationError` and `AdaptateParseError`.
 - Validation is pure, so this integration does not retry.
-- `@adaptate/core/stream-incremental`: `createPartialJsonParser` tokenizes a JSON stream once and copies only the containers still open. `visits` is the number of characters read. `createAgUiPartialValidator` on that subpath uses the tokenizer. `@adaptate/core/stream` still appends to a buffer and calls `parsePartialJson`.
+- `@adaptate/core/stream-incremental`: `createPartialJsonParser` tokenizes a JSON stream once and copies only the containers still open. `visits` is the number of characters read. `fromAsyncIterable` reads strings or UTF-8 bytes and yields each partial value. `createAgUiPartialValidator` on that subpath uses the tokenizer. `@adaptate/core/stream` still appends to a buffer and calls `parsePartialJson`.
 - `createFrameThrottle` emits the latest value on the next frame.
 
 ### Changed

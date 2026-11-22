@@ -33,6 +33,7 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonParser()](core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonParser](core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.

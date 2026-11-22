@@ -384,6 +384,7 @@ describe("createPartialJsonParser", () => {
       '{"a"{',
       '{"a"[',
       '{"a"}',
+      '"a""b"',
       ":",
       ":1",
       '{"a":]',

@@ -50,6 +50,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: StandardValidationResult\<Output\>](docs/api/core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonParser()](docs/api/core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterable()](docs/api/core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [stream-incremental](docs/api/core/stream-incremental/index.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonParser](docs/api/core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.

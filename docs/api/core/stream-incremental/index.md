@@ -13,3 +13,4 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createPartialJsonParser](functions/createPartialJsonParser.md)
+- [fromAsyncIterable](functions/fromAsyncIterable.md)

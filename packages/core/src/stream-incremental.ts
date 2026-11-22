@@ -330,6 +330,26 @@ export function createPartialJsonParser(): PartialJsonParser {
   };
 }
 
+export async function* fromAsyncIterable(
+  source: AsyncIterable<string | Uint8Array>,
+): AsyncGenerator<unknown> {
+  const parser = createPartialJsonParser();
+  const decoder = new TextDecoder();
+  for await (const sourceChunk of source) {
+    const text =
+      typeof sourceChunk === "string"
+        ? sourceChunk
+        : decoder.decode(sourceChunk, { stream: true });
+    if (text.length === 0) continue;
+    const partialValue = parser.push(text);
+    if (partialValue !== undefined) yield partialValue;
+  }
+  const flushedText = decoder.decode();
+  if (flushedText.length === 0) return;
+  const partialValue = parser.push(flushedText);
+  if (partialValue !== undefined) yield partialValue;
+}
+
 type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
 
 type AgUiSlot<TConfigs> = [
