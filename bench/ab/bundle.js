@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -131,6 +131,12 @@ function assertShape(entry, built, external) {
 export async function measureBundles(root, smokeLabel) {
   const measured = [];
   for (const entry of entries) {
+    if (
+      entry.id === "./stream-incremental" &&
+      !existsSync(resolve(root, "packages/core/build/stream-incremental.es.js"))
+    ) {
+      continue;
+    }
     const fullExternal = entry.importsEffect ? ["effect"] : [];
     const ownExternal = ["zod", "effect"];
     const full = await bundleFile(entry.file, root, fullExternal);
