@@ -43,3 +43,5 @@ push({
   delta: '{"title":"Pas',
 });
 ```
+
+Streams partial JSON without re-reading what it already saw. The run metadata and the per-chunk numbers are in [Performance](performance.md#measured).

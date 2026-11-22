@@ -27,16 +27,16 @@ Config values:
 import { z } from "zod";
 import { transformSchema, type Config } from "@adaptate/core";
 
-const schema = z
-  .object({
+const schema = z.deepPartial(
+  z.object({
     name: z.string(),
     age: z.number(),
     address: z.object({
       street: z.string(),
       city: z.string(),
     }),
-  })
-  .deepPartial();
+  }),
+);
 
 const config = {
   name: true,
@@ -46,14 +46,29 @@ const config = {
 
 const updatedSchema = transformSchema(schema, config);
 updatedSchema.parse({ name: "Davin", age: 30, address: { city: "Pettit" } });
-updatedSchema.parse({ name: "Davin", age: 30, address: { street: "Main St" } }); // throws
+const streetOnly = updatedSchema.safeParse({
+  name: "Davin",
+  age: 30,
+  address: { street: "Main St" },
+});
 ```
 
-The same config works when each field is written with `.optional()` instead of `.deepPartial()`.
+`streetOnly.success` is false: `city` is required.
+
+Zod 4 exports `z.deepPartial`. The object method `.deepPartial()` is the Zod 3 method. The same config works when each field is written with `.optional()` instead of `z.deepPartial`.
 
 `Config<T>` checks field paths at compile time, including `'*'` on arrays:
 
 ```ts
+import { z } from "zod";
+import { type Config } from "@adaptate/core";
+
+const userSchema = z.object({
+  name: z.string(),
+  address: z.object({ street: z.string(), city: z.string() }),
+  tags: z.array(z.string()),
+});
+
 const config = {
   name: true,
   address: { city: true },
@@ -88,6 +103,6 @@ Traversal, from `packages/core/src/index.ts`:
 1. An optional field is unwrapped with `.unwrap()`.
 2. Nested objects recurse with the nested config.
 3. An array `'*'` config is applied to the element schema.
-4. The new shape is merged back with `ZodObject.merge()`.
+4. The new shape is copied back with object spread into `z.object`.
 
 Fields absent from the config are kept.

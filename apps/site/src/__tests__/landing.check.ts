@@ -42,7 +42,7 @@ describe("live demo", () => {
         title: z.string().min(1),
         servings: z.number().int().min(1),
         diet: z.enum(["vegan", "keto", "any"]).optional(),
-        tags: z.array(z.string().optional()).optional(),
+        tags: z.array(z.string()).optional(),
       })"
     `);
     expect(output.type).toMatchInlineSnapshot(`
@@ -50,7 +50,7 @@ describe("live demo", () => {
         title: string;
         servings: number;
         diet?: "vegan" | "keto" | "any";
-        tags?: (string | undefined)[];
+        tags?: string[];
       }"
     `);
   });

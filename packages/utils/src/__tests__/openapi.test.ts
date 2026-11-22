@@ -69,6 +69,145 @@ describe('openAPISchemaToZod (additional branches)', () => {
   });
 });
 
+describe('openAPISchemaToZod (array items)', () => {
+  function arrayElement(schema: z.ZodType): z.ZodType {
+    let current: z.ZodType = schema;
+    if (current instanceof z.ZodOptional) {
+      current = current.unwrap() as z.ZodType;
+    }
+    if (!(current instanceof z.ZodArray)) {
+      throw new Error('expected a ZodArray');
+    }
+    return current.element as z.ZodType;
+  }
+
+  function propertySchema(schema: z.ZodType, key: string): z.ZodType {
+    if (!(schema instanceof z.ZodObject)) {
+      throw new Error('expected a ZodObject');
+    }
+    return schema.shape[key] as z.ZodType;
+  }
+
+  it('keeps array items required when the array property is not in required', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+    });
+    expect(zodSchema.parse({ tags: ['a'] })).toEqual({ tags: ['a'] });
+    expect(zodSchema.parse({})).toEqual({});
+    expect(propertySchema(zodSchema, 'tags')).toBeInstanceOf(z.ZodOptional);
+    expect(arrayElement(propertySchema(zodSchema, 'tags'))).toBeInstanceOf(z.ZodString);
+    expect(arrayElement(propertySchema(zodSchema, 'tags'))).not.toBeInstanceOf(z.ZodOptional);
+    expect(() => zodSchema.parse({ tags: [undefined] })).toThrow();
+  });
+
+  it('keeps array items required when the array property is required', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      required: ['tags'],
+      properties: {
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+    });
+    expect(zodSchema.parse({ tags: ['a'] })).toEqual({ tags: ['a'] });
+    expect(() => zodSchema.parse({})).toThrow();
+    expect(propertySchema(zodSchema, 'tags')).toBeInstanceOf(z.ZodArray);
+    expect(arrayElement(propertySchema(zodSchema, 'tags'))).toBeInstanceOf(z.ZodString);
+    expect(() => zodSchema.parse({ tags: [undefined] })).toThrow();
+  });
+
+  it('marks array items nullable only when the item schema is nullable', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string', nullable: true } },
+      },
+    });
+    expect(zodSchema.parse({ tags: ['a', null] })).toEqual({ tags: ['a', null] });
+    let item = arrayElement(propertySchema(zodSchema, 'tags'));
+    expect(item).toBeInstanceOf(z.ZodNullable);
+    expect(item).not.toBeInstanceOf(z.ZodOptional);
+    expect(() => zodSchema.parse({ tags: [undefined] })).toThrow();
+  });
+
+  it('keeps nested array items required', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      properties: {
+        grid: {
+          type: 'array',
+          items: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    });
+    expect(zodSchema.parse({ grid: [['a']] })).toEqual({ grid: [['a']] });
+    expect(zodSchema.parse({})).toEqual({});
+    let inner = arrayElement(propertySchema(zodSchema, 'grid'));
+    expect(inner).toBeInstanceOf(z.ZodArray);
+    expect(inner).not.toBeInstanceOf(z.ZodOptional);
+    expect(arrayElement(inner)).toBeInstanceOf(z.ZodString);
+    expect(arrayElement(inner)).not.toBeInstanceOf(z.ZodOptional);
+    expect(() => zodSchema.parse({ grid: [undefined] })).toThrow();
+    expect(() => zodSchema.parse({ grid: [[undefined]] })).toThrow();
+  });
+
+  it('keeps object-item required fields and optional object properties unchanged', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      properties: {
+        people: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string' },
+              age: { type: 'integer' },
+            },
+          },
+        },
+        title: { type: 'string' },
+      },
+    });
+    expect(zodSchema.parse({ people: [{ name: 'Ada' }] })).toEqual({
+      people: [{ name: 'Ada' }],
+    });
+    expect(zodSchema.parse({ title: 'x' })).toEqual({ title: 'x' });
+    expect(zodSchema.parse({})).toEqual({});
+    expect(propertySchema(zodSchema, 'title')).toBeInstanceOf(z.ZodOptional);
+    let item = arrayElement(propertySchema(zodSchema, 'people'));
+    expect(item).toBeInstanceOf(z.ZodObject);
+    expect(item).not.toBeInstanceOf(z.ZodOptional);
+    expect(propertySchema(item, 'name')).toBeInstanceOf(z.ZodString);
+    expect(propertySchema(item, 'age')).toBeInstanceOf(z.ZodOptional);
+    expect(() => zodSchema.parse({ people: [{}] })).toThrow();
+    expect(() => zodSchema.parse({ people: [undefined] })).toThrow();
+  });
+});
+
+describe('openAPISchemaToZod (optional properties)', () => {
+  it('wraps a non-required property in optional once', () => {
+    let zodSchema = openAPISchemaToZod({
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        servings: { type: 'integer' },
+      },
+    });
+    if (!(zodSchema instanceof z.ZodObject)) {
+      throw new Error('expected a ZodObject');
+    }
+    let servings = zodSchema.shape.servings as z.ZodType;
+    expect(servings).toBeInstanceOf(z.ZodOptional);
+    let inner = (servings as z.ZodOptional).unwrap() as z.ZodType;
+    expect(inner).toBeInstanceOf(z.ZodNumber);
+    expect(inner).not.toBeInstanceOf(z.ZodOptional);
+    expect(zodSchema.parse({ title: 'Pasta' })).toEqual({ title: 'Pasta' });
+  });
+});
+
 describe('openAPISchemaToZod (feature-complete)', () => {
   it('should convert enum schema', () => {
     const schema = { enum: ['active', 'inactive'] };
@@ -739,5 +878,18 @@ describe('zodToOpenAPISchema (runtime shape contracts)', () => {
     let union = z.union([z.literal('a'), z.literal('b')]);
     delete (union as any).options;
     expect(zodToOpenAPISchema(union)).toEqual({ anyOf: [] });
+  });
+});
+
+describe('readme snippets', () => {
+  it('converts an OpenAPI schema to Zod and back', () => {
+    let recipe = openAPISchemaToZod({
+      type: 'object',
+      required: ['title'],
+      properties: { title: { type: 'string', minLength: 1 }, servings: { type: 'integer', minimum: 1 } },
+    });
+    expect(recipe.safeParse({ title: 'Pasta' }).success).toBe(true);
+    expect(recipe.safeParse({ servings: 2 }).success).toBe(false);
+    expect(zodToOpenAPISchema(recipe).required).toEqual(['title']);
   });
 });

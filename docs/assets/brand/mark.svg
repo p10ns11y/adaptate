@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="adaptate">
+  <defs>
+    <linearGradient id="eG" x1="16" y1="25" x2="16" y2="7" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D19057"/>
+      <stop offset="0.42" stop-color="#FEF2DC"/>
+      <stop offset="1" stop-color="#C4C6C5"/>
+    </linearGradient>
+    <linearGradient id="eBurn" x1="16" y1="25.6" x2="16" y2="20.6" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FEF2DC"/>
+      <stop offset="1" stop-color="#D19057"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#0A0D12"/>
+  <path d="M8.0 23.55C9.35 21.5 13.35 11.55 14.4 7.15" fill="none" stroke="url(#eG)" stroke-width="3.3" stroke-linecap="round"/>
+  <path d="M24.0 23.55C22.65 21.5 18.65 11.55 17.6 7.15" fill="none" stroke="url(#eG)" stroke-width="3.3" stroke-linecap="round"/>
+  <ellipse cx="16" cy="23.9" rx="3.05" ry="2.25" fill="url(#eBurn)"/>
+  <circle cx="16" cy="23.65" r="1.1" fill="#FEF2DC"/>
+</svg>
