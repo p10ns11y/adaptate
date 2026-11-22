@@ -1,0 +1,19 @@
+{
+  "name": "@adaptate/api-docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Generate docs/api from the published declaration files.",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "devDependencies": {
+    "typedoc": "0.28.20",
+    "typedoc-plugin-frontmatter": "1.3.3",
+    "typedoc-plugin-markdown": "4.14.1",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,3 +1,8 @@
+---
+title: "Transform"
+description: "One Zod schema, and a config that marks which fields each screen requires."
+---
+
 # Transform
 
 `transformSchema(schema, config)` returns a Zod schema with the configured fields required. Unmentioned fields stay as they were.

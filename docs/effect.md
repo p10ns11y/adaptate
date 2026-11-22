@@ -1,3 +1,8 @@
+---
+title: "Effect"
+description: "Run the same checks in an Effect pipeline. Effect is an optional peer."
+---
+
 # Effect
 
 `@adaptate/core/effect` needs the optional peer `effect@^4.0.0`. Importing `@adaptate/core` or `@adaptate/core/stream` does not load `effect`. Validation is not retried.

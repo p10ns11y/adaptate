@@ -77,16 +77,59 @@ function listen(rootDir, pages) {
   });
 }
 
-async function readPage(page, url) {
-  const errors = [];
+function pageFailureText(pageErrors, consoleErrors) {
+  return [
+    ...pageErrors.map((entry) => `pageerror: ${entry}`),
+    ...consoleErrors.map((entry) => `console: ${entry}`),
+  ].join("\n");
+}
+
+export async function readPage(page, url) {
+  const pageErrors = [];
+  const consoleErrors = [];
+  let settled = false;
+  let rejectFailure = () => {};
+  const failed = new Promise((_, reject) => {
+    rejectFailure = reject;
+  });
+  failed.catch(() => {});
+  const note = (kind, text) => {
+    if (kind === "pageerror") pageErrors.push(text);
+    else consoleErrors.push(text);
+    console.error(`${kind}: ${text}`);
+    if (settled) return;
+    settled = true;
+    rejectFailure(new Error(pageFailureText(pageErrors, consoleErrors)));
+  };
   page.on("pageerror", (error) => {
-    errors.push(String(error));
+    const text = error instanceof Error ? error.stack || error.message : String(error);
+    note("pageerror", text);
+  });
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (text.includes("favicon.ico")) return;
+    note("console", text);
   });
   await page.goto(url, { waitUntil: "load" });
-  await page.waitForFunction(() => document.body.dataset.ready === "1", null, {
-    timeout: 120000,
-  });
-  if (errors.length > 0) throw new Error(errors.join("\n"));
+  try {
+    await Promise.race([
+      page.waitForFunction(() => document.body.dataset.ready === "1", null, {
+        timeout: 120000,
+      }),
+      failed,
+    ]);
+  } catch (error) {
+    settled = true;
+    const detail = pageFailureText(pageErrors, consoleErrors);
+    const message = error instanceof Error ? error.message : String(error);
+    if (detail.length === 0) throw error;
+    if (message === detail) throw error;
+    throw new Error(`${detail}\n${message}`);
+  }
+  settled = true;
+  const detail = pageFailureText(pageErrors, consoleErrors);
+  if (detail.length > 0) throw new Error(detail);
   return JSON.parse(await page.locator("body").innerText());
 }
 
@@ -149,8 +192,10 @@ export async function measureBrowser() {
         coldMedianMs: median(cold[name]),
         coldP95Ms: percentile(cold[name], 0.95),
         validationsPerSec: work[name].validationsPerSec,
+        viewsPerSec: work[name].viewsPerSec,
         agUiMicros: work[name].agUiMicros,
         partialMicros: work[name].partialMicros,
+        repairMicros: work[name].repairMicros,
         heapAfterBytes: null,
         heapDeltaBytes: null,
         heapCollector: null,

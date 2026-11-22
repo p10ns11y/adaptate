@@ -7,7 +7,7 @@ import {
   openAPISchemaToZod,
 } from "#utils/openapi";
 
-import { transformSchema, makeConditionalSchemaTransformer } from "../";
+import { transformSchema, makeConditionalSchemaTransformer, type Config } from "../";
 
 describe("transformSchema", () => {
   it("should make properties required based on the config", async () => {
@@ -525,5 +525,16 @@ describe("makeConditionalSchemaTransformer", () => {
     const result = makeConditionalSchemaTransformer(data)(schema, config);
 
     expect(result.schema).toBe(schema);
+  });
+});
+
+describe("readme inferred type", () => {
+  it("checks the card config against the inferred recipe type", () => {
+    let recipe = z.object({ title: z.string(), servings: z.number() });
+    type Recipe = z.infer<typeof recipe>;
+    let card = { title: true } satisfies Config<Recipe>;
+    let cardSchema = transformSchema(recipe.partial(), card);
+    expect(cardSchema.safeParse({ title: "Pas" }).success).toBe(true);
+    expect(cardSchema.safeParse({}).success).toBe(false);
   });
 });

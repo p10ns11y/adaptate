@@ -33,7 +33,8 @@
     "lint:fix": "pnpm exec oxlint --fix --type-aware -c .oxlintrc.json ./packages/core/src ./packages/utils/src",
     "lint:ox": "oxlint --type-aware -c .oxlintrc.json ./packages/core/src ./packages/utils/src",
     "lint:deprecation": "oxlint --type-aware -c .oxlintrc.json --deny typescript/no-deprecated ./packages/core/src ./packages/utils/src",
-    "bench:ab": "node bench/ab/run.js"
+    "bench:ab": "node bench/ab/run.js",
+    "docs:api": "pnpm --filter @adaptate/api-docs generate"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

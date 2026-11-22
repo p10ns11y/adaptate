@@ -194,5 +194,20 @@ export async function agree() {
       );
     }
   }
+  const cardOnly = {
+    orderId: orderDocument.orderId,
+    customer: { name: orderDocument.customer.name },
+  };
+  for (const app of [apps.zod, apps.adaptate, apps.valibot]) {
+    if (!app.validateViews(orderDocument)) {
+      throw new Error(`${app.name} rejected the full order on every view`);
+    }
+    if (app.validateViews({})) {
+      throw new Error(`${app.name} accepted an empty object on every view`);
+    }
+    if (app.validateViews(cardOnly)) {
+      throw new Error(`${app.name} accepted a card-only order on every view`);
+    }
+  }
   return { chunks: deltas.length, bytes: toolCallDeltas(orderDocument).bytes };
 }

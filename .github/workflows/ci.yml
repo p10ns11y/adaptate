@@ -36,10 +36,23 @@ jobs:
       - name: Build
         run: npx turbo run build
 
+      - name: React view example
+        run: pnpm --filter adaptate-react-view test
+
       - name: Verify @adaptate/core and @adaptate/utils publish types
         run: |
           node scripts/verify-published-types.mjs packages/core
           node scripts/verify-published-types.mjs packages/utils
+
+      - name: API docs match the published declarations
+        run: |
+          pnpm docs:api
+          node --test tools/api-docs/specifier-check.mjs
+          if [ -n "$(git status --porcelain -- docs/api llms.txt llms-full.txt)" ]; then
+            git status --porcelain -- docs/api llms.txt llms-full.txt
+            git diff -- docs/api llms.txt llms-full.txt
+            exit 1
+          fi
 
   zod-latest:
     runs-on: ubuntu-latest
@@ -61,8 +74,8 @@ jobs:
           corepack enable
           corepack prepare pnpm@11.1.1 --activate
           pnpm install --frozen-lockfile --ignore-scripts
-          pnpm -r update zod@latest --ignore-scripts
-          pnpm -r exec node -e "console.log(require('zod/package.json').version)"
+          pnpm -r --filter '!@adaptate/api-docs' update zod@latest --ignore-scripts
+          pnpm -r --filter '!@adaptate/api-docs' exec node -e "console.log(require('zod/package.json').version)"
 
       - name: Test on latest zod
         run: pnpm test

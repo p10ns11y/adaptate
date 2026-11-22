@@ -161,6 +161,36 @@ rows.push(
   ),
 );
 
+console.error("views");
+rows.push(
+  judge(
+    "adaptate views/sec",
+    () =>
+      pair(
+        () =>
+          measureOnce(
+            baseApps.adaptate,
+            workload.deltas,
+            basePartials,
+            gateBudgetMs,
+            nodeNowNs,
+            "views",
+          ).viewsPerSec,
+        () =>
+          measureOnce(
+            headApps.adaptate,
+            workload.deltas,
+            headPartials,
+            gateBudgetMs,
+            nodeNowNs,
+            "views",
+          ).viewsPerSec,
+      ),
+    false,
+    false,
+  ),
+);
+
 console.error("stream");
 rows.push(
   judge(

@@ -1,3 +1,8 @@
+---
+title: "Optional peers"
+description: "effect, js-yaml, and the ref parser load only when that code is imported."
+---
+
 # Optional peers
 
 | Package | Peer | When it loads |

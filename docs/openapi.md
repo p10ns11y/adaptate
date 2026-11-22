@@ -1,3 +1,8 @@
+---
+title: "OpenAPI"
+description: "Turn an OpenAPI schema into Zod, and write a Zod schema back out."
+---
+
 # OpenAPI
 
 `@adaptate/utils` converts OpenAPI schemas and Zod schemas, and loads a spec. Peer: `zod@^3.25.0 || ^4.0.0`. See [Optional peers](optional-peers.md) for YAML and remote `$ref`s.

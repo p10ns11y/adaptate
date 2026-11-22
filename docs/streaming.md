@@ -1,3 +1,8 @@
+---
+title: "Streaming"
+description: "Check a tool call while the JSON is still arriving."
+---
+
 # Streaming
 
 `@adaptate/core/stream` checks a partial document against each named config while text is still arriving. `zod` is the only peer.

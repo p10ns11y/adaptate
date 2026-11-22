@@ -1,3 +1,8 @@
+---
+title: "Performance"
+description: "Measured cost of import, a full document, four component views, a streaming check, and bundle size."
+---
+
 # Performance
 
 CI compares a pull request with its base (`scripts/bench-compare.mjs`) and fails when any case is more than 5% slower (limit `1.05`). Cases: `transformSchema`, `transformPartialSchema`, `parsePartialJson`, `agUiStream`.
@@ -48,17 +53,20 @@ pnpm --filter @adaptate/core build && node bench/ab/run.js
 
 Where the work is not the same:
 
-- AG-UI: B appends the delta, repairs JSON with `parsePartialJson` on the whole buffer, then `safeParse`s a lenient schema cached on the base schema. A and C `safeParse` a partial that was already parsed. For A and C that number is the parsed-partial number. JSON repair is the AG-UI row minus the parsed-partial row. That difference is two medians, not a separate clock, and it is not gated.
+- AG-UI: B appends the delta, repairs JSON with `parsePartialJson` on the whole buffer, then `safeParse`s a lenient schema cached on the base schema. A and C do not repair partial JSON. They need a complete value, so the chart marks them `no repair: needs complete JSON` instead of drawing the parsed-partial time on that row. `repairMicros` clocks `parsePartialJson` on the growing buffer, without the check. It is recorded and is not gated. Repair re-parses the whole growing text each chunk; an incremental parser is planned.
 - Parsed partial: the same value. B reuses one lenient schema per base schema (`WeakMap`) and `safeParse`s it. A and C reuse one static all-optional schema. The `ab-eval` gate names this row `adaptate cached partial us/chunk` and fails when head is more than 5% slower than base.
 - `./standard` and `./effect` are bundle rows only. The timed app does not call the effect wrapper.
 - Valibot uses its own schemas for the same accept/reject rules.
 - `createStreamValidator.final()` is not the full-document row. The validator builds one `transformSchema` result per config when it is created and reuses it. A direct `transformSchema` call still builds a schema each time, which is what the full-document row does once, outside the timed loop.
+- Four views per render: card, line items, delivery, and receipt. The schemas are built once. Each timed render parses the grocery order with all four. Zod and Valibot use static schemas for those fields. Adaptate calls `transformSchema` on one partial schema. The rate is renders per second (`viewsPerSec`). [`agree.js`](../bench/ab/agree.js) requires the full order to pass every view, and an empty object or a card-only object to fail. This row is recorded and is not gated. The README chart does not draw it.
 
-The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
+The `ab-eval` job gates Node only, head build against the base commit, and fails above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, cached parsed-partial µs/chunk, and min plus gzip bytes for `.`, `./stream`, `./standard`, and `./effect` (full bundle and zod-external). Timings are interleaved and re-measured up to three times. Bundle bytes are not re-measured. Import p95, JSON repair, four views per render, heap after `node --expose-gc`, the raw-zod control rows, Bun, and Chromium are uploaded with the job summary and are not gated. A positive time in B vs A is slower. A negative validations/sec is slower.
 
 On the same runner, the gate compared `233b1ef17f994088cc5687c0c5ea61ff7a7751a9` with the base commit (no schema cache). Parsed-partial went from 178.740 µs/chunk to 0.731 µs/chunk (ratio 0.004). AG-UI went from 206.137 µs/chunk to 20.571 µs/chunk (ratio 0.100). Full-document rate went from 3120065.726/s to 3263762.591/s (ratio 1.046). Import median went from 36.832 ms to 36.476 ms (ratio 0.990). The gate passed (limit 1.05).
 
-The table below is the A/B of that same head against raw Zod and Valibot. It is not the gate. Absolute rates are not comparable to the earlier run [44952593670](https://github.com/p10ns11y/adaptate/actions/runs/44952593670), which was a different runner. JSON repair on Node is the AG-UI median minus the parsed-partial median, 24.084 − 0.667 = 23.417 µs/chunk. That is two medians, not a separate clock.
+The table below is the A/B of that same head against raw Zod and Valibot. It is not the gate. Absolute rates are not comparable to the earlier run [44952593670](https://github.com/p10ns11y/adaptate/actions/runs/44952593670), which was a different runner. The AG-UI row in that table is the full push. For A and C that full push is the parsed-partial check, because they have no repair step.
+
+The README chart's JSON repair and check are both from Node v24.22.3 in job [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710) (commit `ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db`): repair 34.935 µs/chunk, check 1.302 µs/chunk. Zod and Valibot are `no repair: needs complete JSON`. Repair re-parses the whole growing text each chunk; an incremental parser is planned.
 
 Node 24.22.3, Bun 1.4.5, and Chromium 159.0.8154.6 on `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`, job [ab-eval](https://github.com/p10ns11y/adaptate/actions/runs/44956631113), artifact `ab-eval-results`.
 
@@ -95,4 +103,4 @@ Workload: grocery order, 966 bytes, 41 `TOOL_CALL_ARGS` deltas of 24 characters.
 | `./effect` min / gzip, effect external | esbuild 0.28.2 | 455,377 / 93,666 | 458,129 / 94,369 | 2,752 / 703 B (+0.751% gzip) | — |
 | `./effect` own min / gzip, zod external, effect external | esbuild 0.28.2 | — | 4,221 / 1,713 | +4,221 / +1,713 B | — |
 
-These numbers were recorded from `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`. A later docs-only commit does not replace them. Gate on that run: PASS (limit 1.05).
+The table above was recorded from `233b1ef17f994088cc5687c0c5ea61ff7a7751a9`. Gate on that run: PASS (limit 1.05). The README chart is one later run, commit `ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db`, job [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710). [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) reads [`assets/perf-run.json`](../assets/perf-run.json) and fails if a field is missing. Every panel, including JSON repair and the check, comes from that file.
