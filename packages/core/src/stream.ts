@@ -95,30 +95,71 @@ export type AgUiDeltaEvent = {
   messageId?: string;
 };
 
+type AgUiSlot<TConfigs> = [
+  (chunk: string) => unknown,
+  unknown,
+  Results<TConfigs> | undefined,
+];
+
+export type PartialJsonFeed = (chunk: string) => unknown;
+
+export function reparseFeed(): PartialJsonFeed {
+  let buffer = "";
+  return (chunk) => {
+    buffer += chunk;
+    return parsePartialJson(buffer);
+  };
+}
+
+export function agUiValidatorWith<
+  TSchema extends z.ZodType,
+  TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
+>(schema: TSchema, configs: TConfigs, makeFeed: () => PartialJsonFeed) {
+  const validator = createStreamValidator(schema, configs);
+  const slots = new Map<string, AgUiSlot<TConfigs>>();
+  const push = function push(event: AgUiDeltaEvent):
+    | {
+        id: string;
+        partial: DeepPartial<z.infer<TSchema>>;
+        results: Results<TConfigs>;
+      }
+    | undefined {
+    const kind = event.type;
+    const id = kind[1] === "O" ? event.toolCallId : event.messageId;
+    const tail = kind.at(-1);
+    if (tail === "D") {
+      if (id !== undefined) slots.delete(id);
+      return undefined;
+    }
+    if ((tail !== "S" && tail !== "T") || id === undefined || typeof event.delta !== "string") {
+      return undefined;
+    }
+    let slot = slots.get(id);
+    if (!slot) slots.set(id, (slot = [makeFeed(), undefined, undefined]));
+    const value = slot[0](event.delta);
+    if (value === undefined) return undefined;
+    if (value !== slot[1]) {
+      slot[2] = validator.partial((slot[1] = value) as DeepPartial<z.infer<TSchema>>);
+    }
+    return {
+      id,
+      partial: value as DeepPartial<z.infer<TSchema>>,
+      results: slot[2] as Results<TConfigs>,
+    };
+  };
+  function close(id: string) {
+    slots.delete(id);
+  }
+  const api = push as typeof push & { close(id: string): void };
+  api.close = close;
+  return api;
+}
+
 export function createAgUiPartialValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
-  const validator = createStreamValidator(schema, configs);
-  const buffers = new Map<string, string>();
-  return function push(event: AgUiDeltaEvent) {
-    const id =
-      event.type === "TOOL_CALL_ARGS"
-        ? event.toolCallId
-        : event.type === "TEXT_MESSAGE_CONTENT"
-          ? event.messageId
-          : undefined;
-    if (id === undefined || typeof event.delta !== "string") return undefined;
-    const text = (buffers.get(id) ?? "") + event.delta;
-    buffers.set(id, text);
-    const partial = parsePartialJson(text);
-    if (partial === undefined) return undefined;
-    return {
-      id,
-      partial: partial as DeepPartial<z.infer<TSchema>>,
-      results: validator.partial(partial as DeepPartial<z.infer<TSchema>>),
-    };
-  };
+  return agUiValidatorWith(schema, configs, reparseFeed);
 }
 
 type FrameClock = (callback: () => void) => number;

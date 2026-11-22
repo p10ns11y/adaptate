@@ -7,10 +7,10 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Type Aliases
 
-- [PartialJsonParser](type-aliases/PartialJsonParser.md)
+- [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
 
 ## Functions
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
-- [createPartialJsonParser](functions/createPartialJsonParser.md)
+- [createPartialJsonFeed](functions/createPartialJsonFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)

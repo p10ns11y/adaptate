@@ -5,7 +5,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 # Function: createAgUiPartialValidator()
 
-> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): (`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): ((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: \{ \[K in string \| number \| symbol\]: PartialValidationResult \}; \} \| `undefined`) & `object`
 
 ## Type Parameters
 
@@ -29,4 +29,4 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Returns
 
-(`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: \{ \[K in string \| number \| symbol\]: PartialValidationResult \}; \} \| `undefined`) & `object`

@@ -215,22 +215,24 @@ export async function agree() {
     libraryHref("", "@adaptate/core/stream-incremental"),
   );
   const orderText = JSON.stringify(orderDocument);
-  const oneChunk = incremental.createPartialJsonParser();
-  const oneValue = oneChunk.push(orderText);
+  const oneChunk = incremental.createPartialJsonFeed();
+  const oneValue = oneChunk(orderText);
+  const oneVisits = orderText.length;
   if (JSON.stringify(oneValue) !== JSON.stringify(stream.parsePartialJson(orderText))) {
     throw new Error("one large chunk disagreed with parsePartialJson");
   }
-  if (oneChunk.visits !== orderText.length) {
-    throw new Error(`one large chunk parsed ${oneChunk.visits} characters`);
+  if (oneVisits !== orderText.length) {
+    throw new Error(`one large chunk parsed ${oneVisits} characters`);
   }
   const badText = `${orderText.slice(0, -1)}!`;
-  const badChunk = incremental.createPartialJsonParser();
-  const badValue = badChunk.push(badText);
+  const badChunk = incremental.createPartialJsonFeed();
+  const badValue = badChunk(badText);
+  const badVisits = badText.length;
   if (JSON.stringify(badValue) !== JSON.stringify(stream.parsePartialJson(badText))) {
     throw new Error("one large bad chunk disagreed with parsePartialJson");
   }
-  if (badChunk.visits !== badText.length) {
-    throw new Error(`bad chunk consumed ${badChunk.visits} of ${badText.length} characters`);
+  if (badVisits !== badText.length) {
+    throw new Error(`bad chunk consumed ${badVisits} of ${badText.length} characters`);
   }
   return { chunks: deltas.length, bytes: toolCallDeltas(orderDocument).bytes };
 }

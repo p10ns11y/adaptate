@@ -152,7 +152,7 @@ description: "Check a tool call while the JSON is still arriving."
 
 `validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. Other event types return `undefined`. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once. See [Incremental partial JSON](incremental-parser.md).
+`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`. See [Incremental partial JSON](incremental-parser.md).
 
 ```ts
 import { z } from "zod";
@@ -228,7 +228,7 @@ for await (const partialValue of fromAsyncIterable(anthropicInputJson(events))) 
 
 `Readable` from Node, a Web `ReadableStream`, and either delta mapping are the same input: strings or bytes. No SDK is required.
 
-Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container, and `push` copies only the containers still open. Closed values stay the same object. `visits` is the number of characters read, which is the length of the stream. On the grocery order that is 966. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonParser` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. An empty chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
+Each chunk is tokenized once. A finished string, number, literal, or member is appended to the open container. An open string keeps the decoded prefix and any pending escape, so a push reads only the new characters. `push` copies the deepest open container and reuses the cached copies along the spine. Closed values stay the same object. On the grocery order the caller reads 966 characters. A full rescan of the buffer was 68,304 character visits. `parsePartialJson` still walks a whole prefix, and `@adaptate/core/stream` keeps that path. `createPartialJsonFeed` and `createAgUiPartialValidator` on `@adaptate/core/stream-incremental` use the tokenizer. A value is checked with the lenient partial. A whitespace chunk keeps the previous value and its check. `createFrameThrottle` stays on `@adaptate/core/stream`. It keeps the latest value and emits it on the next frame, or on `setTimeout(0)` when there is no `requestAnimationFrame`.
 
 
 # OpenAPI
@@ -334,7 +334,7 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 
 `validatePartial(schema, configs, partial)` fails on the first config that has errors, keeping that config's Zod issues. A thrown `ZodError` is kept as issues. Any other thrown cause becomes one custom issue with the error message.
 
-`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`.
+`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`. Pass a third argument, `makeFeed`, and those two methods call that feed instead. Omit it and they keep the re-parse feed.
 
 
 # TypeScript
@@ -394,7 +394,7 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `createFrameThrottle` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonParser`, `fromAsyncIterable`, `createAgUiPartialValidator` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError` |
 
@@ -595,7 +595,7 @@ Each sentence on the front page maps to something in the repo.
 | The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
 | CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
 | Node v24.22.3. Commit 1a51df5. One local node bench/ab/run.js | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn. AG-UI on `@adaptate/core/stream-incremental` is 3.023 µs/chunk |
-| A partial JSON stream is tokenized once on `@adaptate/core/stream-incremental` | [`createPartialJsonParser`](../packages/core/src/stream-incremental.ts) appends each finished value and copies only the open containers. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix, and `@adaptate/core/stream` keeps that path. The grocery order is 966 characters, and `visits` is 966. A full rescan was 68,304 character visits |
+| A partial JSON stream is tokenized once on `@adaptate/core/stream-incremental` | [`createPartialJsonFeed`](../packages/core/src/stream-incremental.ts) appends each finished value and copies the deepest open container plus the spine. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix, and `@adaptate/core/stream` keeps that path. The grocery order is 966 characters. A full rescan was 68,304 character visits |
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
 
@@ -817,7 +817,7 @@ description: "Exported from @adaptate/core/effect."
 
 # Function: createEffectStreamValidator()
 
-> **createEffectStreamValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): `object`
+> **createEffectStreamValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`, `makeFeed?`): `object`
 
 ## Type Parameters
 
@@ -838,6 +838,10 @@ description: "Exported from @adaptate/core/effect."
 ### configs
 
 `TConfigs`
+
+### makeFeed?
+
+() => [`PartialJsonFeed`](../../stream/type-aliases/PartialJsonFeed.md)
 
 ## Returns
 
@@ -1671,7 +1675,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 # Function: createAgUiPartialValidator()
 
-> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): (`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): ((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: \{ \[K in string \| number \| symbol\]: PartialValidationResult \}; \} \| `undefined`) & `object`
 
 ## Type Parameters
 
@@ -1695,25 +1699,25 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Returns
 
-(`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: \{ \[K in string \| number \| symbol\]: PartialValidationResult \}; \} \| `undefined`) & `object`
 
 
-# Function: createPartialJsonParser()
+# Function: createPartialJsonFeed()
 
-Source: docs/api/core/stream-incremental/functions/createPartialJsonParser.md
+Source: docs/api/core/stream-incremental/functions/createPartialJsonFeed.md
 
 ---
-title: "Function: createPartialJsonParser()"
+title: "Function: createPartialJsonFeed()"
 description: "Exported from @adaptate/core/stream-incremental."
 ---
 
-# Function: createPartialJsonParser()
+# Function: createPartialJsonFeed()
 
-> **createPartialJsonParser**(): [`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
+> **createPartialJsonFeed**(): [`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
 
 ## Returns
 
-[`PartialJsonParser`](../type-aliases/PartialJsonParser.md)
+[`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
 
 
 # Function: fromAsyncIterable()
@@ -1753,49 +1757,79 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Type Aliases
 
-- [PartialJsonParser](type-aliases/PartialJsonParser.md)
+- [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
 
 ## Functions
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
-- [createPartialJsonParser](functions/createPartialJsonParser.md)
+- [createPartialJsonFeed](functions/createPartialJsonFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)
 
 
-# Type Alias: PartialJsonParser
+# Type Alias: PartialJsonFeed
 
-Source: docs/api/core/stream-incremental/type-aliases/PartialJsonParser.md
+Source: docs/api/core/stream-incremental/type-aliases/PartialJsonFeed.md
 
 ---
-title: "Type Alias: PartialJsonParser"
+title: "Type Alias: PartialJsonFeed"
 description: "Exported from @adaptate/core/stream-incremental."
 ---
 
-# Type Alias: PartialJsonParser
+# Type Alias: PartialJsonFeed
 
-> **PartialJsonParser** = `object`
+> **PartialJsonFeed** = (`chunk`) => `unknown`
 
-## Properties
+## Parameters
 
-### visits
-
-> **visits**: `number`
-
-## Methods
-
-### push()
-
-> **push**(`chunk`): `unknown`
-
-#### Parameters
-
-##### chunk
+### chunk
 
 `string`
 
-#### Returns
+## Returns
 
 `unknown`
+
+
+# Function: agUiValidatorWith()
+
+Source: docs/api/core/stream/functions/agUiValidatorWith.md
+
+---
+title: "Function: agUiValidatorWith()"
+description: "Exported from @adaptate/core/stream."
+---
+
+# Function: agUiValidatorWith()
+
+> **agUiValidatorWith**\<`TSchema`, `TConfigs`\>(`schema`, `configs`, `makeFeed`): ((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`) & `object`
+
+## Type Parameters
+
+### TSchema
+
+`TSchema` *extends* `ZodType`\<`unknown`, `unknown`, `$ZodTypeInternals`\<`unknown`, `unknown`\>\>
+
+### TConfigs
+
+`TConfigs` *extends* `Record`\<`string`, [`Config`](../../index/type-aliases/Config.md)\<[`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>\>\>
+
+## Parameters
+
+### schema
+
+`TSchema`
+
+### configs
+
+`TConfigs`
+
+### makeFeed
+
+() => [`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
+
+## Returns
+
+((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`) & `object`
 
 
 # Function: createAgUiPartialValidator()
@@ -1809,7 +1843,7 @@ description: "Exported from @adaptate/core/stream."
 
 # Function: createAgUiPartialValidator()
 
-> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): (`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+> **createAgUiPartialValidator**\<`TSchema`, `TConfigs`\>(`schema`, `configs`): ((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`) & `object`
 
 ## Type Parameters
 
@@ -1833,7 +1867,7 @@ description: "Exported from @adaptate/core/stream."
 
 ## Returns
 
-(`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`
+((`event`) => \{ `id`: `string`; `partial`: [`DeepPartial`](../../index/type-aliases/DeepPartial.md)\<`output`\<`TSchema`\>\>; `results`: `Results`\<`TConfigs`\>; \} \| `undefined`) & `object`
 
 
 # Function: createFrameThrottle()
@@ -1956,6 +1990,24 @@ description: "Exported from @adaptate/core/stream."
 `unknown`
 
 
+# Function: reparseFeed()
+
+Source: docs/api/core/stream/functions/reparseFeed.md
+
+---
+title: "Function: reparseFeed()"
+description: "Exported from @adaptate/core/stream."
+---
+
+# Function: reparseFeed()
+
+> **reparseFeed**(): [`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
+
+## Returns
+
+[`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
+
+
 # Function: validateStructuredOutput()
 
 Source: docs/api/core/stream/functions/validateStructuredOutput.md
@@ -2026,13 +2078,16 @@ description: "Exported from @adaptate/core/stream."
 ## Type Aliases
 
 - [AgUiDeltaEvent](type-aliases/AgUiDeltaEvent.md)
+- [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
 
 ## Functions
 
+- [agUiValidatorWith](functions/agUiValidatorWith.md)
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createFrameThrottle](functions/createFrameThrottle.md)
 - [createStreamValidator](functions/createStreamValidator.md)
 - [parsePartialJson](functions/parsePartialJson.md)
+- [reparseFeed](functions/reparseFeed.md)
 - [validateStructuredOutput](functions/validateStructuredOutput.md)
 
 
@@ -2074,6 +2129,30 @@ description: "Exported from @adaptate/core/stream."
 > **type**: `string`
 
 
+# Type Alias: PartialJsonFeed
+
+Source: docs/api/core/stream/type-aliases/PartialJsonFeed.md
+
+---
+title: "Type Alias: PartialJsonFeed"
+description: "Exported from @adaptate/core/stream."
+---
+
+# Type Alias: PartialJsonFeed
+
+> **PartialJsonFeed** = (`chunk`) => `unknown`
+
+## Parameters
+
+### chunk
+
+`string`
+
+## Returns
+
+`unknown`
+
+
 # API
 
 Source: docs/api/index.md
@@ -2112,15 +2191,18 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardResult\<Output\>](core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
-- [Function: createPartialJsonParser()](core/stream-incremental/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
-- [Type Alias: PartialJsonParser](core/stream-incremental/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.
 - [Function: createStreamValidator()](core/stream/functions/createStreamValidator.md): Exported from @adaptate/core/stream.
 - [Function: parsePartialJson()](core/stream/functions/parsePartialJson.md): Exported from @adaptate/core/stream.
+- [Function: reparseFeed()](core/stream/functions/reparseFeed.md): Exported from @adaptate/core/stream.
 - [Function: validateStructuredOutput()](core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
+- [Type Alias: PartialJsonFeed](core/stream/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream.
 
 ## @adaptate/utils
 

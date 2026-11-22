@@ -1,105 +1,135 @@
 import { z } from "zod";
 
 import { type Config } from "./index.js";
-import {
-  type DeepPartial,
-  type PartialValidationResult,
-} from "./partial.js";
-import {
-  createStreamValidator,
-  type AgUiDeltaEvent,
-} from "./stream.js";
+import { type DeepPartial } from "./partial.js";
+import { agUiValidatorWith } from "./stream.js";
 
 const frameItems = 0;
 const frameArray = 1;
 const framePhase = 2;
 const frameKey = 3;
 const frameLink = 4;
+const frameRevision = 5;
+const frameCached = 6;
+const frameCachedRevision = 7;
 const phaseKey = 0;
 const phaseColon = 1;
 const phaseValue = 2;
 const phaseComma = 3;
 
 type Container = unknown[] | Record<string, unknown>;
-type OpenFrame = [Container, boolean, number, string | undefined, string];
+type OpenFrame = [
+  Container,
+  boolean,
+  number,
+  string | undefined,
+  string,
+  number,
+  Container | undefined,
+  number,
+];
 
-const completeToken =
-  /(?:([ \n\r\t]+)|([{}[\]:,])|(true|false|null)|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?))/y;
-const numberPrefix = /^(?:-?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+-]?\d*)?|-)/;
-const keywordPrefix = /^(?:t|tr|tru|f|fa|fal|fals|n|nu|nul)$/;
+type OpenString = {
+  decoded: string;
+  pending: string;
+  next: number;
+  broken: boolean;
+  start: number;
+};
 
-function finishedStringEnd(source: string, start: number): number | undefined {
-  let index = start + 1;
-  while (index < source.length) {
-    const character = source[index] as string;
-    if (character === '"') return index + 1;
-    if (character === "\\") {
-      if (index + 1 >= source.length) return undefined;
-      index += 2;
-      continue;
-    }
-    index += 1;
+const keywords = ["true", "false", "null"];
+const numberGrammar = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/;
+const incompleteTail = /^(?:\.$|[eE][+-]?$)/;
+const simpleEscapes = '"\\/bfnrt';
+const simpleValues = '"\\/\b\f\n\r\t';
+
+function defineOwn(container: Container, key: string, value: unknown): void {
+  if (Array.isArray(container)) {
+    container[Number(key)] = value;
+    return;
   }
-  return undefined;
+  Object.defineProperty(container, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 function copyContainer(items: Container): Container {
-  return Array.isArray(items) ? items.slice() : { ...items };
+  if (Array.isArray(items)) return items.slice();
+  const copy: Record<string, unknown> = {};
+  for (const key of Object.keys(items)) defineOwn(copy, key, items[key]);
+  return copy;
 }
 
-function parsedNumber(text: string): number | undefined {
-  let end = (numberPrefix.exec(text) as RegExpExecArray)[0].length;
-  while (end > 0 && Number.isNaN(Number(text.slice(0, end)))) end -= 1;
-  while (end > 0 && !/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(text.slice(0, end))) {
-    end -= 1;
-  }
-  if (end === 0) return undefined;
-  return Number(text.slice(0, end));
+function hexCode(hex: string): number | undefined {
+  if (!/^[0-9a-fA-F]{4}$/.test(hex)) return undefined;
+  return Number.parseInt(hex, 16);
 }
 
-function parsedString(body: string): string {
-  let decoded = "";
-  let index = 0;
-  while (index < body.length) {
-    const character = body[index] as string;
-    if (character < " ") break;
-    if (character !== "\\") {
-      decoded += character;
-      index += 1;
-      continue;
+function literalEnd(source: string, start: number): number {
+  let index = start;
+  while (index < source.length) {
+    const character = source[index] as string;
+    if (
+      character === " " ||
+      character === "\n" ||
+      character === "\r" ||
+      character === "\t" ||
+      character === '"' ||
+      character === "{" ||
+      character === "}" ||
+      character === "[" ||
+      character === "]" ||
+      character === ":" ||
+      character === ","
+    ) {
+      break;
     }
-    const escape = body[index + 1];
-    if (escape === undefined) break;
-    if (escape === "u") {
-      const hex = body.slice(index + 2, index + 6);
-      if (hex.length < 4 || !/^[0-9a-fA-F]{4}$/.test(hex)) break;
-      decoded += String.fromCharCode(Number.parseInt(hex, 16));
-      index += 6;
-      continue;
-    }
-    if (escape === '"') decoded += '"';
-    else if (escape === "\\") decoded += "\\";
-    else if (escape === "/") decoded += "/";
-    else if (escape === "b") decoded += "\b";
-    else if (escape === "f") decoded += "\f";
-    else if (escape === "n") decoded += "\n";
-    else if (escape === "r") decoded += "\r";
-    else if (escape === "t") decoded += "\t";
-    else break;
-    index += 2;
+    index += 1;
   }
-  return decoded;
+  return index;
 }
 
-function createPartialJsonFeed(): (chunk: string) => unknown {
+function readNumber(literal: string): { length: number; value: number } | undefined {
+  if (literal === "-") return { length: 0, value: 0 };
+  const matched = numberGrammar.exec(literal);
+  if (!matched || matched.index !== 0) return undefined;
+  const valid = matched[0];
+  return { length: valid.length, value: Number(valid) };
+}
+
+function numberHolds(literal: string, validLength: number, atEnd: boolean): boolean {
+  if (!atEnd) return false;
+  if (validLength === 0) return literal === "-";
+  const rest = literal.slice(validLength);
+  return rest.length === 0 || incompleteTail.test(rest);
+}
+
+function keywordSpan(literal: string): number | undefined {
+  const full = keywords.find((keyword) => literal.startsWith(keyword));
+  if (full) return full.length;
+  if (keywords.some((keyword) => keyword.startsWith(literal))) return 0;
+  return undefined;
+}
+
+export type PartialJsonFeed = (chunk: string) => unknown;
+
+export function createPartialJsonFeed(): PartialJsonFeed {
   let source = "";
   let cursor = 0;
   let sealed = false;
   let done = false;
-  let hasRoot = false;
   let rootValue: unknown;
   let cached: unknown;
   let hasCache = false;
+  let holdingNumber = false;
+  let heldNumber = 0;
+  let openString: OpenString | undefined;
+  let dirty = false;
+  let tailStamp = 0;
+  let publishedStamp = 0;
   const openFrames: OpenFrame[] = [];
 
   function currentFrame(): OpenFrame | undefined {
@@ -111,25 +141,30 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
     const parent = currentFrame();
     if (!parent) {
       done = true;
+      dirty = true;
       return;
     }
     parent[framePhase] = phaseComma;
+    dirty = true;
   }
 
   function commitScalar(value: unknown): void {
     const frame = currentFrame();
     if (!frame) {
       rootValue = value;
-      hasRoot = true;
       done = true;
+      dirty = true;
       return;
     }
-    if (frame[frameArray]) (frame[frameItems] as unknown[]).push(value);
+    const items = frame[frameItems];
+    if (frame[frameArray]) defineOwn(items, String((items as unknown[]).length), value);
     else {
-      (frame[frameItems] as Record<string, unknown>)[frame[frameKey] as string] = value;
+      defineOwn(items, frame[frameKey] as string, value);
       frame[frameKey] = undefined;
     }
     frame[framePhase] = phaseComma;
+    frame[frameRevision] += 1;
+    dirty = true;
   }
 
   function openContainer(isArray: boolean): void {
@@ -138,16 +173,27 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
     let link = "";
     if (!parent) {
       rootValue = items;
-      hasRoot = true;
     } else if (parent[frameArray]) {
       link = String((parent[frameItems] as unknown[]).length);
-      (parent[frameItems] as unknown[]).push(items);
+      defineOwn(parent[frameItems], link, items);
+      parent[frameRevision] += 1;
     } else {
       link = parent[frameKey] as string;
-      (parent[frameItems] as Record<string, unknown>)[link] = items;
+      defineOwn(parent[frameItems], link, items);
       parent[frameKey] = undefined;
+      parent[frameRevision] += 1;
     }
-    openFrames.push([items, isArray, isArray ? phaseValue : phaseKey, undefined, link]);
+    openFrames.push([
+      items,
+      isArray,
+      isArray ? phaseValue : phaseKey,
+      undefined,
+      link,
+      0,
+      undefined,
+      -1,
+    ]);
+    dirty = true;
   }
 
   function acceptStructural(token: string): boolean {
@@ -205,17 +251,67 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
     return frame[framePhase] === phaseValue;
   }
 
+  function feedOpenString(open: OpenString): "open" | "closed" | "bad" {
+    let added = "";
+    let pending = open.pending;
+    let index = open.next;
+    let broken = open.broken;
+    while (index < source.length) {
+      const character = source[index] as string;
+      if (pending.length > 0) {
+        pending += character;
+        index += 1;
+        if (pending[1] === "u") {
+          if (pending.length < 6) continue;
+          const code = hexCode(pending.slice(2));
+          if (code === undefined) broken = true;
+          else if (!broken) added += String.fromCharCode(code);
+          pending = "";
+          continue;
+        }
+        const found = simpleEscapes.indexOf(pending[1] as string);
+        if (found < 0) broken = true;
+        else if (!broken) added += simpleValues[found] as string;
+        pending = "";
+        continue;
+      }
+      if (character === '"') {
+        if (added.length > 0) {
+          open.decoded += added;
+          if (expectsValue()) tailStamp += 1;
+        }
+        open.pending = "";
+        open.next = index + 1;
+        open.broken = broken;
+        return broken ? "bad" : "closed";
+      }
+      if (character === "\\") {
+        pending = "\\";
+        index += 1;
+        continue;
+      }
+      if (character < " ") {
+        broken = true;
+        index += 1;
+        continue;
+      }
+      if (!broken) added += character;
+      index += 1;
+    }
+    if (added.length > 0) {
+      open.decoded += added;
+      if (expectsValue()) tailStamp += 1;
+    }
+    open.pending = pending;
+    open.next = index;
+    open.broken = broken;
+    return "open";
+  }
+
   function partialTail(): { include: boolean; value: unknown } {
     if (!expectsValue()) return { include: false, value: undefined };
-    const rest = source.slice(cursor);
-    if (rest.startsWith('"')) {
-      return { include: true, value: parsedString(rest.slice(1)) };
-    }
-    if (numberPrefix.test(rest)) {
-      const value = parsedNumber(rest);
-      if (value === undefined) return { include: false, value: undefined };
-      return { include: true, value };
-    }
+    if (openString) return { include: true, value: openString.decoded };
+    if (holdingNumber) return { include: true, value: heldNumber };
     return { include: false, value: undefined };
   }
 
@@ -223,117 +319,165 @@ function createPartialJsonFeed(): (chunk: string) => unknown {
     const partial = partialTail();
     if (openFrames.length === 0) {
       if (partial.include) return partial.value;
-      return hasRoot ? rootValue : undefined;
+      return rootValue;
     }
-    const copies = openFrames.map((frame) => copyContainer(frame[frameItems]));
-    for (let index = 1; index < copies.length; index += 1) {
-      (copies[index - 1] as Record<string, unknown>)[openFrames[index][frameLink]] = copies[index];
+    let childCopy: Container | undefined;
+    let childLink: string | undefined;
+    for (let index = openFrames.length - 1; index >= 0; index -= 1) {
+      const frame = openFrames[index] as OpenFrame;
+      const deepest = index === openFrames.length - 1;
+      const cachedCopy = frame[frameCached];
+      const structureSame =
+        cachedCopy !== undefined && frame[frameRevision] === frame[frameCachedRevision];
+      if (!deepest && structureSame) {
+        const target = index === 0 ? copyContainer(cachedCopy) : cachedCopy;
+        defineOwn(target, childLink as string, childCopy);
+        if (index === 0) {
+          frame[frameCached] = target;
+          frame[frameCachedRevision] = frame[frameRevision];
+        }
+        childCopy = target;
+        childLink = frame[frameLink];
+        continue;
+      }
+      const copy = copyContainer(frame[frameItems]);
+      if (childCopy !== undefined) defineOwn(copy, childLink as string, childCopy);
+      if (deepest && partial.include) {
+        if (frame[frameArray]) (copy as unknown[]).push(partial.value);
+        else defineOwn(copy, frame[frameKey] as string, partial.value);
+      }
+      frame[frameCached] = copy;
+      frame[frameCachedRevision] = frame[frameRevision];
+      childCopy = copy;
+      childLink = frame[frameLink];
     }
-    if (partial.include) {
-      const leaf = copies[copies.length - 1];
-      const frame = openFrames[openFrames.length - 1] as OpenFrame;
-      if (frame[frameArray]) (leaf as unknown[]).push(partial.value);
-      else (leaf as Record<string, unknown>)[frame[frameKey] as string] = partial.value;
-    }
-    return copies[0];
+    return childCopy;
   }
 
   return function push(chunk: string) {
     if (sealed) return cached;
     if (chunk.length === 0 && hasCache) return cached;
+    const heldBefore = holdingNumber;
+    const heldValueBefore = heldNumber;
     source += chunk;
     while (cursor < source.length && !sealed) {
-      if (source[cursor] === '"') {
-        const end = finishedStringEnd(source, cursor);
-        if (end === undefined) break;
-        const token = source.slice(cursor, end);
-        cursor = end;
-        let value: unknown;
-        try {
-          value = JSON.parse(token) as unknown;
-        } catch {
-          acceptValue(parsedString(token.slice(1, -1)), true);
-          sealed = true;
-          break;
-        }
+      if (openString) {
+        const outcome = feedOpenString(openString);
+        if (outcome === "open") break;
+        const value = openString.decoded;
+        const start = openString.start;
+        const bad = outcome === "bad";
+        cursor = openString.next;
+        openString = undefined;
         if (!acceptValue(value, true)) {
-          cursor = end - token.length;
+          cursor = start;
+          sealed = true;
+          break;
+        }
+        if (bad) {
           sealed = true;
           break;
         }
         continue;
       }
-      completeToken.lastIndex = cursor;
-      const matched = completeToken.exec(source);
-      if (!matched || matched.index !== cursor) {
-        const rest = source.slice(cursor);
-        if (numberPrefix.test(rest) || keywordPrefix.test(rest)) break;
-        sealed = true;
-        break;
+      const character = source[cursor] as string;
+      if (
+        character === " " ||
+        character === "\n" ||
+        character === "\r" ||
+        character === "\t"
+      ) {
+        cursor += 1;
+        continue;
       }
-      const token = matched[0];
-      if (matched[4] && expectsValue()) {
-        const rest = source.slice(cursor);
-        const span = (numberPrefix.exec(rest) as RegExpExecArray)[0];
-        if (cursor + span.length >= source.length) break;
-        if (span.length > token.length) {
-          acceptValue(parsedNumber(span), false);
+      if (character === '"') {
+        if (expectsValue()) tailStamp += 1;
+        openString = { decoded: "", pending: "", next: cursor + 1, broken: false, start: cursor };
+        continue;
+      }
+      if (
+        character === "{" ||
+        character === "}" ||
+        character === "[" ||
+        character === "]" ||
+        character === ":" ||
+        character === ","
+      ) {
+        if (!acceptStructural(character)) {
           sealed = true;
           break;
         }
+        cursor += 1;
+        continue;
       }
-      cursor += token.length;
-      if (matched[1]) continue;
-      if (matched[2]) {
-        if (!acceptStructural(token)) {
-          cursor -= token.length;
+      const end = literalEnd(source, cursor);
+      const literal = source.slice(cursor, end);
+      const atEnd = end === source.length;
+      const number = readNumber(literal);
+      if (number && (number.length > 0 || literal === "-")) {
+        if (numberHolds(literal, number.length, atEnd)) {
+          if (number.length > 0) {
+            holdingNumber = true;
+            heldNumber = number.value;
+          }
+          break;
+        }
+        if (number.length === 0) {
+          sealed = true;
+          break;
+        }
+        holdingNumber = false;
+        cursor += number.length;
+        if (!acceptValue(number.value, false)) {
+          cursor -= number.length;
           sealed = true;
           break;
         }
         continue;
       }
-      const value = matched[4]
-        ? Number(matched[4])
-        : matched[3] === "true"
-          ? true
-          : matched[3] === "false"
-            ? false
-            : null;
-      if (!acceptValue(value, false)) {
-        cursor -= token.length;
+      const keyword = keywordSpan(literal);
+      if (keyword === 0) {
+        if (atEnd) break;
         sealed = true;
         break;
       }
+      if (keyword !== undefined) {
+        const word = literal.slice(0, keyword);
+        const value = word === "true" ? true : word === "false" ? false : null;
+        holdingNumber = false;
+        cursor += keyword;
+        if (!acceptValue(value, false)) {
+          cursor -= keyword;
+          sealed = true;
+          break;
+        }
+        continue;
+      }
+      sealed = true;
+      break;
     }
+    if (tailStamp !== publishedStamp) dirty = true;
+    if (holdingNumber !== heldBefore || (holdingNumber && !Object.is(heldNumber, heldValueBefore))) {
+      dirty = true;
+    }
+    if (!dirty && hasCache) return cached;
+    if (!dirty) {
+      hasCache = true;
+      cached = undefined;
+      return undefined;
+    }
+    dirty = false;
+    publishedStamp = tailStamp;
     cached = snapshot();
     hasCache = true;
     return cached;
   };
 }
 
-export type PartialJsonParser = {
-  push(chunk: string): unknown;
-  visits: number;
-};
-
-export function createPartialJsonParser(): PartialJsonParser {
-  const pushChunk = createPartialJsonFeed();
-  let visits = 0;
-  return {
-    get visits() {
-      return visits;
-    },
-    push(chunk: string) {
-      visits += chunk.length;
-      return pushChunk(chunk);
-    },
-  };
-}
-
 export async function* fromAsyncIterable(
   source: AsyncIterable<string | Uint8Array>,
 ): AsyncGenerator<unknown> {
-  const parser = createPartialJsonParser();
+  const pushChunk = createPartialJsonFeed();
   const decoder = new TextDecoder();
   for await (const sourceChunk of source) {
     const text =
@@ -341,52 +485,18 @@ export async function* fromAsyncIterable(
         ? sourceChunk
         : decoder.decode(sourceChunk, { stream: true });
     if (text.length === 0) continue;
-    const partialValue = parser.push(text);
+    const partialValue = pushChunk(text);
     if (partialValue !== undefined) yield partialValue;
   }
   const flushedText = decoder.decode();
   if (flushedText.length === 0) return;
-  const partialValue = parser.push(flushedText);
+  const partialValue = pushChunk(flushedText);
   if (partialValue !== undefined) yield partialValue;
 }
-
-type Results<TConfigs> = { [K in keyof TConfigs]: PartialValidationResult };
-
-type AgUiSlot<TConfigs> = [
-  (chunk: string) => unknown,
-  unknown,
-  Results<TConfigs> | undefined,
-];
 
 export function createAgUiPartialValidator<
   TSchema extends z.ZodType,
   TConfigs extends Record<string, Config<DeepPartial<z.infer<TSchema>>>>,
 >(schema: TSchema, configs: TConfigs) {
-  const validator = createStreamValidator(schema, configs);
-  const slots = new Map<string, AgUiSlot<TConfigs>>();
-  return function push(event: AgUiDeltaEvent) {
-    const id =
-      event.type === "TOOL_CALL_ARGS"
-        ? event.toolCallId
-        : event.type === "TEXT_MESSAGE_CONTENT"
-          ? event.messageId
-          : undefined;
-    if (id === undefined || typeof event.delta !== "string") return undefined;
-    let slot = slots.get(id);
-    if (!slot) {
-      slot = [createPartialJsonFeed(), undefined, undefined];
-      slots.set(id, slot);
-    }
-    const value = slot[0](event.delta);
-    if (value === undefined) return undefined;
-    if (value !== slot[1]) {
-      slot[1] = value;
-      slot[2] = validator.partial(value as DeepPartial<z.infer<TSchema>>);
-    }
-    return {
-      id,
-      partial: value as DeepPartial<z.infer<TSchema>>,
-      results: slot[2] as Results<TConfigs>,
-    };
-  };
+  return agUiValidatorWith(schema, configs, createPartialJsonFeed);
 }

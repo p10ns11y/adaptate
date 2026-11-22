@@ -8,10 +8,8 @@ import {
   parsePartialJson,
   validateStructuredOutput,
 } from "../stream";
-import {
-  createAgUiPartialValidator as createIncrementalAgUiPartialValidator,
-  createPartialJsonParser,
-} from "../stream-incremental";
+import { createAgUiPartialValidator as createIncrementalAgUiPartialValidator } from "../stream-incremental";
+import { createPartialJsonParser } from "./partial-json-parser";
 
 const recipe = z.object({
   title: z.string(),
@@ -288,12 +286,50 @@ describe("createIncrementalAgUiPartialValidator", () => {
     });
     expect(text).toBeUndefined();
   });
+
+  it("drops a slot on end events and close", () => {
+    for (const push of [
+      createAgUiPartialValidator(recipe, configs),
+      createIncrementalAgUiPartialValidator(recipe, configs),
+    ]) {
+      push({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: '{"title":"Pasta"}' });
+      expect(push({ type: "TOOL_CALL_END", toolCallId: "t1" })).toBeUndefined();
+      expect(
+        push({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: '{"title":"Soup"}' })?.partial,
+      ).toEqual({ title: "Soup" });
+      push({ type: "TEXT_MESSAGE_CONTENT", messageId: "m1", delta: '{"title":"A"}' });
+      expect(push({ type: "TEXT_MESSAGE_END", messageId: "m1" })).toBeUndefined();
+      expect(push({ type: "TOOL_CALL_END" })).toBeUndefined();
+      expect(push({ type: "TEXT_MESSAGE_END" })).toBeUndefined();
+      push.close("t1");
+      expect(
+        push({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: "{" })?.partial,
+      ).toEqual({});
+    }
+  });
+
+  it("keeps the same partial when a chunk is only whitespace", () => {
+    const push = createIncrementalAgUiPartialValidator(recipe, configs);
+    const first = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "t1",
+      delta: '{"title":"Pasta"}',
+    });
+    const spaces = push({
+      type: "TOOL_CALL_ARGS",
+      toolCallId: "t1",
+      delta: " \n\t",
+    });
+    expect(spaces?.partial).toBe(first?.partial);
+    expect(spaces?.results).toBe(first?.results);
+  });
 });
 
 describe("createPartialJsonParser", () => {
   it("matches parsePartialJson on partial tokens, escapes, and closers", () => {
     const samples = [
       "1.",
+      "1.e5",
       "1e",
       "1E",
       "1e+",
@@ -365,6 +401,8 @@ describe("createPartialJsonParser", () => {
       '"\\uD800\\uDC00"',
       '"hello\\"',
       '"\\q"',
+      '"\\q\\n"',
+      '"\\q\\u0041"',
       '"ab\\qcd"',
       '"\\nfoo',
       '"a\\u12"',
@@ -450,6 +488,32 @@ describe("createPartialJsonParser", () => {
     const badParser = createPartialJsonParser();
     expect(badParser.push(bad)).toEqual(parsePartialJson(bad));
     expect(badParser.visits).toBe(bad.length);
+  });
+
+  it("keeps __proto__ and constructor as own properties", () => {
+    const text = '{"__proto__":{"admin":true},"constructor":1}';
+    const parser = createPartialJsonParser();
+    const value = parser.push(text) as Record<string, unknown>;
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyDescriptor(value, "__proto__")?.value).toEqual(
+      Object.getOwnPropertyDescriptor(parsed, "__proto__")?.value,
+    );
+    expect(value.constructor).toBe(1);
+    expect(Object.hasOwn(value, "constructor")).toBe(true);
+  });
+
+  it("reads a long string one small chunk at a time", () => {
+    const leaf = "å".repeat(2000);
+    const text = JSON.stringify({ leaf });
+    const parser = createPartialJsonParser();
+    let buffer = "";
+    for (let index = 0; index < text.length; index += 5) {
+      const piece = text.slice(index, index + 5);
+      buffer += piece;
+      expect(parser.push(piece)).toEqual(parsePartialJson(buffer));
+    }
+    expect(parser.visits).toBe(text.length);
   });
 
   it("reuses a closed subtree while the open path changes", () => {

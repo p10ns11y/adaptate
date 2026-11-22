@@ -3,10 +3,8 @@ import fc from "fast-check";
 import { z } from "zod";
 
 import { createStreamValidator, parsePartialJson } from "../stream";
-import {
-  createAgUiPartialValidator,
-  createPartialJsonParser,
-} from "../stream-incremental";
+import { createAgUiPartialValidator, createPartialJsonFeed } from "../stream-incremental";
+import { createPartialJsonParser } from "./partial-json-parser";
 
 const recipe = z.object({
   title: z.string(),
@@ -112,5 +110,107 @@ describe("incremental partial JSON", () => {
       ),
       { numRuns: 40 },
     );
+  });
+
+  it("matches a re-parse of non-canonical text, including own __proto__", () => {
+    const gap = fc.string({ unit: fc.constantFrom(" ", "\t", "\n"), maxLength: 2 });
+    const encodedString = fc
+      .tuple(
+        fc.string({ unit: fc.constantFrom("a", "b", "A", " ", "/"), maxLength: 4 }),
+        fc.boolean(),
+      )
+      .map(([text, uppercaseHex]) => {
+        let body = '"';
+        for (const character of text) {
+          if (character === "/") body += "\\/";
+          else if (character === "A") body += uppercaseHex ? "\\u0041" : "A";
+          else body += character;
+        }
+        return `${body}"`;
+      });
+    const keyName = fc.constantFrom("a", "b", "__proto__", "constructor");
+    const jsonText: fc.Arbitrary<string> = fc.letrec((tie) => ({
+      node: fc.oneof(
+        { maxDepth: 4, depthIdentifier: "json" },
+        encodedString,
+        fc.constantFrom("null", "true", "false", "0", "-0", "1", "1e2", "1E+1"),
+        fc.tuple(gap, fc.array(tie("node"), { maxLength: 3 }), gap).map(([left, items, right]) => {
+          return `${left}[${items.join(",")}]${right}`;
+        }),
+        fc
+          .tuple(
+            gap,
+            fc.array(fc.tuple(keyName, tie("node"), gap), { maxLength: 3 }),
+            gap,
+          )
+          .map(([left, entries, right]) => {
+            const members = entries.map(([key, node, between]) => {
+              const nodeText = node as string;
+              return `${JSON.stringify(key)}:${between}${nodeText}`;
+            });
+            return `${left}{${members.join(",")}}${right}`;
+          }),
+      ),
+    })).node;
+    fc.assert(
+      fc.property(jsonText, fc.integer({ min: 1, max: 5 }), (text, width) => {
+        const parser = createPartialJsonParser();
+        let buffer = "";
+        let last: unknown;
+        for (let index = 0; index < text.length; index += width) {
+          const piece = text.slice(index, index + width);
+          buffer += piece;
+          last = parser.push(piece);
+          expect(sameValue(last, parsePartialJson(buffer))).toBe(true);
+        }
+        try {
+          const parsed = JSON.parse(text) as unknown;
+          expect(sameValue(last, parsed)).toBe(true);
+          if (
+            parsed !== null &&
+            typeof parsed === "object" &&
+            !Array.isArray(parsed) &&
+            Object.hasOwn(parsed, "__proto__")
+          ) {
+            expect(Object.getPrototypeOf(last)).toBe(Object.prototype);
+          }
+        } catch {
+          expect(buffer).toBe(text);
+        }
+      }),
+      { numRuns: 30 },
+    );
+  });
+
+  it("joins a split surrogate pair at every offset", () => {
+    const source = '"\\ud83d\\ude00"';
+    for (let cut = 0; cut <= source.length; cut += 1) {
+      const feed = createPartialJsonFeed();
+      let buffer = "";
+      for (const piece of [source.slice(0, cut), source.slice(cut)]) {
+        if (piece.length === 0) continue;
+        buffer += piece;
+        expect(feed(piece)).toEqual(parsePartialJson(buffer));
+      }
+      expect(feed("")).toBe("😀");
+    }
+  });
+
+  it("parses ten thousand nested objects without a recursive walk", () => {
+    let text = "";
+    for (let depth = 0; depth < 10000; depth += 1) text += '{"a":';
+    text += "1";
+    for (let depth = 0; depth < 10000; depth += 1) text += "}";
+    const parser = createPartialJsonParser();
+    let value: unknown;
+    for (let index = 0; index < text.length; index += 250) {
+      value = parser.push(text.slice(index, index + 250));
+    }
+    let cursor = value as { a?: unknown };
+    for (let depth = 0; depth < 10000; depth += 1) {
+      cursor = cursor.a as { a?: unknown };
+    }
+    expect(cursor).toBe(1);
+    expect(parser.visits).toBe(text.length);
   });
 });

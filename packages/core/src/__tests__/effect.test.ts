@@ -309,6 +309,22 @@ describe("createEffectStreamValidator", () => {
     expect(report.kitchen.errors?.issues[0]?.path).toEqual(["servings"]);
   });
 
+  it("uses a caller feed for AG-UI when one is passed", () => {
+    const fed = createEffectStreamValidator(recipe, configs, () => () => ({ title: "fed" }));
+    const outcome = Effect.runSync(
+      fed.agUi({ type: "TOOL_CALL_ARGS", toolCallId: "t1", delta: "x" }),
+    );
+    expect(outcome?.partial).toEqual({ title: "fed" });
+    const streamed = Effect.runSync(
+      Stream.runCollect(
+        fed.agUiStream(
+          Stream.make({ type: "TOOL_CALL_ARGS", toolCallId: "t2", delta: "y" }),
+        ),
+      ),
+    );
+    expect(streamed[0]?.partial).toEqual({ title: "fed" });
+  });
+
   it("accumulates AG-UI deltas per call", () => {
     const fresh = createEffectStreamValidator(recipe, configs);
     expect(Effect.runSync(fresh.agUi({ type: "RUN_STARTED" }))).toBeUndefined();

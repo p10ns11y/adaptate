@@ -132,6 +132,24 @@ if (existsSync(effectSourcePath)) {
       process.exit(1);
     }
   }
+  function importsTokenizer(entryName, seen = new Set()) {
+    if (seen.has(entryName)) return false;
+    seen.add(entryName);
+    if (entryName === 'stream-incremental.es.js') return true;
+    const source = readFileSync(join(buildDirectory, entryName), 'utf8');
+    if (source.includes('stream-incremental')) return true;
+    for (const match of source.matchAll(/from\s*["']\.\/([^"']+)["']/g)) {
+      if (importsTokenizer(match[1], seen)) return true;
+    }
+    return false;
+  }
+  for (const entryName of ['stream.es.js', 'effect.es.js']) {
+    if (importsTokenizer(entryName)) {
+      console.error(`${packageJson.name}: build/${entryName} imports the incremental tokenizer`);
+      process.exit(1);
+    }
+  }
+  console.log(`${packageJson.name}: stream and effect bundles do not import the tokenizer`);
   console.log(`${packageJson.name}: publish tarball includes ${effectTypesRelativePath}`);
 }
 

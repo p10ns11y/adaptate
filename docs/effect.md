@@ -40,4 +40,4 @@ const card = Effect.runSync(validator.final('{"title":"Pasta"}', "card"));
 
 `validatePartial(schema, configs, partial)` fails on the first config that has errors, keeping that config's Zod issues. A thrown `ZodError` is kept as issues. Any other thrown cause becomes one custom issue with the error message.
 
-`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`.
+`partial(value)` is the lenient stream report. `agUi(event)` and `agUiStream(events)` wrap `createAgUiPartialValidator` from `@adaptate/core/stream`. That path appends to a buffer and calls `parsePartialJson`. It does not load `@adaptate/core/stream-incremental`. Pass a third argument, `makeFeed`, and those two methods call that feed instead. Omit it and they keep the re-parse feed.
