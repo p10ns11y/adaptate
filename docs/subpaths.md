@@ -1,3 +1,8 @@
+---
+title: "Subpaths"
+description: "The published entry points, and which peers each one loads."
+---
+
 # Subpaths
 
 `@adaptate/core` publishes four entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.

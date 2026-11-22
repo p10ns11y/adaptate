@@ -1,20 +1,31 @@
+---
+title: "Proof"
+description: "Each front-page sentence mapped to a test, a script, or a CI job."
+---
+
 # Proof
 
 Each sentence on the front page maps to something in the repo.
 
 | Sentence | Proof |
 | --- | --- |
-| One description. Each screen checks only what it shows. A cut-off reply does not throw | One description shared by every screen: [`transformSchema` makes the configured fields required](../packages/core/src/__tests__/index.test.ts). A title-only document passes the card and fails the kitchen: [`final`](../packages/core/src/__tests__/effect.test.ts). A cut-off tool-call delta `{"title":"Pa` parses to `{ title: "Pa" }` and the card check passes: [`createAgUiPartialValidator`](../packages/core/src/__tests__/stream.test.ts) |
+| One schema. Each part of the app checks only the fields it uses | [`transformSchema` makes the configured fields required](../packages/core/src/__tests__/index.test.ts). A title-only value passes the card and fails the kitchen: [examples/react-view](../examples/react-view) |
+| A screen, a form, an API client, or a stream | The rows below. The stream is one of those cases |
+| A React component checks the fields it renders | [examples/react-view](../examples/react-view) renders a card and a kitchen from one schema. The card shows `Pasta` when the value is `{ title: "Pasta" }`. The kitchen stays waiting until `servings` is present |
+| A Vue, Svelte, or Solid component can call `transformSchema` the same way | [`transformSchema`](../packages/core/src/index.ts) returns a Zod schema. [`@adaptate/core` has no React, Vue, Svelte, or Solid dependency](../packages/core/package.json). The repository includes the React example only |
+| A form can require the fields collected so far and leave the rest optional | `transformSchema(recipe.partial(), { title: true })` accepts `{ title: "Pas" }` and rejects `{}` ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts), [examples/react-view](../examples/react-view)) |
+| An API response is the same check. An OpenAPI write-up can become the Zod schema, and a Zod schema can be written back out | [YAML load and JSON-schema round trip](../packages/utils/src/__tests__/openapi.test.ts) |
+| A config names the fields each view requires | The card config is `{ title: true }` checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
+| A chat can check a tool call while the model is still typing | [AG-UI tool-call deltas, including a cut-off string](../packages/core/src/__tests__/stream.test.ts) and [every parsed prefix keeps the partial-stream invariant](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts) |
 | `JSON.parse` throws on that cut-off text, and Adaptate returns `{ title: "Pas" }` with the card check passing | The same test, and [examples/streaming-tool-call](../examples/streaming-tool-call) which installs published `@adaptate/core@2.3.0` and checks both results |
 | With only the dish name, the card is ready and the kitchen is not | [`final`](../packages/core/src/__tests__/effect.test.ts) on `{"title":"Pasta"}`: card valid, kitchen invalid |
 | When the number of servings arrives, the kitchen is ready too | The same test, on `{"title":"Pasta","servings":2}` |
-| A chat checks a tool call while the model is still typing | [AG-UI tool-call deltas, including a cut-off string](../packages/core/src/__tests__/stream.test.ts) and [every parsed prefix keeps the partial-stream invariant](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts) |
-| An API write-up becomes those checks, and can be written back out | [YAML load and JSON-schema round trip](../packages/utils/src/__tests__/openapi.test.ts) |
-| One description, shared by every screen | [`transformSchema` makes the configured fields required](../packages/core/src/__tests__/index.test.ts) |
 | The same checks run in plain code or in an Effect pipeline | [`final(text)` reports every named config; `final(text, "card")` checks that one](../packages/core/src/__tests__/effect.test.ts). `final` agrees with `transformSchema` per config ([I2](../packages/core/src/__tests__/partial-stream.invariants.property.test.ts)) |
 | Core ships without extra runtime libraries | [`@adaptate/core` `package.json` has no `dependencies`; `zod` is the peer](../packages/core/package.json). [The main entry and `./stream` load when `effect` is missing](../packages/core/src/__tests__/effect.test.ts) |
 | The published types match the build | [`verify-published-types.mjs`](../scripts/verify-published-types.mjs) in the [verify job](../.github/workflows/ci.yml) |
-| Types work on current and previous TypeScript | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` |
-| With the schema cached, the streaming check is within about 1.5× of raw Zod per chunk | On Node 24, parsed partial with a cached schema is 0.840 µs/chunk against raw Zod's 0.605 µs/chunk. JSON repair is separate: AG-UI 17.137 µs/chunk minus parsed partial 0.840 µs/chunk is 16.297 µs/chunk. Import median is +4.580% (41.353 ms against 39.542 ms). Full-document rate is −6.583% (2,294,074/s against 2,455,728/s). Method and table: [Performance](performance.md) |
+| The types ship in the package. A value's type is inferred from the Zod schema you write | [`@adaptate/core` publishes `types`](../packages/core/package.json). The card config is checked against `z.infer` of the recipe ([`index.test.ts`](../packages/core/src/__tests__/index.test.ts)) |
+| CI checks the packed types (the exact tarballs npm would get) on TypeScript 7 and 6, for `bundler`, `node16`, and `nodenext` | [`ts7-consumer`](../.github/workflows/ci.yml) runs [`ts-consumer-check.mjs`](../scripts/ts-consumer-check.mjs) |
+| Node v24.22.3 on the GitHub Actions runner. Commit ceb5ab4. Run ab-eval 44965424710 | [`assets/perf-run.json`](../assets/perf-run.json) is that run's Node and bundle fields. [`scripts/render-perf-chart.mjs`](../scripts/render-perf-chart.mjs) draws [`assets/perf.svg`](../assets/perf.svg) from that file and fails if a field is missing. Four views per render is measured and is not drawn |
+| A partial JSON stream scans each new character once | [`createPartialJsonParser`](../packages/core/src/partial-json.ts) resumes the bracket and string state. [`parsePartialJson`](../packages/core/src/stream.ts) still closes a whole prefix. The grocery order is 966 visits, against 68,304 for a full rescan each chunk |
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).

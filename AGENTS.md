@@ -7,6 +7,55 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - `packages/core/`: Schema transformation engine (`transformSchema`, `makeConditionalSchemaTransformer`)
 - `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
 
+## Using adaptate
+
+Consumer recipes. Types ship in the packages. The doc map is [docs/index.md](docs/index.md). The agent index is [llms.txt](llms.txt). A runnable React view is [examples/react-view](examples/react-view). A runnable stream check is [examples/streaming-tool-call](examples/streaming-tool-call). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
+
+One schema, and a card that needs the title:
+
+```ts
+import { z } from "zod";
+import { transformSchema, type Config } from "@adaptate/core";
+
+const recipe = z.object({ title: z.string(), servings: z.number() });
+type Recipe = z.infer<typeof recipe>;
+const card = { title: true } satisfies Config<Recipe>;
+const cardSchema = transformSchema(recipe.partial(), card);
+cardSchema.parse({ title: "Pas" });
+```
+
+A tool call that is still typing:
+
+```ts
+import { z } from "zod";
+import { createAgUiPartialValidator } from "@adaptate/core/stream";
+
+const push = createAgUiPartialValidator(
+  z.object({ title: z.string(), servings: z.number() }),
+  { card: { title: true } },
+);
+const check = push({
+  type: "TOOL_CALL_ARGS",
+  toolCallId: "call-1",
+  delta: '{"title":"Pas',
+});
+```
+
+`check.partial` is `{ title: "Pas" }` and `check.results.card.valid` is `true`. `JSON.parse` on that same text throws.
+
+An OpenAPI object schema becomes a Zod schema:
+
+```ts
+import { openAPISchemaToZod } from "@adaptate/utils";
+
+const zodSchema = openAPISchemaToZod({
+  type: "object",
+  required: ["title"],
+  properties: { title: { type: "string" }, servings: { type: "integer" } },
+});
+zodSchema.parse({ title: "Pas" });
+```
+
 ## Dev container (optional filesystem isolation)
 
 Requires **Docker** or **Podman** and **Dev Containers** (**VS Code:** Microsoft `ms-vscode-remote.remote-containers`; **Cursor:** Anysphere **`anysphere.remote-containers`** — search Extensions for “Dev Containers”). Open the repo with **Dev Containers: Reopen in Container**. The workspace is the bind-mounted repository only (your host home is not mounted by default—keep it that way unless you deliberately need extra mounts).
@@ -21,6 +70,7 @@ Configuration lives in [`.devcontainer/devcontainer.json`](.devcontainer/devcont
 - **Lint:** `pnpm lint` — **Oxlint** type-aware (`oxlint --type-aware` with `oxlint-tsgolint`, see `.oxlintrc.json`): correctness plus `typescript/no-deprecated`, `typescript/no-floating-promises`, and `typescript/no-misused-promises`. Per-package: `pnpm turbo run lint`. Deprecations only: `pnpm run lint:deprecation`.
 - **Lint fixes (Oxlint auto-fix where supported):** `pnpm run lint:fix`. Deprecated call sites usually need a hand edit or codemod; the deprecation rule does not rewrite them.
 - Coverage badge: `pnpm run coveragebadge`
+- API docs and agent indexes, after a build: `pnpm docs:api` (rewrites `docs/api/`, `llms.txt`, and `llms-full.txt`)
 
 ## Coding Style
 - TypeScript: Strict typing, no `any`, ESM modules throughout

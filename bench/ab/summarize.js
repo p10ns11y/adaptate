@@ -1,6 +1,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { orderViewConfigs } from "./order.js";
+
 function readJson(directory, name) {
   const file = resolve(directory, name);
   if (!existsSync(file)) return null;
@@ -84,7 +86,27 @@ export function renderSummary(directory) {
     push("Import median (ms)", "coldMedianMs", 3, "ms");
     push("Import p95 (ms)", "coldP95Ms", 3, "ms");
     push("Full document (validations/sec)", "validationsPerSec", null, "/s");
+    if (typeof adaptate.viewsPerSec === "number") {
+      push(
+        `${orderViewConfigs.length} views per render (renders/sec)`,
+        "viewsPerSec",
+        null,
+        "/s",
+      );
+    }
     push("AG-UI stream (µs/chunk)", "agUiMicros", 3, "µs");
+    if (typeof adaptate.repairMicros === "number") {
+      lines.push(
+        metricRow(
+          "JSON repair (µs/chunk)",
+          label,
+          "no repair: needs complete JSON",
+          formatValue(adaptate.repairMicros, 3),
+          "no repair: needs complete JSON",
+          "n/a",
+        ),
+      );
+    }
     push(
       "Parsed partial check, cached schema (µs/chunk)",
       "partialMicros",
@@ -139,7 +161,7 @@ export function renderSummary(directory) {
   }
   lines.push("");
   lines.push(
-    "Gated on pull request, Node only, head build versus the base commit on the same runner, fail above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and each entry's min and gzip bytes (full bundle and zod-external bundle). Not gated: import p95, heap, the raw-zod rows, Bun, and Chromium.",
+    "Gated on pull request, Node only, head build versus the base commit on the same runner, fail above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and each entry's min and gzip bytes (full bundle and zod-external bundle). Not gated: JSON repair, four views per render, import p95, heap, the raw-zod rows, Bun, and Chromium.",
   );
   if (gate) {
     lines.push("");

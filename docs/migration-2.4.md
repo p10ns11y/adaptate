@@ -1,3 +1,8 @@
+---
+title: "Migration 2.4"
+description: "YAML and the ref parser became optional peers between 2.3 and 2.4."
+---
+
 # Migration 2.3 → 2.4
 
 Published 2.3.0 of `@adaptate/utils` depended on `@apidevtools/json-schema-ref-parser@^15.3.5` and `js-yaml@^4.1.1`.

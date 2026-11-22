@@ -1,8 +1,15 @@
+---
+title: "Development"
+description: "Install, test, and build this repository with pnpm."
+---
+
 # Development
 
 Install and build this repo with pnpm. Root `package.json` sets `"packageManager": "pnpm@11.1.1"`. `.npmrc` and `pnpm-workspace.yaml` set lifecycle restrictions, store integrity, and the release-age gate. `npm install` at the repo root is unsupported: npm does not apply those settings, and the tree can diverge from CI.
 
 `pnpm add` / `npm install` of the published `@adaptate/*` packages is how consumers install from the registry.
+
+`pnpm docs:api` rewrites [docs/api](api/index.md) from the built `.d.ts` files, and rewrites `llms.txt` and `llms-full.txt`. Run it after `pnpm build`. The verify job fails when those files drift.
 
 Engines: the repo and `@adaptate/core` require Node `>=24`. `@adaptate/utils` declares Node `>=20`.
 
@@ -24,6 +31,7 @@ pnpm typecheck
 ├── packages/core/   # @adaptate/core
 ├── packages/utils/  # @adaptate/utils
 ├── skills/
+├── tools/api-docs/  # TypeDoc markdown from the published .d.ts files
 ├── AGENTS.md
 ├── CODING_STYLE.md
 └── turbo.json
