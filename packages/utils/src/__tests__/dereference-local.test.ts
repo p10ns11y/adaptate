@@ -429,12 +429,53 @@ describe('local $ref resolver', () => {
     expect(() => dereferenceLocalDocument(structuredClone(pastParserLimit))).not.toThrow();
   });
 
-  it('resolves a local pointer chain past the old call-stack cap', () => {
+  it('resolves a local pointer chain and rejects nested refs past 500', () => {
     let dereferenced = dereferenceLocalDocument(refChain(20)) as { start: { type: string }; end: { type: string } };
     expect(dereferenced.start).toBe(dereferenced.end);
-    let longChain = dereferenceLocalDocument(refChain(501)) as { start: { type: string }; end: { type: string } };
-    expect(longChain.start).toBe(longChain.end);
-    expect(longChain.end).toEqual({ type: 'string' });
+    expect(dereferenced.end).toEqual({ type: 'string' });
+    expect(() => dereferenceLocalDocument(refChain(501))).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(refChain(501))).toThrow(/Maximum dereference depth \(500\)/);
+  });
+
+  it('throws when a sibling ref expands without repeating a path', () => {
+    let document = {
+      A: {
+        properties: {
+          p: {
+            $ref: '#/A',
+            properties: { p: { description: 'd' } },
+          },
+        },
+      },
+    };
+    expect(() => dereferenceLocalDocument(document)).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(document)).toThrow(
+      /Maximum dereference depth \(500\) exceeded at #\/A\/properties\/p/,
+    );
+  });
+
+  it('throws when a sibling merge walks back into an ancestor', () => {
+    let document = {
+      box: {
+        box: { $ref: '#', properties: { p: { $ref: '#' } } },
+        child: {
+          child: [
+            {
+              p: {
+                p: {
+                  properties: {
+                    $ref: '#/box/box',
+                    properties: { p: { $ref: '#/box/box' } },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+    expect(() => dereferenceLocalDocument(document)).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(document)).toThrow(/sibling merge/);
   });
 
   it('does not loop when the input object graph is already cyclic', async () => {

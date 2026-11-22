@@ -325,16 +325,25 @@ export function openAPISchemaToZod(
   let stack: OpenApiFrame[] = [
     { schema, propertyKey, required, childIndex: 0, childSchemas: [] },
   ];
+  let ancestorSchemas = new Set<object>();
   let produced: z.ZodType = z.any();
   while (stack.length > 0) {
     let frame = stack[stack.length - 1] as OpenApiFrame;
     if (frame.plan === undefined) {
+      if (frame.schema && typeof frame.schema === 'object') {
+        ancestorSchemas.add(frame.schema);
+      }
       frame.plan = planOpenApiSchema(frame.schema, frame.propertyKey, frame.required);
     }
     let plan = frame.plan;
     if (frame.childIndex < plan.children.length) {
       let child = plan.children[frame.childIndex] as OpenApiChild;
       frame.childIndex += 1;
+      if (child.schema && typeof child.schema === 'object' && ancestorSchemas.has(child.schema)) {
+        throw new RangeError(
+          'OpenAPI schema cycle: a child schema is already an ancestor on the active stack.',
+        );
+      }
       stack.push({
         schema: child.schema,
         propertyKey: child.propertyKey,
@@ -347,6 +356,9 @@ export function openAPISchemaToZod(
     let built = plan.build(frame.childSchemas);
     if (plan.applyTail) {
       built = finishOpenApiNode(built, plan.isNullable, frame.propertyKey, frame.required);
+    }
+    if (frame.schema && typeof frame.schema === 'object') {
+      ancestorSchemas.delete(frame.schema);
     }
     stack.pop();
     let parent = stack[stack.length - 1];
@@ -562,20 +574,28 @@ export function zodToOpenAPISchema(zodSchema: z.ZodType): any {
   if (!zodSchema) return {};
 
   let stack: ZodOpenApiFrame[] = [{ zodSchema, childIndex: 0, childResults: [] }];
+  let ancestorSchemas = new Set<z.ZodType>();
   let produced: any = {};
   while (stack.length > 0) {
     let frame = stack[stack.length - 1] as ZodOpenApiFrame;
     if (frame.plan === undefined) {
+      ancestorSchemas.add(frame.zodSchema);
       frame.plan = planZodOpenApiSchema(frame.zodSchema);
     }
     let plan = frame.plan;
     if (frame.childIndex < plan.children.length) {
       let child = plan.children[frame.childIndex] as z.ZodType;
       frame.childIndex += 1;
+      if (ancestorSchemas.has(child)) {
+        throw new RangeError(
+          'Zod schema cycle: a child schema is already an ancestor on the active stack.',
+        );
+      }
       stack.push({ zodSchema: child, childIndex: 0, childResults: [] });
       continue;
     }
     let built = plan.build(frame.childResults);
+    ancestorSchemas.delete(frame.zodSchema);
     stack.pop();
     let parent = stack[stack.length - 1];
     if (parent) parent.childResults.push(built);

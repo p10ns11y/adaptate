@@ -281,7 +281,7 @@ describe("openapi and dereference recursion elimination", () => {
       const nextPointer = linkIndex === 1_999 ? "#/end" : `#/link${linkIndex + 1}`;
       chain[`link${linkIndex}`] = { $ref: nextPointer };
     }
-    const resolved = dereferenceLocalDocument(chain) as { start: { type: string }; end: { type: string } };
-    expect(resolved.start).toBe(resolved.end);
+    expect(() => dereferenceLocalDocument(chain)).toThrow(RangeError);
+    expect(() => dereferenceLocalDocument(chain)).toThrow(/Maximum dereference depth \(500\)/);
   }, 180_000);
 });

@@ -1,3 +1,5 @@
+const maximumLocalRefDepth = 500;
+
 let missingRefParserPackageMessage =
   'Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to resolve remote or file $ref pointers. Install it with `pnpm add @apidevtools/json-schema-ref-parser`.';
 
@@ -27,6 +29,7 @@ type ResolveFrame = {
   refObject: JsonRecord & { $ref: string };
   refObjectPath: string;
   step: 'enter' | 'after-cycle-read' | 'after-target' | 'after-nested' | 'merge' | 'after-merge-crawl';
+  refNesting: number;
   tracking: boolean;
   pointer: string;
   target: unknown;
@@ -100,6 +103,14 @@ function joinJsonPointer(basePointer: string, token: string): string {
   return `${basePointer}/${escapedToken}`;
 }
 
+function throwIfPastMaximumRefNesting(depth: number, pointer: string): void {
+  if (depth > maximumLocalRefDepth) {
+    throw new RangeError(
+      `Maximum dereference depth (${maximumLocalRefDepth}) exceeded at ${pointer}. This likely indicates an extremely deep or recursive schema.`,
+    );
+  }
+}
+
 function missingPointerMessage(pointer: string, token: string): string {
   return `Missing $ref pointer "${pointer}". Token "${token}" does not exist.`;
 }
@@ -125,6 +136,7 @@ function resolveFrame(refObject: JsonRecord & { $ref: string }, refObjectPath: s
     refObject,
     refObjectPath,
     step: 'enter',
+    refNesting: 0,
     tracking: false,
     pointer: '',
     target: undefined,
@@ -152,15 +164,15 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
     : { ...(resolvedValue as JsonRecord) };
   let stack: Array<{
     merged: JsonRecord;
-    resolved: JsonRecord;
-    sibling: JsonRecord;
+    resolved: object;
+    sibling: object;
     keys: string[];
     index: number;
   }> = [
     {
       merged: rootMerged as JsonRecord,
-      resolved: resolvedValue as JsonRecord,
-      sibling: siblingValue as JsonRecord,
+      resolved: resolvedValue as object,
+      sibling: siblingValue,
       keys: Object.keys(siblingValue),
       index: 0,
     },
@@ -174,16 +186,35 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
     }
     let entryKey = frame.keys[frame.index] as string;
     frame.index += 1;
-    let siblingChild = frame.sibling[entryKey];
+    let siblingRecord = frame.sibling as JsonRecord;
+    let siblingChild = siblingRecord[entryKey];
     if (Array.isArray(siblingChild)) {
       frame.merged[entryKey] = [...siblingChild];
       continue;
     }
     if (isContainer(siblingChild)) {
-      let resolvedChild = frame.resolved[entryKey];
+      let resolvedChild = (frame.resolved as JsonRecord)[entryKey];
       if (!isContainer(resolvedChild)) {
         frame.merged[entryKey] = siblingChild;
         continue;
+      }
+      let repeatsAncestor = false;
+      for (let ancestorIndex = 0; ancestorIndex < stack.length; ancestorIndex += 1) {
+        let ancestor = stack[ancestorIndex] as (typeof stack)[number];
+        if (
+          ancestor.resolved === resolvedChild ||
+          ancestor.sibling === siblingChild ||
+          ancestor.resolved === siblingChild ||
+          ancestor.sibling === resolvedChild
+        ) {
+          repeatsAncestor = true;
+          break;
+        }
+      }
+      if (repeatsAncestor) {
+        throw new RangeError(
+          `Maximum dereference depth (${maximumLocalRefDepth}) exceeded during a sibling merge. This likely indicates an extremely deep or recursive schema.`,
+        );
       }
       let childMerged: JsonRecord | unknown[] = Array.isArray(resolvedChild)
         ? [...resolvedChild]
@@ -191,14 +222,14 @@ function deepMergeResolvedValue(resolvedValue: unknown, siblingValue: object): u
       frame.merged[entryKey] = childMerged;
       stack.push({
         merged: childMerged as JsonRecord,
-        resolved: resolvedChild as JsonRecord,
-        sibling: siblingChild as JsonRecord,
+        resolved: resolvedChild,
+        sibling: siblingChild,
         keys: Object.keys(siblingChild),
         index: 0,
       });
       continue;
     }
-    frame.merged[entryKey] = siblingChild;
+    frame.merged[entryKey] = siblingChild as JsonRecord[string];
   }
 
   return rootMerged;
@@ -325,6 +356,16 @@ export function dereferenceLocalDocument(document: unknown): unknown {
 
   function stepResolve(frame: ResolveFrame): void {
     if (frame.step === 'enter') {
+      let refNesting = 1;
+      for (let index = stack.length - 2; index >= 0; index -= 1) {
+        let stackedFrame = stack[index] as Frame;
+        if (stackedFrame.kind === 'resolve') {
+          refNesting = stackedFrame.refNesting + 1;
+          break;
+        }
+      }
+      frame.refNesting = refNesting;
+      throwIfPastMaximumRefNesting(frame.refNesting, frame.refObjectPath);
       let pointer = frame.refObject.$ref;
       frame.pointer = pointer;
       if (pointer === frame.refObjectPath) {
