@@ -11,6 +11,7 @@ flowchart LR
   BuildDocs --> Dist
   BuildDocs --> Routes[".site-meta/routes.json"]
   Routes --> Seo["build-seo.mjs: og, icons, sitemap, robots, llms"]
+  Docs -->|"tools/api-docs/llms.mjs"| Seo
   Seo --> Dist
   Dist --> Checks["budget, seo-check, a11y"]
 ```
@@ -26,6 +27,9 @@ pnpm --filter adaptate-site test
 pnpm --filter adaptate-site budget
 pnpm --filter adaptate-site seo-check
 pnpm --filter adaptate-site a11y
+pnpm --filter adaptate-site words
 ```
+
+The landing demo runs `openAPISchemaToZod` from the `@adaptate/utils` browser build and `safeParse` in the page. It makes no network calls. The Zod text, the type preview, schema picking, and local `#/` refs are done by the page.
 
 `pnpm --filter adaptate-site snippets` writes each usage file into the docs between its `snippet` markers. `node scripts/logo.mjs` rebuilds the mark and the favicon from `palette.json`. The lockups in `public/logo.svg` and `assets/` are static path outlines. Provenance for the palette and the logo is in [docs/credits.md](../../docs/credits.md).

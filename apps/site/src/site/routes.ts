@@ -1,3 +1,5 @@
+import { landingCopy } from "./landing-copy.ts";
+
 export type FaqEntry = { question: string; answer: string };
 
 export type RouteKind = "landing" | "load" | "guide" | "api";
@@ -15,12 +17,10 @@ export type SiteRoute = {
 export let landingRoute: SiteRoute = {
   path: "/",
   kind: "landing",
-  title: "adaptate: one Zod schema, a check per view",
-  heading: "One schema. Each part of the app checks only the fields it uses.",
-  description:
-    "adaptate turns one Zod schema into a check per view, and checks a JSON tool call while it is still arriving. TypeScript, MIT, OpenAPI in and out.",
-  answer:
-    "adaptate turns one Zod schema into a check per view. A card can require the title while a kitchen screen also requires servings. The same check runs on a JSON tool call that is still arriving.",
+  title: "adaptate: typed, validated data from your schema",
+  heading: landingCopy.heading,
+  description: landingCopy.answer,
+  answer: landingCopy.answer,
   faq: [],
 };
 

@@ -12,7 +12,8 @@
     "budget": "node scripts/budget.mjs",
     "seo-check": "node scripts/seo-check.mjs",
     "preview": "vite preview",
-    "a11y": "node scripts/a11y-check.mjs"
+    "a11y": "node scripts/a11y-check.mjs",
+    "words": "node scripts/landing-words.mjs"
   },
   "dependencies": {
     "@adaptate/core": "workspace:*",

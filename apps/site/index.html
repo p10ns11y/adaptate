@@ -6,48 +6,32 @@
   <body>
     <!--site-header-->
     <main id="main" tabindex="-1">
-      <section class="hero">
-        <div class="ascent" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div class="wrap">
-          <h1>One schema. Each part of the app checks only the fields it uses.</h1>
+      <section class="hero wrap">
+        <div class="glow" aria-hidden="true"></div>
+        <h1><!--site-heading--></h1>
+        <div class="hero-side">
           <p class="answer"><!--site-answer--></p>
-          <p class="muted">A screen, a form, an API client, or a stream. Types ship in the package. MIT.</p>
-          <div class="actions">
-            <a class="button primary" href="/docs/">Read the docs</a>
-            <a class="button ghost" href="https://github.com/p10ns11y/adaptate">View on GitHub</a>
-          </div>
-          <pre class="install"><code>pnpm add @adaptate/core zod</code></pre>
+          <!--site-install-->
         </div>
       </section>
 
-      <section class="wrap" aria-labelledby="stream-heading">
-        <h2 id="stream-heading">A tool call that is still typing</h2>
-        <p>The model has sent <code>{"title":"Pas</code> so far. The card needs only the title.</p>
-        <!--site-before-after-->
+      <section class="demo wrap" aria-labelledby="demo-heading">
+        <h2 id="demo-heading" class="sr-only">Live demo</h2>
+        <!--site-demo-->
       </section>
 
-      <section class="wrap" aria-labelledby="cases-heading">
-        <h2 id="cases-heading">What it is for</h2>
-        <ul class="cases">
-          <li><strong>Components</strong>A React, Vue, Svelte, or Solid view checks the fields it renders with <code>transformSchema</code>.</li>
-          <li><strong>Forms</strong>Require the fields collected so far and leave the rest optional.</li>
-          <li><strong>API clients</strong>An OpenAPI schema becomes the Zod schema, and a Zod schema can be written back out.</li>
-          <li><strong>Streams</strong>Check a JSON tool call from AG-UI, SSE, a ReadableStream, or a Node stream while it arrives.</li>
-        </ul>
+      <section class="wrap" aria-labelledby="value-heading">
+        <h2 id="value-heading" class="sr-only">What you get</h2>
+        <!--site-cards-->
+        <!--site-proof-->
       </section>
 
-      <section class="wrap" aria-labelledby="measured-heading">
-        <h2 id="measured-heading">Measured</h2>
-        <!--site-measured-->
+      <section class="wrap agents" aria-labelledby="agents-heading">
+        <!--site-agents-->
       </section>
-
-      <section class="wrap" aria-labelledby="examples-heading">
-        <h2 id="examples-heading">Examples</h2>
-        <p>Each tab is a typechecked file from this site. A test runs every one of them in Node.</p>
-        <div id="examples" class="tabs"><!--site-examples--></div>
-      </section>
+      <p id="copy-status" class="sr-only" aria-live="polite"></p>
     </main>
     <!--site-footer-->
-    <script type="module" src="/src/landing/main.tsx"></script>
+    <script type="module" src="/src/landing/main.ts"></script>
   </body>
 </html>
