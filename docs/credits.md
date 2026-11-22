@@ -1,14 +1,14 @@
 ---
 title: "Credits"
-description: "Where the logo geometry, the wordmark font, and each palette colour came from."
-answer: "The logo is original geometry. The wordmark is IBM Plex Sans SemiBold, licensed under the SIL Open Font License 1.1, converted to paths once. Each palette colour is a hex value sampled from a photograph listed below; no photograph ships."
+description: "Where the logo geometry, the wordmark, and each palette colour came from."
+answer: "The logo is original geometry. The wordmark is original path outlines drawn for adaptate; no font is used. Each palette colour is a hex value sampled from a photograph listed below; no photograph ships."
 ---
 
 # Credits
 
 ## Logo
 
-The mark is original geometry: two ascent strokes that meet at a peak above a burn. The wordmark text is IBM Plex Sans SemiBold, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). `apps/site/scripts/logo.mjs` converted it to SVG paths once, so no font file ships.
+The mark is original geometry: two ascent strokes that meet at a peak above a burn. The wordmark is "Contrast cut": original path outlines drawn for adaptate, not set from a font, so no font file ships.
 
 ## Palette
 

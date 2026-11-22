@@ -28,4 +28,4 @@ pnpm --filter adaptate-site seo-check
 pnpm --filter adaptate-site a11y
 ```
 
-`pnpm --filter adaptate-site snippets` writes each usage file into the docs between its `snippet` markers. `node scripts/logo.mjs <IBMPlexSans-SemiBold.otf>` rebuilds the logo files from `palette.json`. Provenance for the palette and the font is in [docs/credits.md](../../docs/credits.md).
+`pnpm --filter adaptate-site snippets` writes each usage file into the docs between its `snippet` markers. `node scripts/logo.mjs` rebuilds the mark and the favicon from `palette.json`. The lockups in `public/logo.svg` and `assets/` are static path outlines. Provenance for the palette and the logo is in [docs/credits.md](../../docs/credits.md).

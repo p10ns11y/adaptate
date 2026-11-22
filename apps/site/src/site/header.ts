@@ -17,7 +17,7 @@ export function renderHeader(kind: RouteKind): string {
   return [
     `<a class="skip" href="#main">Skip to content</a>`,
     `<header class="site-header"><div class="wrap bar">`,
-    `<a class="brand" href="/"><img src="/logo.svg" alt="adaptate" width="177" height="48"></a>`,
+    `<a class="brand" href="/"><img src="/logo.svg" alt="adaptate" width="274" height="48"></a>`,
     `<nav aria-label="Site"><ul>${items}<li><a href="${repositoryUrl}">GitHub</a></li></ul></nav>`,
     `</div></header>`,
   ].join("");

@@ -1,17 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse } from "opentype.js";
 
 let siteDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-let repositoryRoot = resolve(siteDirectory, "../..");
 let palette = JSON.parse(readFileSync(join(siteDirectory, "palette.json"), "utf8")).tokens;
 let hex = (name) => palette[name].hex;
-
-let fontPath = process.argv[2];
-if (!fontPath) {
-  throw new Error("Usage: node scripts/logo.mjs <IBMPlexSans-SemiBold.otf>");
-}
 
 function markDefinitions(prefix) {
   return [
@@ -53,36 +46,6 @@ let smallMark = [
   `</svg>`,
 ].join("");
 
-let font = parse(readFileSync(fontPath).buffer);
-let fontSize = 29;
-let letterSpacing = -0.6;
-let commands = [];
-let x = 56;
-let text = "adaptate";
-for (let index = 0; index < text.length; index += 1) {
-  let glyph = font.charToGlyph(text[index]);
-  commands.push(glyph.getPath(x, 33.5, fontSize).toPathData(2));
-  let advance = (glyph.advanceWidth * fontSize) / font.unitsPerEm;
-  let next = text[index + 1];
-  let kerning = next ? (font.getKerningValue(glyph, font.charToGlyph(next)) * fontSize) / font.unitsPerEm : 0;
-  x += advance + kerning + letterSpacing;
-}
-let textPath = commands.join("");
-let width = Math.ceil(x + 4);
-
-function wordmark(textColor) {
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="48" viewBox="0 0 ${width} 48" role="img" aria-label="adaptate">`,
-    `<defs>${markDefinitions("w")}</defs>`,
-    `<g transform="translate(4 4) scale(1.25)">${markBody("w")}</g>`,
-    `<path d="${textPath}" fill="${textColor}"/>`,
-    `</svg>`,
-  ].join("");
-}
-
 writeFileSync(join(siteDirectory, "public/mark.svg"), `${mark}\n`);
 writeFileSync(join(siteDirectory, "public/favicon.svg"), `${smallMark}\n`);
-writeFileSync(join(siteDirectory, "public/logo.svg"), `${wordmark(hex("cloud"))}\n`);
-writeFileSync(join(repositoryRoot, "assets/logo.svg"), `${wordmark(hex("void"))}\n`);
-writeFileSync(join(repositoryRoot, "assets/logo-dark.svg"), `${wordmark(hex("cloud"))}\n`);
-console.log(`Wrote the mark, favicon, and wordmarks (${width} px wide).`);
+console.log("Wrote the mark and the favicon.");
