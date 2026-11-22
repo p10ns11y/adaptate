@@ -68,7 +68,7 @@ export function renderHead(route: SiteRoute, context: HeadContext): string {
     `<meta name="robots" content="${robots}">`,
     `<link rel="canonical" href="${url}">`,
     `<meta name="color-scheme" content="dark">`,
-    `<meta name="theme-color" content="#0F0E0C">`,
+    `<meta name="theme-color" content="#0A0D12">`,
     `<link rel="icon" href="/favicon.svg" type="image/svg+xml">`,
     `<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`,
     `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`,

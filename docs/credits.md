@@ -12,19 +12,19 @@ The mark is original geometry: two ascent strokes that meet at a peak above a bu
 
 ## Palette
 
-Each token is the median of a 9×9 px patch from the Flickr original, sampled on 2026-11-22 (Europe/Stockholm). The site and the logo use the hex values only. No photograph, mark, or name from a source ships in the site.
+Each token is the per-channel median of a 9×9 px patch (Python/PIL) from a recent official @SpaceX photograph posted on X (Sep–Nov 2026), sampled on 2026-11-22 18:36 CET. This set replaces an earlier pass the same day that used SpaceX Flickr originals. The site and the logo use the hex values only. No photograph, mark, or name from a source ships in the site.
 
-Licence as the live Flickr photo page and oEmbed showed on 2026-11-22: Creative Commons Attribution-NonCommercial 2.0 Generic ([CC BY-NC 2.0](https://creativecommons.org/licenses/by-nc/2.0/)). `dateTaken` is the Flickr field as stored, with no timezone.
+Posts were found with a public search of @SpaceX posts with images from 1 Sep 2026. Post times are `created_at` converted to Europe/Stockholm. Media links are the X original (`name=orig`). The photographs are used only to sample hex values and are not redistributed.
 
-| Token | Hex | Source | Flickr dateTaken | Patch centre x,y | Licence |
+| Token | Hex | Source | Post time (Europe/Stockholm) | Patch centre x,y | Media |
 | --- | --- | --- | --- | --- | --- |
-| `plume-core` | `#FFE99D` | <https://www.flickr.com/photos/spacex/50192510273/> | 2020-07-04 15:58:42 | 1920, 2180 | CC BY-NC 2.0 |
-| `thrust` | `#ECA43F` | <https://www.flickr.com/photos/spacex/17139094400/> | 2015-04-30 11:04:56 | 1300, 2050 | CC BY-NC 2.0 |
-| `ember` | `#B76625` | <https://www.flickr.com/photos/spacex/17139094400/> | 2015-04-30 11:04:56 | 776, 2364 | CC BY-NC 2.0 |
-| `void` | `#0F0E0C` | <https://www.flickr.com/photos/spacex/47173936271/> | 2019-02-21 20:45:18 | 200, 150 | CC BY-NC 2.0 |
-| `ocean` | `#294C74` | <https://www.flickr.com/photos/spacex/27259828166/> | 2016-05-27 17:38:44 | 2700, 850 | CC BY-NC 2.0 |
-| `cloud` | `#D3D4D6` | <https://www.flickr.com/photos/spacex/51169562702/> | 2021-05-05 00:00:00 | 2000, 200 | CC BY-NC 2.0 |
-| `sky` | `#799AD5` | <https://www.flickr.com/photos/spacex/26288402056/> | 2016-04-08 16:43:33 | 400, 400 | CC BY-NC 2.0 |
-| `exhaust` | `#B59789` | <https://www.flickr.com/photos/spacex/40126461851/> | 2018-02-06 15:36:24 | 2200, 800 | CC BY-NC 2.0 |
+| `plume-core` | `#FEF2DC` | [@SpaceX, 2105061657558786148](https://x.com/SpaceX/status/2105061657558786148), 4096×2731. Super Heavy / 33 Raptor 3 engines. Flame core, below saturation | 2026-09-30 00:26 CEST | 2040, 1680 | [https://pbs.twimg.com/media/HTauGVFXkAAF_G8.jpg](https://pbs.twimg.com/media/HTauGVFXkAAF_G8?format=jpg&name=orig) |
+| `thrust` | `#D19057` | [@SpaceX, 2121437515819159871](https://x.com/SpaceX/status/2121437515819159871), 4096×2304. Starship Flight 15 liftoff. Sunrise-lit gold exhaust, outer flame | 2026-11-14 03:58 CET | 800, 1500 | [https://pbs.twimg.com/media/HXDcEwRWwAEIyMi.jpg](https://pbs.twimg.com/media/HXDcEwRWwAEIyMi?format=jpg&name=orig) |
+| `ember` | `#DF6746` | [@SpaceX, 2105352066424017118](https://x.com/SpaceX/status/2105352066424017118), 3840×2071. Starship Flight 14 morning launch. Deeper fire glow above the ground fire line | 2026-09-30 19:40 CEST | 2185, 1760 | [https://pbs.twimg.com/media/HTeWy8kWIAArWZl.jpg](https://pbs.twimg.com/media/HTeWy8kWIAArWZl?format=jpg&name=orig) |
+| `void` | `#0A0D12` | [@SpaceX, 2124122550339002718](https://x.com/SpaceX/status/2124122550339002718), 4096×2730. Falcon 9 USSF-317 night, pad 4E. Night sky, away from the launch arc | 2026-11-21 13:47 CET | 3600, 1800 | [https://pbs.twimg.com/media/HXpmBHwXoAADDzN.jpg](https://pbs.twimg.com/media/HXpmBHwXoAADDzN?format=jpg&name=orig) |
+| `ocean` | `#2F5480` | [@SpaceX, 2121439746740170859](https://x.com/SpaceX/status/2121439746740170859), 3455×1943. Super Heavy Booster 22 splashdown. Open water, right of the splash column | 2026-11-14 04:07 CET | 3100, 1400 | [https://pbs.twimg.com/media/HXDdifZXEAA2KCh.jpg](https://pbs.twimg.com/media/HXDdifZXEAA2KCh?format=jpg&name=orig) |
+| `cloud` | `#C4C6C5` | [@SpaceX, 2122352509721190612](https://x.com/SpaceX/status/2122352509721190612), 3634×2160. Starship Flight 15 catch, overcast. Light cloud deck | 2026-11-16 16:34 CET | 2000, 200 | [https://pbs.twimg.com/media/HXQbSJMWkAAGcsz.jpg](https://pbs.twimg.com/media/HXQbSJMWkAAGcsz?format=jpg&name=orig) |
+| `sky` | `#7AAED6` | [@SpaceX, 2121437515819159871](https://x.com/SpaceX/status/2121437515819159871), 4096×2304. Starship Flight 15 liftoff. Clear mid-sky, upper right, away from the sun | 2026-11-14 03:58 CET | 3000, 300 | [https://pbs.twimg.com/media/HXDcEwRWwAEIyMi.jpg](https://pbs.twimg.com/media/HXDcEwRWwAEIyMi?format=jpg&name=orig) |
+| `exhaust` | `#D2BB98` | [@SpaceX, 2121437515819159871](https://x.com/SpaceX/status/2121437515819159871), 4096×2304. Starship Flight 15 liftoff. Muted tan exhaust cloud, right-hand column | 2026-11-14 03:58 CET | 3600, 800 | [https://pbs.twimg.com/media/HXDb_kPXQAATb2F.jpg](https://pbs.twimg.com/media/HXDb_kPXQAATb2F?format=jpg&name=orig) |
 
-No OKLCH lightness change was needed. Text pairs on `void`: `cloud` 13.01:1, `exhaust` 7.12:1, `sky` 6.80:1, `plume-core` 15.98:1, `thrust` 9.14:1, `ember` 4.54:1. `cloud` on `ocean` is 5.95:1. `apps/site/src/__tests__/palette.check.ts` recomputes these.
+No OKLCH lightness change was needed. Text pairs on `void`: `cloud` 11.33:1, `exhaust` 10.47:1, `sky` 8.20:1, `plume-core` 17.56:1, `thrust` 7.26:1, `ember` 5.71:1. `cloud` on `ocean` is 4.53:1, and `void` on `cloud` is 11.33:1. `sky` and `exhaust` on `ocean` are 3.28:1 and 4.18:1, so panel text on `ocean` uses `cloud`. Text on `cloud` uses `void`. `apps/site/src/__tests__/palette.check.ts` recomputes these.

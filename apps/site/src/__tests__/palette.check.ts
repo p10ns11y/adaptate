@@ -12,26 +12,27 @@ let hex = (name: keyof typeof palette.tokens) => palette.tokens[name].hex;
 describe("palette", () => {
   it("matches the recorded hexes", () => {
     expect(Object.fromEntries(Object.entries(palette.tokens).map(([name, token]) => [name, token.hex]))).toEqual({
-      "plume-core": "#FFE99D",
-      thrust: "#ECA43F",
-      ember: "#B76625",
-      void: "#0F0E0C",
-      ocean: "#294C74",
-      cloud: "#D3D4D6",
-      sky: "#799AD5",
-      exhaust: "#B59789",
+      "plume-core": "#FEF2DC",
+      thrust: "#D19057",
+      ember: "#DF6746",
+      void: "#0A0D12",
+      ocean: "#2F5480",
+      cloud: "#C4C6C5",
+      sky: "#7AAED6",
+      exhaust: "#D2BB98",
     });
   });
 
   it("keeps the dark-theme text pairs at WCAG AA", () => {
     let body = [
-      ["cloud", "void", 13.01],
-      ["exhaust", "void", 7.12],
-      ["sky", "void", 6.8],
-      ["plume-core", "void", 15.98],
-      ["thrust", "void", 9.14],
-      ["ember", "void", 4.54],
-      ["cloud", "ocean", 5.95],
+      ["cloud", "void", 11.33],
+      ["exhaust", "void", 10.47],
+      ["sky", "void", 8.2],
+      ["plume-core", "void", 17.56],
+      ["thrust", "void", 7.26],
+      ["ember", "void", 5.71],
+      ["cloud", "ocean", 4.53],
+      ["void", "cloud", 11.33],
     ] as const;
     for (let [foreground, background, recorded] of body) {
       let ratio = contrastRatio(hex(foreground), hex(background));

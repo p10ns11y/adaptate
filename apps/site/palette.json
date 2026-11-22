@@ -1,12 +1,12 @@
 {
   "tokens": {
-    "plume-core": { "hex": "#FFE99D", "role": "Accent, HUD peaks" },
-    "thrust": { "hex": "#ECA43F", "role": "Primary CTA, logo" },
-    "ember": { "hex": "#B76625", "role": "Warnings" },
-    "void": { "hex": "#0F0E0C", "role": "Background, logo tile" },
-    "ocean": { "hex": "#294C74", "role": "Panels" },
-    "cloud": { "hex": "#D3D4D6", "role": "Body text on dark" },
-    "sky": { "hex": "#799AD5", "role": "Links, gauges" },
-    "exhaust": { "hex": "#B59789", "role": "Muted text" }
+    "plume-core": { "hex": "#FEF2DC", "role": "Accent, HUD peaks" },
+    "thrust": { "hex": "#D19057", "role": "Primary CTA, logo" },
+    "ember": { "hex": "#DF6746", "role": "Warnings" },
+    "void": { "hex": "#0A0D12", "role": "Background, logo tile" },
+    "ocean": { "hex": "#2F5480", "role": "Panels" },
+    "cloud": { "hex": "#C4C6C5", "role": "Body text on dark" },
+    "sky": { "hex": "#7AAED6", "role": "Links, gauges" },
+    "exhaust": { "hex": "#D2BB98", "role": "Muted text" }
   }
 }

@@ -72,7 +72,7 @@ for (let route of routes) {
 }
 
 let credits = readFileSync(join(siteDirectory, "../../docs/credits.md"), "utf8");
-let sourceOwners = [...new Set([...credits.matchAll(/flickr\.com\/photos\/([\w-]+)\//g)].map((match) => match[1]))];
+let sourceOwners = [...new Set([...credits.matchAll(/\bx\.com\/([\w-]+)\/status\//g)].map((match) => match[1]))];
 if (sourceOwners.length === 0) failures.push("docs/credits.md lists no palette sources");
 let forbidden = new RegExp(sourceOwners.join("|") || "(?!)", "i");
 for (let path of files) {
