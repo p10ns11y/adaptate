@@ -1,3 +1,8 @@
+---
+title: "Incremental partial JSON"
+description: "Scan each new character of a JSON stream once."
+---
+
 # Incremental partial JSON
 
 ```mermaid

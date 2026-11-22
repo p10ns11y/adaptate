@@ -32,6 +32,7 @@ let packagesToDocument = [
 let guideOrder = [
   "transform.md",
   "streaming.md",
+  "incremental-parser.md",
   "openapi.md",
   "effect.md",
   "typescript.md",

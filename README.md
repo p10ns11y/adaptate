@@ -53,13 +53,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 1,610,621, Adaptate 1,425,669, Valibot 336,469. Import median milliseconds: 66.280, 69.026, 9.055. Heap after GC bytes: 8,319,808, 8,464,680, 5,215,856. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,926, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.887, 1.302, 1.954. AG-UI: Zod and Valibot have no repair and need complete JSON. Adaptate is JSON repair 34.935 microseconds plus the check 1.302 microseconds." src="assets/perf.svg" width="960">
+    <img alt="Node v24.22.3. Commit 233627cfaf8e67424ed612ec2320c7b1eb657742. Run local. Full-document validations per second: raw Zod 2,482,969, Adaptate 2,248,814, Valibot 478,375. Import median milliseconds: 41.075, 43.196, 6.329. Heap after GC bytes: 8,312,992, 8,461,992, 5,213,360. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,397 and 1,999, ./standard 589 and 328, ./effect 4,340 and 1,789. Parsed partial microseconds per chunk: 0.623, 0.843, 1.410. AG-UI: Zod and Valibot have no repair and need complete JSON. Adaptate is 17.240 microseconds per chunk, the resumed scan and the check." src="assets/perf.svg" width="960">
   </picture>
 </p>
 
-Node v24.22.3 on the GitHub Actions runner. Commit [`ceb5ab4`](https://github.com/p10ns11y/adaptate/commit/ceb5ab4b094ff1ec61c50f1dfb17bdaec2c9a1db). Run [ab-eval 44965424710](https://github.com/p10ns11y/adaptate/actions/runs/44965424710). [Performance](docs/performance.md)
+Node v24.22.3. Commit [`233627c`](https://github.com/p10ns11y/adaptate/commit/233627cfaf8e67424ed612ec2320c7b1eb657742). One local `node bench/ab/run.js`. [Performance](docs/performance.md)
 
-A partial JSON stream scans each new character once. [Incremental partial JSON](docs/incremental-parser.md)
+A partial JSON stream scans each new character once. AG-UI is 17.240 µs/chunk. Parsed partial is 0.843 µs/chunk against raw Zod 0.623 µs/chunk. [Incremental partial JSON](docs/incremental-parser.md)
 
 ## Quick start
 

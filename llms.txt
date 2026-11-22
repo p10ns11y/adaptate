@@ -9,6 +9,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Docs](docs/index.md): Where to read about views, streaming, OpenAPI, types, and the generated API.
 - [Transform](docs/transform.md): One Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](docs/streaming.md): Check a tool call while the JSON is still arriving.
+- [Incremental partial JSON](docs/incremental-parser.md): Scan each new character of a JSON stream once.
 - [OpenAPI](docs/openapi.md): Turn an OpenAPI schema into Zod, and write a Zod schema back out.
 - [Effect](docs/effect.md): Run the same checks in an Effect pipeline. Effect is an optional peer.
 - [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
@@ -48,11 +49,14 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: StandardResult\<Output\>](docs/api/core/standard/type-aliases/StandardResult.md): Exported from @adaptate/core/standard.
 - [Type Alias: StandardValidationResult\<Output\>](docs/api/core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
+- [Function: createFrameThrottle()](docs/api/core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.
+- [Function: createPartialJsonParser()](docs/api/core/stream/functions/createPartialJsonParser.md): Exported from @adaptate/core/stream.
 - [Function: createStreamValidator()](docs/api/core/stream/functions/createStreamValidator.md): Exported from @adaptate/core/stream.
 - [Function: parsePartialJson()](docs/api/core/stream/functions/parsePartialJson.md): Exported from @adaptate/core/stream.
 - [Function: validateStructuredOutput()](docs/api/core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [stream](docs/api/core/stream/index.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](docs/api/core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
+- [Type Alias: PartialJsonParser](docs/api/core/stream/type-aliases/PartialJsonParser.md): Exported from @adaptate/core/stream.
 - [API](docs/api/index.md): API reference generated from the published declaration files.
 - [@adaptate/utils](docs/api/utils/index.md): Exported from @adaptate/utils.
 - [index](docs/api/utils/index/index.md): Exported from @adaptate/utils.
