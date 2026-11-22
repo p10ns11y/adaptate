@@ -53,11 +53,13 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/perf-dark.svg">
-    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 3,512,914, Adaptate 3,302,796, Valibot 694,396. Import median milliseconds: 35.288, 36.886, 5.209. Heap after GC bytes: 8,292,224, 8,424,424, 5,204,896. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,927, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.433, 0.667, 0.926. AG-UI microseconds per chunk: 0.433, 24.084, 0.926." src="assets/perf.svg" width="960">
+    <img alt="Node v24.22.3 on GitHub Actions. Full-document validations per second: raw Zod 3,512,914, Adaptate 3,302,796, Valibot 694,396. Import median milliseconds: 35.288, 36.886, 5.209. Heap after GC bytes: 8,292,224, 8,424,424, 5,204,896. Package min and gzip bytes with zod external: . 2,490 and 1,207, ./stream 4,278 and 1,927, ./standard 589 and 328, ./effect 4,221 and 1,713. Parsed partial microseconds per chunk: 0.433, 0.667, 0.926. AG-UI: Zod and Valibot have no repair and need complete JSON. Adaptate is JSON repair 34.971 microseconds plus the check 0.667 microseconds." src="assets/perf.svg" width="960">
   </picture>
 </p>
 
-Node v24.22.3 on the GitHub Actions runner. Commit [`233b1ef`](https://github.com/p10ns11y/adaptate/commit/233b1ef17f994088cc5687c0c5ea61ff7a7751a9). Run [ab-eval 44956631113](https://github.com/p10ns11y/adaptate/actions/runs/44956631113). [Performance](docs/performance.md)
+Node v24.22.3 on the GitHub Actions runner. Commit [`233b1ef`](https://github.com/p10ns11y/adaptate/commit/233b1ef17f994088cc5687c0c5ea61ff7a7751a9). Run [ab-eval 44956631113](https://github.com/p10ns11y/adaptate/actions/runs/44956631113). JSON repair is from run [ab-eval 44964564883](https://github.com/p10ns11y/adaptate/actions/runs/44964564883). [Performance](docs/performance.md)
+
+Repair re-parses the whole growing text each chunk; an incremental parser is planned.
 
 ## Quick start
 

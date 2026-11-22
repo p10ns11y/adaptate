@@ -31,10 +31,10 @@ const measurement = {
     adaptate: 0.666712790461238,
     valibot: 0.9262384705506443,
   },
-  agUiMicros: {
-    zod: 0.43251842513282834,
-    adaptate: 24.083826264568064,
-    valibot: 0.9262384705506443,
+  agUiRepair: {
+    commit: "e5f8623c91d6c5ed023ecc826d01e8a2aa0b01b3",
+    runId: "44964564883",
+    micros: 34.9712031358885,
   },
   bundleOwn: [
     { id: ".", minBytes: 2490, gzipBytes: 1207 },
@@ -52,6 +52,7 @@ const light = {
   track: "#e7e5e4",
   zod: "#2563eb",
   adaptate: "#b45309",
+  check: "#1c1917",
   valibot: "#0f766e",
   min: "#b45309",
   gzip: "#78716c",
@@ -65,6 +66,7 @@ const dark = {
   track: "#44403c",
   zod: "#60a5fa",
   adaptate: "#fdba74",
+  check: "#fafaf9",
   valibot: "#5eead4",
   min: "#fdba74",
   gzip: "#a8a29e",
@@ -84,6 +86,32 @@ function escapeXml(value) {
 
 function text(x, y, content, fill, size, weight = "400") {
   return `<text x="${x}" y="${y}" fill="${fill}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="${size}" font-weight="${weight}">${escapeXml(content)}</text>`;
+}
+
+function absentRow(theme, x, y, label, note) {
+  return [
+    text(x, y, label, theme.muted, 12),
+    text(x + 72, y, note, theme.muted, 12),
+  ].join("");
+}
+
+function stackedBarRow(theme, x, y, trackWidth, labelWidth, label, segments, maximum, display) {
+  const barX = x + labelWidth;
+  const barY = y - 11;
+  let segmentX = barX;
+  const pieces = [
+    text(x, y, label, theme.muted, 12),
+    `<rect x="${barX}" y="${barY}" width="${trackWidth}" height="14" rx="2" fill="${theme.track}"/>`,
+  ];
+  for (const segment of segments) {
+    const segmentWidth = maximum > 0 ? (segment.value / maximum) * trackWidth : 0;
+    pieces.push(
+      `<rect x="${segmentX.toFixed(2)}" y="${barY}" width="${Math.max(segmentWidth, 0).toFixed(2)}" height="14" fill="${segment.color}"/>`,
+    );
+    segmentX += segmentWidth;
+  }
+  pieces.push(text(barX + trackWidth + 8, y, display, theme.ink, 12, "600"));
+  return pieces.join("");
 }
 
 function barRow(theme, x, y, trackWidth, labelWidth, label, value, maximum, display, color) {
@@ -146,10 +174,10 @@ function chart(theme) {
     measurement.heapAfterBytes.adaptate,
     measurement.heapAfterBytes.valibot,
   );
+  const repairMicros = measurement.agUiRepair.micros;
+  const checkMicros = measurement.parsedPartialMicros.adaptate;
   const streamMaximum = Math.max(
-    measurement.agUiMicros.zod,
-    measurement.agUiMicros.adaptate,
-    measurement.agUiMicros.valibot,
+    repairMicros + checkMicros,
     measurement.parsedPartialMicros.zod,
     measurement.parsedPartialMicros.adaptate,
     measurement.parsedPartialMicros.valibot,
@@ -170,7 +198,7 @@ function chart(theme) {
       color,
     }));
   const title = `Node ${measurement.runtimeVersion} on the GitHub Actions runner`;
-  const subtitle = `commit ${measurement.commit} · run ${measurement.runId}`;
+  const subtitle = `commit ${measurement.commit} · run ${measurement.runId} · repair run ${measurement.agUiRepair.runId}`;
   const summary = [
     title,
     subtitle,
@@ -179,7 +207,7 @@ function chart(theme) {
     `Heap after GC bytes: zod ${group(measurement.heapAfterBytes.zod)}, adaptate ${group(measurement.heapAfterBytes.adaptate)}, valibot ${group(measurement.heapAfterBytes.valibot)}.`,
     `Bundle own min/gzip bytes, zod external: ${measurement.bundleOwn.map((entry) => `${entry.id} ${group(entry.minBytes)}/${group(entry.gzipBytes)}`).join(", ")}. ./effect also keeps effect external.`,
     `Parsed partial µs/chunk: zod ${measurement.parsedPartialMicros.zod.toFixed(3)}, adaptate ${measurement.parsedPartialMicros.adaptate.toFixed(3)}, valibot ${measurement.parsedPartialMicros.valibot.toFixed(3)}.`,
-    `AG-UI µs/chunk, JSON repair included for adaptate: zod ${measurement.agUiMicros.zod.toFixed(3)}, adaptate ${measurement.agUiMicros.adaptate.toFixed(3)}, valibot ${measurement.agUiMicros.valibot.toFixed(3)}.`,
+    `AG-UI adaptate µs/chunk: JSON repair ${repairMicros.toFixed(3)} from run ${measurement.agUiRepair.runId}, check ${checkMicros.toFixed(3)}. Zod and valibot: no repair, needs complete JSON.`,
   ].join(" ");
 
   const panelWidth = 296;
@@ -310,25 +338,17 @@ function chart(theme) {
       streamWidth,
       tallHeight,
       "Per chunk",
-      "µs. AG-UI includes JSON repair",
+      "µs. adaptate AG-UI is repair, then check",
     ),
   );
-  const streamRows = [
-    { label: "parsed", heading: true },
-    ...triples(measurement.parsedPartialMicros, (value) => value.toFixed(3)),
-    { label: "AG-UI", heading: true },
-    ...triples(measurement.agUiMicros, (value) => value.toFixed(3)),
-  ];
+  const parsedRows = triples(measurement.parsedPartialMicros, (value) => value.toFixed(3));
+  const labelWidth = 72;
+  const valueWidth = 116;
+  const trackWidth = streamWidth - 32 - labelWidth - valueWidth;
   let streamCursor = streamY + 68;
-  for (const row of streamRows) {
-    if (row.heading) {
-      parts.push(text(streamX + 16, streamCursor, row.label, theme.ink, 12, "700"));
-      streamCursor += 22;
-      continue;
-    }
-    const labelWidth = 72;
-    const valueWidth = 52;
-    const trackWidth = streamWidth - 32 - labelWidth - valueWidth;
+  parts.push(text(streamX + 16, streamCursor, "parsed", theme.ink, 12, "700"));
+  streamCursor += 22;
+  for (const row of parsedRows) {
     parts.push(
       barRow(
         theme,
@@ -345,6 +365,29 @@ function chart(theme) {
     );
     streamCursor += 28;
   }
+  parts.push(text(streamX + 16, streamCursor, "AG-UI", theme.ink, 12, "700"));
+  streamCursor += 22;
+  const noRepair = "no repair: needs complete JSON";
+  parts.push(absentRow(theme, streamX + 16, streamCursor, "zod", noRepair));
+  streamCursor += 28;
+  parts.push(
+    stackedBarRow(
+      theme,
+      streamX + 16,
+      streamCursor,
+      trackWidth,
+      labelWidth,
+      "adaptate",
+      [
+        { value: repairMicros, color: theme.adaptate },
+        { value: checkMicros, color: theme.check },
+      ],
+      streamMaximum,
+      `${repairMicros.toFixed(3)} + ${checkMicros.toFixed(3)}`,
+    ),
+  );
+  streamCursor += 28;
+  parts.push(absentRow(theme, streamX + 16, streamCursor, "valibot", noRepair));
 
   parts.push("</svg>");
   return parts.join("\n");
