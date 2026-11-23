@@ -1,6 +1,7 @@
 import { runDemo } from "./demo-model.ts";
 import { resultParts, statusLines } from "./demo-view.ts";
 import { payloadFor, samples, type PayloadKind, type SampleName } from "./samples.ts";
+import { readyText, stillFrame, streamFrames, type StreamFrame } from "./stream-model.ts";
 
 let byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -113,5 +114,69 @@ function startCopyButtons() {
   }
 }
 
+function startStream() {
+  let root = byId("stream");
+  if (!root) return;
+  let field = (name: string) => root.querySelector<HTMLElement>(`[data-stream="${name}"]`);
+  let step = field("step");
+  let text = field("text");
+  let parse = field("parse");
+  let partial = field("partial");
+  let card = field("card");
+  let kitchen = field("kitchen");
+  if (!step || !text || !parse || !partial || !card || !kitchen) return;
+  let frames = streamFrames();
+  let paint = (frame: StreamFrame) => {
+    step.textContent = frame.step;
+    text.textContent = frame.text;
+    parse.textContent = frame.parse;
+    parse.dataset.ok = String(frame.parsed);
+    partial.textContent = frame.partial;
+    card.textContent = readyText("card", frame.card);
+    card.dataset.ready = String(frame.card);
+    kitchen.textContent = readyText("kitchen", frame.kitchen);
+    kitchen.dataset.ready = String(frame.kitchen);
+  };
+  let reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let index = 0;
+  let timer = 0;
+  let visible = false;
+  let paused = false;
+  let toggle = byId<HTMLButtonElement>("stream-toggle");
+  let stop = () => {
+    window.clearTimeout(timer);
+    timer = 0;
+  };
+  let tick = () => {
+    let frame = frames[index];
+    if (frame) paint(frame);
+    timer = window.setTimeout(tick, index === frames.length - 1 ? 2600 : 900);
+    index = (index + 1) % frames.length;
+  };
+  let sync = () => {
+    if (reduced.matches) {
+      stop();
+      let still = frames[stillFrame];
+      if (still) paint(still);
+    } else if (visible && !document.hidden && !paused) {
+      if (!timer) tick();
+    } else {
+      stop();
+    }
+  };
+  new IntersectionObserver((entries) => {
+    visible = entries.some((entry) => entry.isIntersecting);
+    sync();
+  }).observe(root);
+  toggle?.addEventListener("click", () => {
+    paused = !paused;
+    toggle.textContent = paused ? "Play" : "Pause";
+    sync();
+  });
+  document.addEventListener("visibilitychange", sync);
+  reduced.addEventListener("change", sync);
+}
+
 startDemo();
 startCopyButtons();
+startStream();

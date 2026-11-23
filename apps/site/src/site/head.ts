@@ -1,4 +1,5 @@
 import { absoluteUrl, indexable, repositoryUrl, siteName, slugFor } from "./config.ts";
+import { heroPreload } from "./media.ts";
 import type { SiteRoute } from "./routes.ts";
 
 export type HeadContext = {
@@ -73,6 +74,7 @@ export function renderHead(route: SiteRoute, context: HeadContext): string {
     `<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`,
     `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`,
     `<link rel="stylesheet" href="/site.css">`,
+    ...(route.kind === "landing" ? [heroPreload()] : []),
     `<meta property="og:type" content="website">`,
     `<meta property="og:site_name" content="${siteName}">`,
     `<meta property="og:title" content="${title}">`,

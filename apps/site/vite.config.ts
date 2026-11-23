@@ -6,8 +6,9 @@ import { defineConfig, type Plugin } from "vite";
 import { resolveSiteUrl } from "./src/site/config.ts";
 import { escapeHtml, renderHead } from "./src/site/head.ts";
 import { renderFooter, renderHeader } from "./src/site/header.ts";
-import { renderAgents, renderCards, renderInstall, renderProof } from "./src/site/landing-copy.ts";
+import { renderAgents, renderCards, renderEyebrow, renderHeading, renderInstall, renderProof } from "./src/site/landing-copy.ts";
 import { renderDemo } from "./src/site/landing-demo.ts";
+import { renderHeroArt, renderPadArt, renderTrailArt } from "./src/site/media.ts";
 import { landingRoute, loadRoute, type SiteRoute } from "./src/site/routes.ts";
 
 let siteDirectory = dirname(fileURLToPath(import.meta.url));
@@ -31,13 +32,17 @@ function sitePages(): Plugin {
         .replace("<!--site-head-->", renderHead(route, { siteUrl, version }))
         .replace("<!--site-header-->", renderHeader(route.kind))
         .replace("<!--site-footer-->", renderFooter())
-        .replace("<!--site-heading-->", escapeHtml(route.heading))
+        .replace("<!--site-eyebrow-->", renderEyebrow())
+        .replace("<!--site-heading-->", route.kind === "landing" ? renderHeading() : escapeHtml(route.heading))
         .replace("<!--site-answer-->", escapeHtml(route.answer))
         .replace("<!--site-install-->", renderInstall())
         .replace("<!--site-demo-->", demo)
         .replace("<!--site-cards-->", renderCards())
         .replace("<!--site-proof-->", renderProof())
-        .replace("<!--site-agents-->", renderAgents());
+        .replace("<!--site-agents-->", renderAgents())
+        .replace("<!--site-hero-art-->", renderHeroArt())
+        .replace("<!--site-trail-art-->", renderTrailArt())
+        .replace("<!--site-pad-art-->", renderPadArt());
     },
     generateBundle(_options, bundle) {
       let modules: Record<string, string[]> = {};

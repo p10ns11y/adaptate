@@ -31,13 +31,13 @@ let isObject = (value: Json | undefined): value is JsonObject => typeof value ==
 
 function parseJson(text: string, label: string): { value: Json } | { error: string } {
   let bytes = new TextEncoder().encode(text).length;
-  if (bytes > maxInputBytes) return { error: `${label} is ${(bytes / 1024).toFixed(1)} KB. This demo reads up to 32 KB.` };
+  if (bytes > maxInputBytes) return { error: `${label} is ${(bytes / 1024).toFixed(1)} KB. The playground reads up to 32 KB.` };
   if (text.trim() === "") return { error: `${label} is empty.` };
   try {
     return { value: JSON.parse(text) as Json };
   } catch (error) {
     let detail = error instanceof Error ? error.message : String(error);
-    return { error: `${label} is not valid JSON (${detail}). This demo reads JSON only, not YAML.` };
+    return { error: `${label} is not valid JSON (${detail}). The playground reads JSON only, not YAML.` };
   }
 }
 
@@ -113,7 +113,7 @@ export function runDemo(schemaText: string, payloadText: string, pick?: string):
   let parsed = parseJson(schemaText, "The schema");
   if ("error" in parsed) return empty(parsed.error);
   let document = parsed.value;
-  if (depthOf(document) > maxDepth) return empty(`The schema nests deeper than ${maxDepth} levels. This demo stops there.`);
+  if (depthOf(document) > maxDepth) return empty(`The schema nests deeper than ${maxDepth} levels. The playground stops there.`);
   if (!isObject(document)) {
     return empty("That is a JSON value, not a schema. Paste a JSON Schema or OpenAPI snippet here, and put values in the payload box.");
   }
