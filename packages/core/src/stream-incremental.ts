@@ -127,6 +127,8 @@ export type JsonStreamStep = {
   readonly complete: boolean;
 };
 
+const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
+
 type TrackedFeed = {
   readonly push: PartialJsonFeed;
   readonly complete: () => boolean;
@@ -502,9 +504,14 @@ function createTrackedFeed(): TrackedFeed {
   };
   return {
     push,
-    complete: () => done && !sealed,
-    ended: () =>
-      !sealed && (done || (holdingNumber && openFrames.length === 0)),
+    complete: () => done && !sealed && source.slice(cursor).trim() === "",
+    ended: () => {
+      if (sealed) return false;
+      const tail = source.slice(cursor).trim();
+      return done
+        ? tail === ""
+        : openFrames.length === 0 && jsonNumber.test(tail);
+    },
   };
 }
 

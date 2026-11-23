@@ -159,15 +159,26 @@ describe("parseStream", () => {
 
   it("accepts a top-level number and rejects text after the value", async () => {
     const number = z.number();
-    for (const text of ["42", "42 "]) {
-      const steps = await collect(parseStream(chunks(text), number));
-      expect(steps.at(-1), text).toMatchObject({
-        done: true,
-        result: { ok: true, value: 42 },
-      });
+    for (const parts of [["42"], ["4", "2"], ["42 "], ["-1.5e3"]]) {
+      const steps = await collect(parseStream(chunks(...parts), number));
+      expect(steps.at(-1)?.result, parts.join("|")).toMatchObject({ ok: true });
+    }
+    for (const text of [
+      "1.",
+      "1e",
+      "-1e-",
+      "-",
+      "1 2",
+      "[1] 2",
+      '"a" 1',
+      "true 1",
+    ]) {
+      const steps = await collect(parseStream(chunks(text), z.unknown()));
+      expect(steps.at(-1)?.result, text).toMatchObject({ ok: false });
     }
     for (const text of [
       '{"title":"Pasta","servings":3} x',
+      '{"title":"Pasta","servings":3} 2',
       '{"title":"Pasta","servings":3}{"title":"Rice","servings":1}',
     ]) {
       const steps = await collect(parseStream(chunks(text), recipe));
@@ -177,7 +188,7 @@ describe("parseStream", () => {
       });
     }
     const spaced = await collect(
-      parseStream(chunks('{"title":"Pasta","servings":3} \n'), recipe),
+      parseStream(chunks('{"title":"Pasta","servings":3} ', "\n"), recipe),
     );
     expect(spaced.at(-1)).toMatchObject({ done: true, result: { ok: true } });
   });
