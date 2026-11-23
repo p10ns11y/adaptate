@@ -297,7 +297,7 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .telemetry b { font-weight: 600; text-transform: none; letter-spacing: 0.04em; color: var(--plume-core); }
 
 .band { padding: clamp(4rem, 9vw, 6.5rem) 0; }
-.value-band { position: relative; }
+.value-band { position: relative; isolation: isolate; }
 .agents-band, .proof-band { position: relative; isolation: isolate; }
 .proof-band::before, .agents-band::before { content: ""; position: absolute; z-index: 1; inset: -1px 0 auto; height: 2px; background: var(--trail); box-shadow: 0 0 14px color-mix(in oklab, var(--flame-amber) 45%, transparent); }
 .proof-band::after, .agents-band::after { content: ""; position: absolute; z-index: -1; inset: 0 0 auto; height: 7rem; pointer-events: none; background: radial-gradient(50% 100% at 50% 0, color-mix(in oklab, var(--smoke) 9%, transparent), transparent); }
@@ -393,3 +393,4 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
   min-height: 80vh;
   border: 0;
 }
+@media (forced-colors: active) { .hero h1 em, .proof .v { -webkit-text-fill-color: currentColor; background: none; } }
