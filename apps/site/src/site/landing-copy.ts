@@ -48,7 +48,7 @@ export let agentPrompt = [
   `Read ${repositoryUrl}/blob/main/llms.txt first.`,
   `Convert an OpenAPI or JSON Schema with openAPISchemaToZod from "@adaptate/utils", then call safeParse on the result.`,
   `Use transformSchema from "adaptate" to require only the fields a view needs.`,
-  `For streamed tool calls, add @adaptate/core and use createAgUiPartialValidator from "@adaptate/core/stream".`,
+  `For streamed tool calls, add @adaptate/core and use createAgUiPartialValidator from "@adaptate/core/stream-incremental".`,
 ].join("\n");
 
 export function landingWords(): string[] {

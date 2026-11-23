@@ -170,7 +170,6 @@ function startStream() {
   }).observe(root);
   toggle?.addEventListener("click", () => {
     paused = !paused;
-    toggle.setAttribute("aria-pressed", String(paused));
     toggle.textContent = paused ? "Play" : "Pause";
     sync();
   });

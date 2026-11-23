@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { createAgUiPartialValidator, createStreamValidator } from "@adaptate/core/stream";
+import { createStreamValidator } from "@adaptate/core/stream";
+import { createAgUiPartialValidator } from "@adaptate/core/stream-incremental";
 
 export let streamChunks = ['{"ti', 'tle":"Pas', 'ta al limone",', '"servings":', "4}"];
 export let stillFrame = 1;
