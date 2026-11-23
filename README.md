@@ -31,6 +31,8 @@
 pnpm add @adaptate/core zod
 ```
 
+<p align="center"><a href="https://adaptate-site.vercel.app"><img alt="The adaptate site: a live playground turns JSON Schema or OpenAPI into Zod and TypeScript and checks a payload" src="assets/site-hero.png" width="800"></a></p>
+
 ## Before and after
 
 A model is streaming a tool call. So far it has sent `{"title":"Pas`.
@@ -233,6 +235,42 @@ On the 966-character grocery order from the bench, the incremental feed makes 96
 
 </details>
 
+## Find your choke points
+
+The places where outside data enters (a request body, a queue message, an SI model's tool call) are where bad data spreads from. `@adaptate/core/result` returns a `Result` there instead of throwing: work stays on the success track, and issues ride the error track until you `recover` or `match`.
+
+```mermaid
+flowchart LR
+  input([untrusted input]) --> parse[parse]
+  parse -->|ok| map[map] --> flatMap[flatMap] --> done([typed value])
+  parse -->|issues| issues[error track]
+  flatMap -->|err| issues
+  issues --> recover[recover or match] --> done
+```
+
+```ts
+import { z } from "zod";
+import { parse, parseStream } from "@adaptate/core/result";
+
+const invoice = z.object({ id: z.string().min(1), total: z.number().min(0) });
+
+const total = parse(invoice, { id: "", total: -1 }).map((value) => value.total);
+console.log(total.match(String, (issues) => `${issues.length} issues`));
+console.log(total.recover(() => 0).value);
+
+async function* chunks() {
+  yield '{"id":"A-1","to';
+  yield 'tal":12.5}';
+}
+for await (const step of parseStream(chunks(), invoice)) {
+  if (step.done) console.log(step.result.match((value) => value.id, () => "rejected"));
+}
+```
+
+Prints `2 issues`, `0`, then `A-1`. `parseStream` reads chunks through the incremental parser, and its last step errs unless the stream held one complete JSON value.
+
+[Find your choke points](https://adaptate-site.vercel.app/docs/choke-points/) · [Guide source](docs/choke-points.md)
+
 ## Bring any Standard Schema
 
 `@adaptate/core/standard` validates through the shared `~standard.validate` interface and adds no dependency. A transformed Zod schema is a Standard Schema too.
@@ -309,6 +347,7 @@ Full tables, including where adaptate is slower than raw Zod: [Performance](docs
 | You want | Read |
 | --- | --- |
 | Every guide | [Docs](docs/index.md) |
+| Where to put a Result | [Find your choke points](docs/choke-points.md) |
 | Each claim on this page and its test | [Proof](docs/proof.md) |
 | The generated API reference | [API](docs/api/index.md) |
 | Runnable apps | [React view](examples/react-view) · [Streaming tool call](examples/streaming-tool-call) · [Live load](examples/live-load) |
@@ -322,6 +361,7 @@ Ideas this library borrows, and where to read more.
 - **[AG-UI](https://docs.ag-ui.com).** An open event protocol for agent UIs. Its `TOOL_CALL_ARGS` deltas, keyed by `toolCallId`, are the shape the stream validator reads.
 - **[Zod](https://zod.dev).** `z.infer` turns a schema into a type, which lets `Config<T>` reject a misspelled field before anything runs.
 - **[Effect](https://effect.website).** Failures are typed values, not thrown exceptions. `AdaptateParseError` and `AdaptateValidationError` follow that model.
+- **[Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/), Scott Wlaschin.** A success track and an error track joined by `map` and `bind`. `@adaptate/core/result` follows it with `map`, `flatMap` and `recover`.
 - **[json-schema-ref-parser](https://github.com/APIDevTools/json-schema-ref-parser).** The reference behaviour for `$ref` resolution. It handles remote and file `$ref`s here, and the built-in resolver keeps its depth error message.
 
 MIT

@@ -49,6 +49,13 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
 - CI job on the latest zod.
 
+## 2.4.2 — 2026-11-23 — Result guard for choke points
+
+### Added
+- `@adaptate/core/result`: `parse` returns a `Result` with `map`, `flatMap`, `mapError`, `recover` and `match`; `parseAsync` resolves to one. `parseStream` yields steps that each carry a `Result`, and its last step errs unless the stream holds one complete JSON value.
+- `@adaptate/core/stream-incremental`: `fromAsyncIterableSteps` marks when the root JSON value closes.
+- Guide: Find your choke points.
+
 ## 2.4.1 — 2026-11-23 — Readable @adaptate/utils build
 
 ### Changed
