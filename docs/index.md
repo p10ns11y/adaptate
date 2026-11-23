@@ -58,6 +58,7 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
 - [Zod](zod.md): one Zod schema, a `Config` per view, and the Standard Schema interface.
 - [Effect](effect.md): run the same checks in an Effect pipeline.
+- [Find your choke points](choke-points.md): parse to an ok or error track, then map, flatMap, or recover.
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.

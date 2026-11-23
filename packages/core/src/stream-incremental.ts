@@ -92,7 +92,9 @@ function literalEnd(source: string, start: number): number {
   return index;
 }
 
-function readNumber(literal: string): { length: number; value: number } | undefined {
+function readNumber(
+  literal: string,
+): { length: number; value: number } | undefined {
   if (literal === "-") return { length: 0, value: 0 };
   const matched = numberGrammar.exec(literal);
   if (!matched || matched.index !== 0) return undefined;
@@ -100,7 +102,11 @@ function readNumber(literal: string): { length: number; value: number } | undefi
   return { length: valid.length, value: Number(valid) };
 }
 
-function numberHolds(literal: string, validLength: number, atEnd: boolean): boolean {
+function numberHolds(
+  literal: string,
+  validLength: number,
+  atEnd: boolean,
+): boolean {
   if (!atEnd) return false;
   if (validLength === 0) return literal === "-";
   const rest = literal.slice(validLength);
@@ -116,11 +122,26 @@ function keywordSpan(literal: string): number | undefined {
 
 export type PartialJsonFeed = (chunk: string) => unknown;
 
-export function createPartialJsonFeed(): PartialJsonFeed {
+export type JsonStreamStep = {
+  readonly value: unknown;
+  readonly complete: boolean;
+};
+
+const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
+
+type TrackedFeed = {
+  readonly push: PartialJsonFeed;
+  readonly complete: () => boolean;
+  readonly ended: () => boolean;
+};
+
+function createTrackedFeed(): TrackedFeed {
   let source = "";
   let cursor = 0;
   let sealed = false;
   let done = false;
+  let lastWasComma = false;
+  let trailingComma = false;
   let rootValue: unknown;
   let cached: unknown;
   let hasCache = false;
@@ -157,7 +178,8 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       return;
     }
     const items = frame[frameItems];
-    if (frame[frameArray]) defineOwn(items, String((items as unknown[]).length), value);
+    if (frame[frameArray])
+      defineOwn(items, String((items as unknown[]).length), value);
     else {
       defineOwn(items, frame[frameKey] as string, value);
       frame[frameKey] = undefined;
@@ -197,10 +219,13 @@ export function createPartialJsonFeed(): PartialJsonFeed {
   }
 
   function acceptStructural(token: string): boolean {
+    const afterComma = lastWasComma;
+    lastWasComma = false;
     if (done) return false;
     const frame = currentFrame();
     if (token === "{" || token === "[") {
-      if (frame && !frame[frameArray] && frame[framePhase] === phaseKey) return false;
+      if (frame && !frame[frameArray] && frame[framePhase] === phaseKey)
+        return false;
       if (frame && frame[framePhase] === phaseColon) return false;
       if (frame && frame[framePhase] === phaseComma) return false;
       openContainer(token === "[");
@@ -212,6 +237,7 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       if (closesArray !== frame[frameArray]) return false;
       if (frame[framePhase] === phaseColon) return false;
       if (!closesArray && frame[framePhase] === phaseValue) return false;
+      if (afterComma) trailingComma = true;
       closeFrame();
       return true;
     }
@@ -222,10 +248,12 @@ export function createPartialJsonFeed(): PartialJsonFeed {
     }
     if (!frame || frame[framePhase] !== phaseComma) return false;
     frame[framePhase] = frame[frameArray] ? phaseValue : phaseKey;
+    lastWasComma = true;
     return true;
   }
 
   function acceptValue(value: unknown, quoted: boolean): boolean {
+    lastWasComma = false;
     if (done) return false;
     const frame = currentFrame();
     if (!frame) {
@@ -328,7 +356,8 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       const deepest = index === openFrames.length - 1;
       const cachedCopy = frame[frameCached];
       const structureSame =
-        cachedCopy !== undefined && frame[frameRevision] === frame[frameCachedRevision];
+        cachedCopy !== undefined &&
+        frame[frameRevision] === frame[frameCachedRevision];
       if (!deepest && structureSame) {
         const target = copyContainer(cachedCopy);
         defineOwn(target, childLink as string, childCopy);
@@ -339,7 +368,8 @@ export function createPartialJsonFeed(): PartialJsonFeed {
         continue;
       }
       const copy = copyContainer(frame[frameItems]);
-      if (childCopy !== undefined) defineOwn(copy, childLink as string, childCopy);
+      if (childCopy !== undefined)
+        defineOwn(copy, childLink as string, childCopy);
       if (deepest && partial.include) {
         if (frame[frameArray]) (copy as unknown[]).push(partial.value);
         else defineOwn(copy, frame[frameKey] as string, partial.value);
@@ -352,7 +382,7 @@ export function createPartialJsonFeed(): PartialJsonFeed {
     return childCopy;
   }
 
-  return function push(chunk: string) {
+  const push = (chunk: string): unknown => {
     if (sealed) return cached;
     if (chunk.length === 0 && hasCache) return cached;
     const heldBefore = holdingNumber;
@@ -390,7 +420,13 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       }
       if (character === '"') {
         if (expectsValue()) tailStamp += 1;
-        openString = { decoded: "", pending: "", next: cursor + 1, broken: false, start: cursor };
+        openString = {
+          decoded: "",
+          pending: "",
+          next: cursor + 1,
+          broken: false,
+          start: cursor,
+        };
         continue;
       }
       if (
@@ -455,7 +491,10 @@ export function createPartialJsonFeed(): PartialJsonFeed {
       break;
     }
     if (tailStamp !== publishedStamp) dirty = true;
-    if (holdingNumber !== heldBefore || (holdingNumber && !Object.is(heldNumber, heldValueBefore))) {
+    if (
+      holdingNumber !== heldBefore ||
+      (holdingNumber && !Object.is(heldNumber, heldValueBefore))
+    ) {
       dirty = true;
     }
     if (!dirty && hasCache) return cached;
@@ -470,6 +509,50 @@ export function createPartialJsonFeed(): PartialJsonFeed {
     hasCache = true;
     return cached;
   };
+  return {
+    push,
+    complete: () =>
+      done && !sealed && !trailingComma && source.slice(cursor).trim() === "",
+    ended: () => {
+      if (sealed || trailingComma) return false;
+      const tail = source.slice(cursor).trim();
+      return done
+        ? tail === ""
+        : openFrames.length === 0 && jsonNumber.test(tail);
+    },
+  };
+}
+
+export function createPartialJsonFeed(): PartialJsonFeed {
+  return createTrackedFeed().push;
+}
+
+export async function* fromAsyncIterableSteps(
+  source: AsyncIterable<string | Uint8Array>,
+): AsyncGenerator<JsonStreamStep> {
+  const { push: pushChunk, complete, ended } = createTrackedFeed();
+  const decoder = new TextDecoder();
+  let last: JsonStreamStep | undefined;
+  function step(text: string): JsonStreamStep | undefined {
+    const partialValue = pushChunk(text);
+    if (partialValue === undefined) return undefined;
+    last = { value: partialValue, complete: complete() };
+    return last;
+  }
+  for await (const sourceChunk of source) {
+    const text =
+      typeof sourceChunk === "string"
+        ? sourceChunk
+        : decoder.decode(sourceChunk, { stream: true });
+    if (text.length === 0) continue;
+    const next = step(text);
+    if (next) yield next;
+  }
+  const flushedText = decoder.decode();
+  const flushed = flushedText.length === 0 ? undefined : step(flushedText);
+  if (flushed) yield flushed;
+  if (last && last.complete !== ended())
+    yield { value: last.value, complete: ended() };
 }
 
 export async function* fromAsyncIterable(

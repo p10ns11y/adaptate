@@ -66,6 +66,7 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
 - [Zod](zod.md): one Zod schema, a `Config` per view, and the Standard Schema interface.
 - [Effect](effect.md): run the same checks in an Effect pipeline.
+- [Find your choke points](choke-points.md): parse to an ok or error track, then map, flatMap, or recover.
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
@@ -868,6 +869,108 @@ export function cardOrFallback(text: string) {
 <!-- /snippet -->
 
 
+# Find your choke points
+
+Source: docs/choke-points.md
+
+---
+title: "Find your choke points"
+description: "Guard the few places where bad or partial data breaks an app, with a Result that keeps an ok track and an error track."
+answer: "A choke point is a boundary where untrusted data enters: an API or SI model response, a stream, a form, an import, a config file. parse from @adaptate/core/result returns ok or err, so map, flatMap, and recover keep each track explicit. parseStream does the same for streamed JSON."
+faq:
+  - question: "Which schemas does parse accept?"
+    answer: "Any Standard Schema: Zod, Valibot, ArkType, or a schema from openAPISchemaToZod in @adaptate/utils. Use parseAsync for schemas that validate asynchronously."
+  - question: "What is on the error track?"
+    answer: "The Standard Schema issues, each with a message and a path. mapError turns them into your own error type."
+  - question: "How does parseStream fit the incremental parser?"
+    answer: "It reads chunks through fromAsyncIterableSteps from @adaptate/core/stream-incremental and checks each partial value against an optional partial schema. The last step checks the closed value against the full schema, or errs when the stream ends without one complete JSON value."
+---
+
+# Find your choke points
+
+Most of an app trusts data that one small boundary already checked. Find those boundaries and give each one two tracks.
+
+```mermaid
+flowchart LR
+  Input["untrusted input or stream"] --> Parse["parse or parseStream"]
+  Parse -->|"ok"| Value["typed value"]
+  Parse -->|"err"| Issues["issues"]
+  Value -->|"map, flatMap"| Next["next step"]
+  Issues -->|"recover, mapError"| Report["fallback or report"]
+```
+
+| Choke point | Schema source | Call |
+| --- | --- | --- |
+| API response | OpenAPI via `openAPISchemaToZod` | `parse` |
+| SI tool call | Zod | `parseStream` |
+| Form or import | Zod or JSON Schema | `parse` |
+| Async refinement | any Standard Schema | `parseAsync` |
+
+```ts
+import { parse } from "@adaptate/core/result";
+
+parse(schema, input).map(render).recover(showIssues);
+```
+
+The file below is typechecked and run by the site tests.
+
+<!-- snippet: usages/choke-points.ts -->
+```ts
+import { parse, parseStream, type Issues } from "@adaptate/core/result";
+import { openAPISchemaToZod } from "@adaptate/utils";
+import { z } from "zod";
+
+export let invoiceSchema = openAPISchemaToZod({
+  type: "object",
+  required: ["id", "total"],
+  properties: {
+    id: { type: "string", minLength: 1 },
+    total: { type: "number", minimum: 0 },
+  },
+});
+
+function fields(issues: Issues): string {
+  return issues
+    .map((issue) => {
+      let first = issue.path?.[0];
+      return String(typeof first === "object" ? first.key : (first ?? "input"));
+    })
+    .join(", ");
+}
+
+export function checkInvoice(input: unknown): string {
+  return parse(invoiceSchema, input).match(
+    () => "accepted",
+    (issues) => `check ${fields(issues)}`,
+  );
+}
+
+let toolArguments = z.object({ city: z.string(), days: z.number().int().positive() });
+
+type Trip = { city: string; days: number; nights: number };
+export type ToolCallOutcome = { previews: string[]; call?: Trip; issues?: string[] };
+
+export async function readToolCall(chunks: AsyncIterable<string>): Promise<ToolCallOutcome> {
+  let previews: string[] = [];
+  let outcome: ToolCallOutcome = { previews };
+  for await (let step of parseStream(chunks, toolArguments, toolArguments.partial())) {
+    if (!step.done) {
+      if (step.result.ok && step.result.value.city) previews.push(step.result.value.city);
+      continue;
+    }
+    outcome = step.result
+      .map((call) => ({ ...call, nights: call.days - 1 }))
+      .match<ToolCallOutcome>(
+        (call) => ({ previews, call }),
+        (issues) => ({ previews, issues: issues.map((issue) => issue.message) }),
+      );
+  }
+  return outcome;
+}
+```
+<!-- /snippet -->
+
+
 # TypeScript
 
 Source: docs/typescript.md
@@ -909,7 +1012,7 @@ Source: docs/subpaths.md
 ---
 title: "Subpaths"
 description: "The published entry points, and which peers each one loads."
-answer: "@adaptate/core publishes five entry points: the root, /stream, /stream-incremental, /standard, and /effect. zod is the only required peer, and effect loads only from /effect."
+answer: "@adaptate/core publishes six entry points: the root, /stream, /stream-incremental, /standard, /effect, and /result. zod is the only required peer, and effect loads only from /effect."
 faq:
   - question: "Which entry point should a chat UI use?"
     answer: "@adaptate/core/stream-incremental for long streams, or @adaptate/core/stream for the re-parse path and createFrameThrottle."
@@ -919,7 +1022,7 @@ faq:
 
 # Subpaths
 
-`@adaptate/core` publishes five entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
+`@adaptate/core` publishes six entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
 
 ```mermaid
 flowchart LR
@@ -928,6 +1031,7 @@ flowchart LR
   zod --> incremental["@adaptate/core/stream-incremental"]
   zod --> standard["@adaptate/core/standard"]
   zod --> effect["@adaptate/core/effect"]
+  zod --> result["@adaptate/core/result"]
   effectPeer["effect optional peer"] -.-> effect
 ```
 
@@ -935,8 +1039,9 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `Config`, `DeepPartial`, `PartialValidationResult` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `agUiValidatorWith`, `reparseFeed`, `createFrameThrottle`, `AgUiDeltaEvent`, `PartialJsonFeed` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator`, `PartialJsonFeed` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `fromAsyncIterableSteps`, `createAgUiPartialValidator`, `PartialJsonFeed`, `JsonStreamStep` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
+| `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
 
 `@adaptate/utils` has no required runtime dependencies. Its peers are in [Optional peers](optional-peers.md). Published paths:
@@ -1512,6 +1617,7 @@ description: "Exported from @adaptate/core."
 
 - [effect](effect/index.md)
 - [index](index/index.md)
+- [result](result/index.md)
 - [standard](standard/index.md)
 - [stream](stream/index.md)
 - [stream-incremental](stream-incremental/index.md)
@@ -1801,6 +1907,775 @@ description: "Exported from @adaptate/core."
 ### valid
 
 > **valid**: `boolean`
+
+
+# Function: err()
+
+Source: docs/api/core/result/functions/err.md
+
+---
+title: "Function: err()"
+description: "Exported from @adaptate/core/result."
+---
+
+# Function: err()
+
+> **err**\<`E`, `T`\>(`error`): [`Err`](../interfaces/Err.md)\<`E`, `T`\>
+
+## Type Parameters
+
+### E
+
+`E`
+
+### T
+
+`T` = `never`
+
+## Parameters
+
+### error
+
+`E`
+
+## Returns
+
+[`Err`](../interfaces/Err.md)\<`E`, `T`\>
+
+
+# Function: ok()
+
+Source: docs/api/core/result/functions/ok.md
+
+---
+title: "Function: ok()"
+description: "Exported from @adaptate/core/result."
+---
+
+# Function: ok()
+
+> **ok**\<`T`, `E`\>(`value`): [`Ok`](../interfaces/Ok.md)\<`T`, `E`\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+### E
+
+`E` = `never`
+
+## Parameters
+
+### value
+
+`T`
+
+## Returns
+
+[`Ok`](../interfaces/Ok.md)\<`T`, `E`\>
+
+
+# Function: parse()
+
+Source: docs/api/core/result/functions/parse.md
+
+---
+title: "Function: parse()"
+description: "Exported from @adaptate/core/result."
+---
+
+# Function: parse()
+
+> **parse**\<`T`\>(`schema`, `input`): [`Result`](../type-aliases/Result.md)\<`T`\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+## Parameters
+
+### schema
+
+[`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `T`\>
+
+### input
+
+`unknown`
+
+## Returns
+
+[`Result`](../type-aliases/Result.md)\<`T`\>
+
+
+# Function: parseAsync()
+
+Source: docs/api/core/result/functions/parseAsync.md
+
+---
+title: "Function: parseAsync()"
+description: "Exported from @adaptate/core/result."
+---
+
+# Function: parseAsync()
+
+> **parseAsync**\<`T`\>(`schema`, `input`): `Promise`\<[`Result`](../type-aliases/Result.md)\<`T`, [`Issues`](../type-aliases/Issues.md)\>\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+## Parameters
+
+### schema
+
+[`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `T`\>
+
+### input
+
+`unknown`
+
+## Returns
+
+`Promise`\<[`Result`](../type-aliases/Result.md)\<`T`, [`Issues`](../type-aliases/Issues.md)\>\>
+
+
+# Function: parseStream()
+
+Source: docs/api/core/result/functions/parseStream.md
+
+---
+title: "Function: parseStream()"
+description: "Exported from @adaptate/core/result."
+---
+
+# Function: parseStream()
+
+> **parseStream**\<`T`, `P`\>(`source`, `schema`, `partialSchema?`): `AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+### P
+
+`P` = `unknown`
+
+## Parameters
+
+### source
+
+`AsyncIterable`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
+
+### schema
+
+[`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `T`\>
+
+### partialSchema?
+
+[`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `P`\>
+
+## Returns
+
+`AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
+
+
+# result
+
+Source: docs/api/core/result/index.md
+
+---
+title: "result"
+description: "Exported from @adaptate/core/result."
+---
+
+# result
+
+## Interfaces
+
+- [Err](interfaces/Err.md)
+- [Ok](interfaces/Ok.md)
+- [Track](interfaces/Track.md)
+
+## Type Aliases
+
+- [Issues](type-aliases/Issues.md)
+- [Result](type-aliases/Result.md)
+- [StreamStep](type-aliases/StreamStep.md)
+
+## Functions
+
+- [err](functions/err.md)
+- [ok](functions/ok.md)
+- [parse](functions/parse.md)
+- [parseAsync](functions/parseAsync.md)
+- [parseStream](functions/parseStream.md)
+
+
+# Interface: Err\<E, T\>
+
+Source: docs/api/core/result/interfaces/Err.md
+
+---
+title: "Interface: Err\\<E, T\\>"
+description: "Exported from @adaptate/core/result."
+---
+
+# Interface: Err\<E, T\>
+
+## Extends
+
+- [`Track`](Track.md)\<`T`, `E`\>
+
+## Type Parameters
+
+### E
+
+`E`
+
+### T
+
+`T` = `never`
+
+## Properties
+
+### error
+
+> `readonly` **error**: `E`
+
+***
+
+### ok
+
+> `readonly` **ok**: `false`
+
+## Methods
+
+### flatMap()
+
+> **flatMap**\<`U`, `F`\>(`next`): [`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### next
+
+(`value`) => [`Result`](../type-aliases/Result.md)\<`U`, `F`\>
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`flatMap`](Track.md#flatmap)
+
+***
+
+### map()
+
+> **map**\<`U`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### transform
+
+(`value`) => `U`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`map`](Track.md#map)
+
+***
+
+### mapError()
+
+> **mapError**\<`F`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+#### Type Parameters
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### transform
+
+(`error`) => `F`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`mapError`](Track.md#maperror)
+
+***
+
+### match()
+
+> **match**\<`U`\>(`onOk`, `onErr`): `U`
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### onOk
+
+(`value`) => `U`
+
+##### onErr
+
+(`error`) => `U`
+
+#### Returns
+
+`U`
+
+#### Inherited from
+
+[`Track`](Track.md).[`match`](Track.md#match)
+
+***
+
+### recover()
+
+> **recover**\<`U`\>(`fallback`): [`Ok`](Ok.md)\<`T` \| `U`, `never`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### fallback
+
+(`error`) => `U`
+
+#### Returns
+
+[`Ok`](Ok.md)\<`T` \| `U`, `never`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`recover`](Track.md#recover)
+
+
+# Interface: Ok\<T, E\>
+
+Source: docs/api/core/result/interfaces/Ok.md
+
+---
+title: "Interface: Ok\\<T, E\\>"
+description: "Exported from @adaptate/core/result."
+---
+
+# Interface: Ok\<T, E\>
+
+## Extends
+
+- [`Track`](Track.md)\<`T`, `E`\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+### E
+
+`E` = `never`
+
+## Properties
+
+### ok
+
+> `readonly` **ok**: `true`
+
+***
+
+### value
+
+> `readonly` **value**: `T`
+
+## Methods
+
+### flatMap()
+
+> **flatMap**\<`U`, `F`\>(`next`): [`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### next
+
+(`value`) => [`Result`](../type-aliases/Result.md)\<`U`, `F`\>
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`flatMap`](Track.md#flatmap)
+
+***
+
+### map()
+
+> **map**\<`U`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### transform
+
+(`value`) => `U`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`map`](Track.md#map)
+
+***
+
+### mapError()
+
+> **mapError**\<`F`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+#### Type Parameters
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### transform
+
+(`error`) => `F`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`mapError`](Track.md#maperror)
+
+***
+
+### match()
+
+> **match**\<`U`\>(`onOk`, `onErr`): `U`
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### onOk
+
+(`value`) => `U`
+
+##### onErr
+
+(`error`) => `U`
+
+#### Returns
+
+`U`
+
+#### Inherited from
+
+[`Track`](Track.md).[`match`](Track.md#match)
+
+***
+
+### recover()
+
+> **recover**\<`U`\>(`fallback`): `Ok`\<`T` \| `U`, `never`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### fallback
+
+(`error`) => `U`
+
+#### Returns
+
+`Ok`\<`T` \| `U`, `never`\>
+
+#### Inherited from
+
+[`Track`](Track.md).[`recover`](Track.md#recover)
+
+
+# Interface: Track\<T, E\>
+
+Source: docs/api/core/result/interfaces/Track.md
+
+---
+title: "Interface: Track\\<T, E\\>"
+description: "Exported from @adaptate/core/result."
+---
+
+# Interface: Track\<T, E\>
+
+## Extended by
+
+- [`Ok`](Ok.md)
+- [`Err`](Err.md)
+
+## Type Parameters
+
+### T
+
+`T`
+
+### E
+
+`E`
+
+## Methods
+
+### flatMap()
+
+> **flatMap**\<`U`, `F`\>(`next`): [`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### next
+
+(`value`) => [`Result`](../type-aliases/Result.md)\<`U`, `F`\>
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E` \| `F`\>
+
+***
+
+### map()
+
+> **map**\<`U`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### transform
+
+(`value`) => `U`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`U`, `E`\>
+
+***
+
+### mapError()
+
+> **mapError**\<`F`\>(`transform`): [`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+#### Type Parameters
+
+##### F
+
+`F`
+
+#### Parameters
+
+##### transform
+
+(`error`) => `F`
+
+#### Returns
+
+[`Result`](../type-aliases/Result.md)\<`T`, `F`\>
+
+***
+
+### match()
+
+> **match**\<`U`\>(`onOk`, `onErr`): `U`
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### onOk
+
+(`value`) => `U`
+
+##### onErr
+
+(`error`) => `U`
+
+#### Returns
+
+`U`
+
+***
+
+### recover()
+
+> **recover**\<`U`\>(`fallback`): [`Ok`](Ok.md)\<`T` \| `U`, `never`\>
+
+#### Type Parameters
+
+##### U
+
+`U`
+
+#### Parameters
+
+##### fallback
+
+(`error`) => `U`
+
+#### Returns
+
+[`Ok`](Ok.md)\<`T` \| `U`, `never`\>
+
+
+# Type Alias: Issues
+
+Source: docs/api/core/result/type-aliases/Issues.md
+
+---
+title: "Type Alias: Issues"
+description: "Exported from @adaptate/core/result."
+---
+
+# Type Alias: Issues
+
+> **Issues** = `ReadonlyArray`\<[`StandardIssue`](../../standard/type-aliases/StandardIssue.md)\>
+
+
+# Type Alias: Result\<T, E\>
+
+Source: docs/api/core/result/type-aliases/Result.md
+
+---
+title: "Type Alias: Result\\<T, E\\>"
+description: "Exported from @adaptate/core/result."
+---
+
+# Type Alias: Result\<T, E\>
+
+> **Result**\<`T`, `E`\> = [`Ok`](../interfaces/Ok.md)\<`T`, `E`\> \| [`Err`](../interfaces/Err.md)\<`E`, `T`\>
+
+## Type Parameters
+
+### T
+
+`T`
+
+### E
+
+`E` = [`Issues`](Issues.md)
+
+
+# Type Alias: StreamStep\<T, P\>
+
+Source: docs/api/core/result/type-aliases/StreamStep.md
+
+---
+title: "Type Alias: StreamStep\\<T, P\\>"
+description: "Exported from @adaptate/core/result."
+---
+
+# Type Alias: StreamStep\<T, P\>
+
+> **StreamStep**\<`T`, `P`\> = \{ `done`: `false`; `result`: [`Result`](Result.md)\<`P`\>; \} \| \{ `done`: `true`; `result`: [`Result`](Result.md)\<`T`\>; \}
+
+## Type Parameters
+
+### T
+
+`T`
+
+### P
+
+`P`
 
 
 # Function: isStandardSchema()
@@ -2131,6 +3006,30 @@ description: "Exported from @adaptate/core/stream-incremental."
 `AsyncGenerator`\<`unknown`\>
 
 
+# Function: fromAsyncIterableSteps()
+
+Source: docs/api/core/stream-incremental/functions/fromAsyncIterableSteps.md
+
+---
+title: "Function: fromAsyncIterableSteps()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: fromAsyncIterableSteps()
+
+> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+
+## Parameters
+
+### source
+
+`AsyncIterable`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
+
+## Returns
+
+`AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+
+
 # stream-incremental
 
 Source: docs/api/core/stream-incremental/index.md
@@ -2144,6 +3043,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Type Aliases
 
+- [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
 
 ## Functions
@@ -2151,6 +3051,33 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createPartialJsonFeed](functions/createPartialJsonFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)
+- [fromAsyncIterableSteps](functions/fromAsyncIterableSteps.md)
+
+
+# Type Alias: JsonStreamStep
+
+Source: docs/api/core/stream-incremental/type-aliases/JsonStreamStep.md
+
+---
+title: "Type Alias: JsonStreamStep"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Type Alias: JsonStreamStep
+
+> **JsonStreamStep** = `object`
+
+## Properties
+
+### complete
+
+> `readonly` **complete**: `boolean`
+
+***
+
+### value
+
+> `readonly` **value**: `unknown`
 
 
 # Type Alias: PartialJsonFeed
@@ -2570,6 +3497,17 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: Config\<T\>](core/index/type-aliases/Config.md): Type-safe configuration for `transformSchema` and conditional transformers.
 - [Type Alias: DeepPartial\<T\>](core/index/type-aliases/DeepPartial.md): Exported from @adaptate/core.
 - [Type Alias: PartialValidationResult](core/index/type-aliases/PartialValidationResult.md): Exported from @adaptate/core.
+- [Function: err()](core/result/functions/err.md): Exported from @adaptate/core/result.
+- [Function: ok()](core/result/functions/ok.md): Exported from @adaptate/core/result.
+- [Function: parse()](core/result/functions/parse.md): Exported from @adaptate/core/result.
+- [Function: parseAsync()](core/result/functions/parseAsync.md): Exported from @adaptate/core/result.
+- [Function: parseStream()](core/result/functions/parseStream.md): Exported from @adaptate/core/result.
+- [Interface: Err\<E, T\>](core/result/interfaces/Err.md): Exported from @adaptate/core/result.
+- [Interface: Ok\<T, E\>](core/result/interfaces/Ok.md): Exported from @adaptate/core/result.
+- [Interface: Track\<T, E\>](core/result/interfaces/Track.md): Exported from @adaptate/core/result.
+- [Type Alias: Issues](core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
+- [Type Alias: Result\<T, E\>](core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
+- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): Exported from @adaptate/core/result.
 - [Function: isStandardSchema()](core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.
@@ -2580,6 +3518,8 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.

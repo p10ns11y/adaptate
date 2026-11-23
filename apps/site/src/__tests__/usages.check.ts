@@ -16,6 +16,7 @@ import { attachEventSource, frameSseData, readSse } from "../usages/sse";
 import { checkTanStackStream } from "../usages/tanstack";
 import { checkWithStandardSchema, readyViews } from "../usages/zod";
 import { cardOrFallback, finalReport } from "../usages/effect";
+import { checkInvoice, readToolCall } from "../usages/choke-points";
 
 describe("usage snippets", () => {
   it("renders the React card from the title", () => {
@@ -130,5 +131,18 @@ describe("usage snippets", () => {
     expect(report.configs.kitchen.valid).toBe(false);
     expect(await cardOrFallback('{"servings":2}')).toEqual({ title: "Untitled" });
     await expect(cardOrFallback('{"title":')).rejects.toThrow();
+  });
+
+  it("guards an OpenAPI invoice and a streamed tool call on two tracks", async () => {
+    expect(checkInvoice({ id: "A-1", total: 12.5 })).toBe("accepted");
+    expect(checkInvoice({ id: "", total: -1 })).toBe("check id, total");
+    async function* chunks(...parts: string[]) {
+      yield* parts;
+    }
+    let good = await readToolCall(chunks('{"city":"Ma', 'lmo","days":3}'));
+    expect(good.call).toEqual({ city: "Malmo", days: 3, nights: 2 });
+    expect(good.previews.at(-1)).toBe("Malmo");
+    let bad = await readToolCall(chunks('{"city":"Malmo","days":0}'));
+    expect(bad.issues?.length).toBe(1);
   });
 });

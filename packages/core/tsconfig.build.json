@@ -11,5 +11,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/index.ts", "src/stream.ts", "src/stream-incremental.ts", "src/standard.ts", "src/effect.ts"]
+  "include": ["src/index.ts", "src/stream.ts", "src/stream-incremental.ts", "src/standard.ts", "src/effect.ts", "src/result.ts"]
 }

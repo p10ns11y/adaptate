@@ -2,7 +2,11 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { describe, expect, it } from "vitest";
 
-import { fromAsyncIterable } from "../stream-incremental";
+import {
+  fromAsyncIterable,
+  fromAsyncIterableSteps,
+  type JsonStreamStep,
+} from "../stream-incremental";
 
 const encoder = new TextEncoder();
 
@@ -84,5 +88,43 @@ describe("fromAsyncIterable", () => {
       },
     );
     expect(collected.at(-1)).toEqual({ name: "ok" });
+  });
+});
+
+describe("fromAsyncIterableSteps", () => {
+  async function steps(source: AsyncIterable<string | Uint8Array>) {
+    const seen: JsonStreamStep[] = [];
+    for await (const step of fromAsyncIterableSteps(source)) seen.push(step);
+    return seen;
+  }
+
+  it("marks the step where the root value closes", async () => {
+    const seen = await steps(
+      (async function* parts() {
+        yield "  ";
+        yield '{"name":"Pa';
+        yield "";
+        yield 'sta"}';
+      })(),
+    );
+    expect(seen.map((step) => step.complete)).toEqual([false, true]);
+    expect(seen.at(-1)?.value).toEqual({ name: "Pasta" });
+  });
+
+  it("flushes a dangling byte as an open step", async () => {
+    const seen = await steps(
+      (async function* openString() {
+        yield encoder.encode('{"name":"');
+        yield new Uint8Array([0xc3]);
+      })(),
+    );
+    expect(seen.at(-1)).toEqual({ value: { name: "\uFFFD" }, complete: false });
+    expect(
+      await steps(
+        (async function* dangling() {
+          yield new Uint8Array([0xc3]);
+        })(),
+      ),
+    ).toEqual([]);
   });
 });

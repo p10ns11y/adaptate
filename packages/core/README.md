@@ -10,7 +10,8 @@ Peer: `zod@^3.25.0 || ^4.0.0`. No runtime dependencies. Optional peer `effect@^4
 
 | Doc | |
 | --- | --- |
-| [Subpaths](../../docs/subpaths.md) | `.`, `./stream`, `./stream-incremental`, `./standard`, `./effect` |
+| [Subpaths](../../docs/subpaths.md) | `.`, `./stream`, `./stream-incremental`, `./standard`, `./effect`, `./result` |
+| [Choke points](../../docs/choke-points.md) | `parse` to an ok or error track |
 | [Transform](../../docs/transform.md) | `transformSchema`, conditional configs |
 | [Streaming](../../docs/streaming.md) | Partial JSON and AG-UI |
 | [Effect](../../docs/effect.md) | `final(text)` per config |
