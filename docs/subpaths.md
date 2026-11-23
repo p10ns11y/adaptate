@@ -28,7 +28,7 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `Config`, `DeepPartial`, `PartialValidationResult` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `agUiValidatorWith`, `reparseFeed`, `createFrameThrottle`, `AgUiDeltaEvent`, `PartialJsonFeed` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator`, `PartialJsonFeed` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `fromAsyncIterableSteps`, `createAgUiPartialValidator`, `PartialJsonFeed`, `JsonStreamStep` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
 | `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |

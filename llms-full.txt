@@ -883,7 +883,7 @@ faq:
   - question: "What is on the error track?"
     answer: "The Standard Schema issues, each with a message and a path. mapError turns them into your own error type."
   - question: "How does parseStream fit the incremental parser?"
-    answer: "It reads chunks through fromAsyncIterable from @adaptate/core/stream-incremental, checks each partial value against an optional partial schema, then checks the final value against the full schema."
+    answer: "It reads chunks through fromAsyncIterableSteps from @adaptate/core/stream-incremental and checks each partial value against an optional partial schema. The last step checks the closed value against the full schema, or errs when the stream stops before the value closes."
 ---
 
 # Find your choke points
@@ -1039,7 +1039,7 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `Config`, `DeepPartial`, `PartialValidationResult` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `agUiValidatorWith`, `reparseFeed`, `createFrameThrottle`, `AgUiDeltaEvent`, `PartialJsonFeed` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `createAgUiPartialValidator`, `PartialJsonFeed` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `fromAsyncIterableSteps`, `createAgUiPartialValidator`, `PartialJsonFeed`, `JsonStreamStep` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
 | `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
@@ -3006,6 +3006,30 @@ description: "Exported from @adaptate/core/stream-incremental."
 `AsyncGenerator`\<`unknown`\>
 
 
+# Function: fromAsyncIterableSteps()
+
+Source: docs/api/core/stream-incremental/functions/fromAsyncIterableSteps.md
+
+---
+title: "Function: fromAsyncIterableSteps()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: fromAsyncIterableSteps()
+
+> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+
+## Parameters
+
+### source
+
+`AsyncIterable`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
+
+## Returns
+
+`AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+
+
 # stream-incremental
 
 Source: docs/api/core/stream-incremental/index.md
@@ -3019,6 +3043,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Type Aliases
 
+- [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
 
 ## Functions
@@ -3026,6 +3051,33 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createPartialJsonFeed](functions/createPartialJsonFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)
+- [fromAsyncIterableSteps](functions/fromAsyncIterableSteps.md)
+
+
+# Type Alias: JsonStreamStep
+
+Source: docs/api/core/stream-incremental/type-aliases/JsonStreamStep.md
+
+---
+title: "Type Alias: JsonStreamStep"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Type Alias: JsonStreamStep
+
+> **JsonStreamStep** = `object`
+
+## Properties
+
+### complete
+
+> `readonly` **complete**: `boolean`
+
+***
+
+### value
+
+> `readonly` **value**: `unknown`
 
 
 # Type Alias: PartialJsonFeed
@@ -3466,6 +3518,8 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
+- [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.

@@ -1,11 +1,25 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { z } from "zod";
 
-import { err, ok, parse, parseAsync, parseStream, type Issues, type Result } from "../result";
+import {
+  err,
+  ok,
+  parse,
+  parseAsync,
+  parseStream,
+  type Issues,
+  type Result,
+} from "../result";
 import type { StandardSchemaV1 } from "../standard";
 
-const recipe = z.object({ title: z.string().min(1), servings: z.number().int().positive() });
-const partialRecipe = z.object({ title: z.string(), servings: z.number() }).partial();
+const recipe = z.object({
+  title: z.string().min(1),
+  servings: z.number().int().positive(),
+});
+const partialRecipe = z
+  .object({ title: z.string(), servings: z.number() })
+  .partial();
 
 async function* chunks(...parts: string[]) {
   for (const part of parts) yield part;
@@ -33,16 +47,34 @@ describe("Result", () => {
       .flatMap(() => ok((calls += 1)));
     expect(calls).toBe(0);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.map((issue) => issue.path?.[0])).toEqual(["title", "servings"]);
+    if (!result.ok)
+      expect(result.error.map((issue) => issue.path?.[0])).toEqual([
+        "title",
+        "servings",
+      ]);
     const recovered = result.recover((issues) => -issues.length);
     expect(recovered).toMatchObject({ ok: true, value: -2 });
   });
 
   it("maps errors and matches both tracks", () => {
-    const failed = err<string, number>("bad").mapError((message) => message.length);
-    expect(failed.match((value) => `ok ${value}`, (length) => `err ${length}`)).toBe("err 3");
-    expect(ok<number, string>(2).mapError((message) => message.length).match(String, () => "none")).toBe("2");
-    expect(ok<number, string>(2).recover(() => 0)).toMatchObject({ ok: true, value: 2 });
+    const failed = err<string, number>("bad").mapError(
+      (message) => message.length,
+    );
+    expect(
+      failed.match(
+        (value) => `ok ${value}`,
+        (length) => `err ${length}`,
+      ),
+    ).toBe("err 3");
+    expect(
+      ok<number, string>(2)
+        .mapError((message) => message.length)
+        .match(String, () => "none"),
+    ).toBe("2");
+    expect(ok<number, string>(2).recover(() => 0)).toMatchObject({
+      ok: true,
+      value: 2,
+    });
   });
 
   it("asks for parseAsync when a schema validates asynchronously", async () => {
@@ -51,33 +83,92 @@ describe("Result", () => {
         version: 1,
         vendor: "hand",
         validate: async (value) =>
-          typeof value === "number" && value > 0 ? { value } : { issues: [{ message: "must be positive" }] },
+          typeof value === "number" && value > 0
+            ? { value }
+            : { issues: [{ message: "must be positive" }] },
       },
     };
     const sync = parse(asyncPositive, 3);
     expect(!sync.ok && sync.error[0]?.message).toMatch(/parseAsync/);
-    expect(await parseAsync(asyncPositive, 3)).toMatchObject({ ok: true, value: 3 });
+    expect(await parseAsync(asyncPositive, 3)).toMatchObject({
+      ok: true,
+      value: 3,
+    });
     expect(await parseAsync(asyncPositive, -1)).toMatchObject({ ok: false });
+    const otherRealm: StandardSchemaV1<unknown, number> = {
+      "~standard": {
+        version: 1,
+        vendor: "hand",
+        validate: () =>
+          runInNewContext("Promise.resolve({ value: 1 })") as Promise<{
+            value: number;
+          }>,
+      },
+    };
+    const fromOtherRealm = parse(otherRealm, 1);
+    expect(!fromOtherRealm.ok && fromOtherRealm.error[0]?.message).toMatch(
+      /parseAsync/,
+    );
   });
 });
 
 describe("parseStream", () => {
   it("checks each partial and the final value", async () => {
-    const steps = await collect(parseStream(chunks('{"title":"Pas', 'ta","servings":', "4}"), recipe, partialRecipe));
-    expect(steps.slice(0, -1).every((step) => !step.done && step.result.ok)).toBe(true);
-    expect(steps.at(-1)).toMatchObject({ done: true, result: { ok: true, value: { title: "Pasta", servings: 4 } } });
+    const steps = await collect(
+      parseStream(
+        chunks('{"title":"Pas', 'ta","servings":', "4}"),
+        recipe,
+        partialRecipe,
+      ),
+    );
+    expect(
+      steps.slice(0, -1).every((step) => !step.done && step.result.ok),
+    ).toBe(true);
+    expect(steps.at(-1)).toMatchObject({
+      done: true,
+      result: { ok: true, value: { title: "Pasta", servings: 4 } },
+    });
   });
 
   it("puts a bad final value on the error track", async () => {
-    const steps = await collect(parseStream(chunks('{"title":"","servings":0}'), recipe));
+    const steps = await collect(
+      parseStream(chunks('{"title":"","servings":0}'), recipe),
+    );
     const last = steps.at(-1);
     expect(last?.done).toBe(true);
     expect(last?.result.ok).toBe(false);
   });
 
   it("flags a partial that breaks the partial schema", async () => {
-    const steps = await collect(parseStream(chunks('{"servings":"four"}'), recipe, partialRecipe));
+    const steps = await collect(
+      parseStream(chunks('{"servings":"four"}'), recipe, partialRecipe),
+    );
     expect(steps.some((step) => !step.done && !step.result.ok)).toBe(true);
+  });
+
+  it("errs when the stream stops before the value closes", async () => {
+    const steps = await collect(
+      parseStream(chunks('{"title":"Pasta","servings":3'), recipe),
+    );
+    expect(steps.at(-1)).toMatchObject({ done: true, result: { ok: false } });
+    const last = steps.at(-1);
+    expect(last && !last.result.ok && last.result.error[0]?.message).toMatch(
+      /before the JSON value closed/,
+    );
+  });
+
+  it("decodes bytes split inside a character", async () => {
+    const bytes = new TextEncoder().encode('{"title":"Påsta","servings":4}');
+    const split = bytes.indexOf(0xc3) + 1;
+    async function* byteChunks() {
+      yield bytes.slice(0, split);
+      yield bytes.slice(split);
+    }
+    const steps = await collect(parseStream(byteChunks(), recipe));
+    expect(steps.at(-1)).toMatchObject({
+      done: true,
+      result: { ok: true, value: { title: "Påsta", servings: 4 } },
+    });
   });
 
   it("errs when the stream carries no value", async () => {

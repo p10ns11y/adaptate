@@ -1,5 +1,8 @@
 import type { StandardIssue, StandardSchemaV1 } from "./standard.js";
-import { fromAsyncIterable } from "./stream-incremental.js";
+import {
+  fromAsyncIterableSteps,
+  type JsonStreamStep,
+} from "./stream-incremental.js";
 
 export type Issues = ReadonlyArray<StandardIssue>;
 
@@ -51,13 +54,21 @@ const asyncSchemaIssue: StandardIssue = {
   message: "This schema validates asynchronously. Use parseAsync.",
 };
 
-export function parse<T>(schema: StandardSchemaV1<unknown, T>, input: unknown): Result<T> {
+export function parse<T>(
+  schema: StandardSchemaV1<unknown, T>,
+  input: unknown,
+): Result<T> {
   const checked = schema["~standard"].validate(input);
-  if (checked instanceof Promise) return err([asyncSchemaIssue]);
-  return checked.issues ? err(checked.issues) : ok(checked.value);
+  if (typeof (checked as { then?: unknown }).then === "function")
+    return err([asyncSchemaIssue]);
+  const settled = checked as Awaited<typeof checked>;
+  return settled.issues ? err(settled.issues) : ok(settled.value);
 }
 
-export async function parseAsync<T>(schema: StandardSchemaV1<unknown, T>, input: unknown): Promise<Result<T>> {
+export async function parseAsync<T>(
+  schema: StandardSchemaV1<unknown, T>,
+  input: unknown,
+): Promise<Result<T>> {
   const checked = await schema["~standard"].validate(input);
   return checked.issues ? err(checked.issues) : ok(checked.value);
 }
@@ -66,18 +77,28 @@ export type StreamStep<T, P> =
   | { readonly done: false; readonly result: Result<P> }
   | { readonly done: true; readonly result: Result<T> };
 
-const emptyStreamIssue: StandardIssue = { message: "The stream ended before any JSON value arrived." };
+const emptyStreamIssue: StandardIssue = {
+  message: "The stream ended before any JSON value arrived.",
+};
+const openStreamIssue: StandardIssue = {
+  message: "The stream ended before the JSON value closed.",
+};
 
 export async function* parseStream<T, P = unknown>(
   source: AsyncIterable<string | Uint8Array>,
   schema: StandardSchemaV1<unknown, T>,
   partialSchema?: StandardSchemaV1<unknown, P>,
 ): AsyncGenerator<StreamStep<T, P>> {
-  let latest: { value: unknown } | undefined;
-  for await (const partialValue of fromAsyncIterable(source)) {
-    latest = { value: partialValue };
-    const result = partialSchema ? await parseAsync(partialSchema, partialValue) : ok(partialValue as P);
+  let latest: JsonStreamStep | undefined;
+  for await (const step of fromAsyncIterableSteps(source)) {
+    latest = step;
+    const result = partialSchema
+      ? await parseAsync(partialSchema, step.value)
+      : ok(step.value as P);
     yield { done: false, result };
   }
-  yield { done: true, result: latest ? await parseAsync(schema, latest.value) : err([emptyStreamIssue]) };
+  if (!latest) yield { done: true, result: err([emptyStreamIssue]) };
+  else if (!latest.complete)
+    yield { done: true, result: err([openStreamIssue]) };
+  else yield { done: true, result: await parseAsync(schema, latest.value) };
 }
