@@ -4,6 +4,7 @@ import type { RouteKind } from "./routes.ts";
 let links: Array<{ href: string; label: string; kinds: RouteKind[] }> = [
   { href: "/docs/", label: "Docs", kinds: ["guide"] },
   { href: "/docs/api/", label: "API", kinds: ["api"] },
+  { href: "/docs/choke-points/", label: "Find your choke points", kinds: [] },
   { href: "/load/", label: "Load test", kinds: ["load"] },
 ];
 
