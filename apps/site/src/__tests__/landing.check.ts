@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { runDemo } from "../landing/demo-model";
 import { payloadFor, payloads, samples, type SampleName } from "../landing/samples";
+import { stillFrame, streamChunks, streamFrames } from "../landing/stream-model";
 import { installCommand, landingWords } from "../site/landing-copy";
 import { landingRoute } from "../site/routes";
 
@@ -22,13 +23,28 @@ describe("landing copy", () => {
   });
 
   it("ships no network or eval in the landing script", () => {
-    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts"].map((name) =>
+    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts", "stream-model.ts"].map((name) =>
       readFileSync(new URL(`src/landing/${name}`, siteRoot), "utf8"),
     );
     for (let source of sources) {
       expect(source).not.toMatch(/\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon|\beval\(|new Function|innerHTML|getDereferencedOpenAPIDocument|fetchYamlContent/);
       expect(source).not.toMatch(/@adaptate\/utils\/openapi/);
     }
+  });
+});
+
+describe("streaming row", () => {
+  it("shows JSON.parse failing where adaptate already has typed fields", () => {
+    let frames = streamFrames();
+    expect(frames.map((frame) => [frame.step, frame.parse, frame.partial, frame.card, frame.kitchen])).toEqual([
+      ["chunk 1/5", "✕ SyntaxError", "{}", false, false],
+      ["chunk 2/5", "✕ SyntaxError", "{ title: 'Pas' }", true, false],
+      ["chunk 3/5", "✕ SyntaxError", "{ title: 'Pasta al limone' }", true, false],
+      ["chunk 4/5", "✕ SyntaxError", "{ title: 'Pasta al limone' }", true, false],
+      ["chunk 5/5", "✓ parsed", "{ title: 'Pasta al limone', servings: 4 }", true, true],
+    ]);
+    expect(frames[stillFrame]?.text).toBe('{"title":"Pas');
+    expect(frames.at(-1)?.text).toBe(streamChunks.join(""));
   });
 });
 

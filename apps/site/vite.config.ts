@@ -6,7 +6,7 @@ import { defineConfig, type Plugin } from "vite";
 import { resolveSiteUrl } from "./src/site/config.ts";
 import { escapeHtml, renderHead } from "./src/site/head.ts";
 import { renderFooter, renderHeader } from "./src/site/header.ts";
-import { renderAgents, renderCards, renderInstall, renderProof } from "./src/site/landing-copy.ts";
+import { renderAgents, renderCards, renderEyebrow, renderHeading, renderInstall, renderProof } from "./src/site/landing-copy.ts";
 import { renderDemo } from "./src/site/landing-demo.ts";
 import { landingRoute, loadRoute, type SiteRoute } from "./src/site/routes.ts";
 
@@ -31,7 +31,8 @@ function sitePages(): Plugin {
         .replace("<!--site-head-->", renderHead(route, { siteUrl, version }))
         .replace("<!--site-header-->", renderHeader(route.kind))
         .replace("<!--site-footer-->", renderFooter())
-        .replace("<!--site-heading-->", escapeHtml(route.heading))
+        .replace("<!--site-eyebrow-->", renderEyebrow())
+        .replace("<!--site-heading-->", route.kind === "landing" ? renderHeading() : escapeHtml(route.heading))
         .replace("<!--site-answer-->", escapeHtml(route.answer))
         .replace("<!--site-install-->", renderInstall())
         .replace("<!--site-demo-->", demo)
