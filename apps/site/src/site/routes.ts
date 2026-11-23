@@ -32,7 +32,7 @@ export let loadRoute: SiteRoute = {
   description:
     "A browser-only load test that streams large, deeply nested JSON through the adaptate incremental parser and reports chunks per second and depth.",
   answer:
-    "This page will stream large, deeply nested JSON through @adaptate/core/stream-incremental in a Web Worker and report chunks per second, MB per second, and depth. It is not live yet.",
+    "This page streams a seeded tool-call load through the adaptate stream parsers in your browser for about 60 seconds and reports throughput and cost per chunk. Nothing leaves the page.",
   faq: [],
 };
 

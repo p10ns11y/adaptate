@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/build-docs.mjs && node scripts/build-seo.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && pnpm --filter adaptate-live-load build && node scripts/build-load.mjs && node scripts/build-docs.mjs && node scripts/build-seo.mjs",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint --type-aware -c ../../.oxlintrc.json ./src ./scripts",
     "test": "pnpm --dir ../.. exec vitest run --config apps/site/vitest.config.mjs",
@@ -11,6 +11,7 @@
     "snippets:check": "node scripts/snippets.mjs --check",
     "budget": "node scripts/budget.mjs",
     "seo-check": "node scripts/seo-check.mjs",
+    "link-check": "node scripts/link-check.mjs",
     "preview": "vite preview",
     "a11y": "node scripts/a11y-check.mjs",
     "words": "node scripts/landing-words.mjs"

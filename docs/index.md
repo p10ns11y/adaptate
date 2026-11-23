@@ -63,9 +63,6 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
 - [Development](development.md): install, test, and build this repository.
-- [Performance](performance.md): measured import, document, view, and stream cost, and bundle size.
-- [Incremental partial JSON](incremental-parser.md): scan each new character of a JSON stream once.
-- [Proof](proof.md): each README claim mapped to a test, a script, or a CI job.
 
 ## API
 

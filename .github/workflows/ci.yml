@@ -86,6 +86,7 @@ jobs:
           pnpm --filter adaptate-site test
           pnpm --filter adaptate-site budget
           pnpm --filter adaptate-site seo-check
+          pnpm --filter adaptate-site link-check
           pnpm --filter adaptate-site a11y
 
   zod-latest:

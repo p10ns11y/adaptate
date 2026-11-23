@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,7 @@ import { load as loadYaml } from "js-yaml";
 import { Marked } from "marked";
 import { chromium } from "playwright";
 
-import { resolveSiteUrl } from "../src/site/config.ts";
+import { repositoryUrl, resolveSiteUrl } from "../src/site/config.ts";
 import {
   apiRoute,
   guideRoute,
@@ -89,13 +89,19 @@ let apiNav = pages
   .map((page) => ({ label: page.route.heading === "API" ? "Overview" : page.route.heading, path: page.route.path }))
   .sort((left, right) => left.path.localeCompare(right.path));
 
+let assetPrefix = `${repositoryUrl}/blob/main/`;
+function localAsset(href) {
+  if (!href.startsWith(assetPrefix) || !/\.(svg|png)$/.test(href)) return href;
+  let path = href.slice(assetPrefix.length);
+  mkdirSync(dirname(join(distDirectory, path)), { recursive: true });
+  copyFileSync(join(repositoryRoot, path), join(distDirectory, path));
+  return `/${path}`;
+}
+
 let diagrams = [];
 let currentSource = "";
 let marked = new Marked({
   gfm: true,
-  walkTokens(token) {
-    if (token.type === "link" || token.type === "image") token.href = rewriteHref(token.href, currentSource);
-  },
   renderer: {
     heading({ tokens, depth }) {
       let html = this.parser.parseInline(tokens);
@@ -110,7 +116,8 @@ let marked = new Marked({
       return `<pre tabindex="0"><code${language}>${escapeHtml(text)}</code></pre>\n`;
     },
     html({ text }) {
-      return /^\s*<!--[\s\S]*-->\s*$/.test(text) ? "" : text;
+      if (/^\s*<!--[\s\S]*-->\s*$/.test(text)) return "";
+      return text.replace(/\b(src|href)="([^"]+)"/g, (_match, name, href) => `${name}="${localAsset(rewriteHref(href, currentSource))}"`);
     },
   },
 });
@@ -144,6 +151,10 @@ function renderFaq(route) {
 for (let page of pages) {
   currentSource = page.sourcePath;
   let tokens = marked.lexer(page.body);
+  void marked.walkTokens(tokens, (token) => {
+    if (token.type === "link") token.href = rewriteHref(token.href, currentSource);
+    if (token.type === "image") token.href = localAsset(rewriteHref(token.href, currentSource));
+  });
   let headingIndex = tokens.findIndex((token) => token.type === "heading" && token.depth === 1);
   if (headingIndex >= 0) tokens.splice(headingIndex, 1);
   let snippet = shortestSnippet(tokens);
