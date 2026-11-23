@@ -14,7 +14,7 @@ let ready = (view: "card" | "kitchen", frame: StreamFrame) =>
 export function renderStream(frame: StreamFrame): string {
   return [
     `<div id="stream" class="stream" role="group" aria-label="A tool call checked while it streams">`,
-    `<span class="stream-tag">Stream</span>`,
+    `<span class="stream-tag">Stream <button type="button" id="stream-toggle" class="stream-toggle" aria-pressed="false">Pause</button></span>`,
     `<span class="cell"><small data-stream="step">${escapeHtml(frame.step)}</small> <code data-stream="text">${escapeHtml(frame.text)}</code></span>`,
     `<span class="cell"><small>JSON.parse</small> <span data-stream="parse" data-ok="${frame.parsed}">${escapeHtml(frame.parse)}</span></span>`,
     `<span class="cell"><small>adaptate</small> <code data-stream="partial">${escapeHtml(frame.partial)}</code></span>`,

@@ -20,8 +20,8 @@ export let landingCopy = {
     { title: "One schema, every screen", text: "Each view requires only its own fields, typed for you. No hand-copied types to drift." },
   ],
   proof: [
-    { value: "0.8", unit: "µs", label: "per streamed chunk", href: performancePage },
-    { value: "+1.2", unit: "KB", label: "gzip on top of Zod", href: performancePage },
+    { value: "3", unit: "µs", label: "per streamed chunk", href: performancePage },
+    { value: "+1.2", unit: "KB", label: "core gzip on top of Zod", href: performancePage },
     { value: "5%", unit: "", label: "slower fails the PR", href: `${repositoryUrl}/actions/workflows/ci.yml` },
     { value: "SLSA", unit: "", label: "npm provenance", href: `https://registry.npmjs.org/-/npm/v1/attestations/adaptate@${releaseVersion}` },
     { value: releaseVersion, unit: "", label: "on npm", href: "https://www.npmjs.com/package/adaptate" },
@@ -37,9 +37,9 @@ export let landingCopy = {
 };
 
 export let telemetry = [
-  { label: "chunk", value: "0.8 µs" },
-  { label: "bundle", value: "+1.2 KB gzip" },
-  { label: "$ref", value: "resolved" },
+  { label: "stream", value: "3 µs/chunk" },
+  { label: "check", value: "0.8 µs" },
+  { label: "core", value: "+1.2 KB gzip" },
   { label: "zod", value: "3.25+ / 4" },
 ];
 

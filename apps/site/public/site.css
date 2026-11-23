@@ -158,7 +158,7 @@ th { color: var(--exhaust); font-weight: 600; }
   text-wrap: balance;
   animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes rise { from { transform: translateY(14px); } }
 .hero h1 em { font-style: normal; color: var(--thrust); text-shadow: 0 0 28px color-mix(in oklab, var(--thrust) 55%, transparent); }
 .hero-side { grid-column: 9 / -1; display: grid; gap: 1.1rem; min-width: 0; }
 .hero .answer { margin: 0; font-size: 1.06rem; max-width: 36ch; }
@@ -204,10 +204,10 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .pane pre { margin: 0; max-height: 15rem; padding: 0.75rem 0.9rem; background: var(--void); font-size: 0.8rem; }
 
 .result { display: grid; gap: 0.3rem; border-radius: 12px; padding: 0.85rem 1rem; border: 1px solid var(--line); background: var(--void); }
-.result::before { content: "Status"; font-size: 0.68rem; letter-spacing: 0.14em; color: var(--exhaust); }
-.result.pass::before { content: "Status · nominal"; }
-.result.fail::before { content: "Status · fault"; }
-.result.wait::before { content: "Status · waiting"; }
+.result::before { content: "Status" / ""; font-size: 0.68rem; letter-spacing: 0.14em; color: var(--exhaust); }
+.result.pass::before { content: "Status · nominal" / ""; }
+.result.fail::before { content: "Status · fault" / ""; }
+.result.wait::before { content: "Status · waiting" / ""; }
 .result strong { font-size: 1.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: var(--plume-core); }
 .result ul { margin: 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 0.78rem; }
 .result.pass { border-color: color-mix(in oklab, var(--sky) 45%, transparent); background: linear-gradient(90deg, color-mix(in oklab, var(--sky) 12%, var(--void)), var(--void)); }
@@ -217,8 +217,12 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .result.fail strong::before { content: "✕ "; }
 .result.wait strong { color: var(--exhaust); }
 
-.stream { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.7fr) auto; align-items: center; gap: 0.6rem 1.5rem; padding: 0.8rem 1.2rem; border-top: 1px solid var(--line); background: var(--deep); font-family: var(--mono); font-size: 0.78rem; line-height: 1.4; }
-.stream-tag { font-size: 0.68rem; letter-spacing: 0.16em; color: var(--thrust); }
+.stream { display: grid; grid-template-columns: auto minmax(0, 1fr) max-content minmax(0, 1.5fr) auto; align-items: center; gap: 0.6rem 1.5rem; padding: 0.8rem 1.2rem; border-top: 1px solid var(--line); background: var(--deep); font-family: var(--mono); font-size: 0.78rem; line-height: 1.4; }
+.stream-tag { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 0.68rem; letter-spacing: 0.16em; color: var(--thrust); }
+.stream-toggle { font: inherit; letter-spacing: 0.08em; cursor: pointer; min-height: 2rem; min-width: 3.6rem; padding: 0 0.6rem; border-radius: 6px; border: 1px solid var(--line); background: none; color: var(--cloud); }
+.stream-toggle:hover { border-color: var(--thrust); }
+@media (pointer: coarse) { .stream-toggle { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .stream-toggle { display: none; } }
 .cell { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cell small { margin-right: 0.35rem; font-size: 0.72rem; color: var(--exhaust); }
 .cell code { font-size: inherit; }
@@ -239,7 +243,7 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .cards li { position: relative; overflow: hidden; padding: 1.9rem 1.75rem 2rem; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in oklab, var(--ocean) 16%, var(--void)), var(--void) 70%); transition: transform 0.25s, border-color 0.25s; }
 .cards li:hover { transform: translateY(-3px); border-color: var(--ocean); }
 .cards li::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, var(--thrust), transparent); }
-.cards li::after { content: attr(data-n); position: absolute; right: 1.1rem; top: 0.4rem; font-size: 5.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.06em; color: color-mix(in oklab, var(--plume-core) 8%, transparent); }
+.cards li::after { content: attr(data-n) / ""; position: absolute; right: 1.1rem; top: 0.4rem; font-size: 5.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.06em; color: color-mix(in oklab, var(--plume-core) 8%, transparent); }
 .cards svg { width: 40px; height: 40px; margin-bottom: 1.25rem; }
 .cards .o { stroke: var(--ocean); }
 .cards .t { stroke: var(--thrust); }

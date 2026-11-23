@@ -141,6 +141,8 @@ function startStream() {
   let index = 0;
   let timer = 0;
   let visible = false;
+  let paused = false;
+  let toggle = byId<HTMLButtonElement>("stream-toggle");
   let stop = () => {
     window.clearTimeout(timer);
     timer = 0;
@@ -156,7 +158,7 @@ function startStream() {
       stop();
       let still = frames[stillFrame];
       if (still) paint(still);
-    } else if (visible && !document.hidden) {
+    } else if (visible && !document.hidden && !paused) {
       if (!timer) tick();
     } else {
       stop();
@@ -166,6 +168,12 @@ function startStream() {
     visible = entries.some((entry) => entry.isIntersecting);
     sync();
   }).observe(root);
+  toggle?.addEventListener("click", () => {
+    paused = !paused;
+    toggle.setAttribute("aria-pressed", String(paused));
+    toggle.textContent = paused ? "Play" : "Pause";
+    sync();
+  });
   document.addEventListener("visibilitychange", sync);
   reduced.addEventListener("change", sync);
 }
