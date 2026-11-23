@@ -6,28 +6,38 @@
   <body>
     <!--site-header-->
     <main id="main" tabindex="-1">
-      <section class="hero wrap">
+      <section class="hero" aria-labelledby="hero-heading">
         <div class="glow" aria-hidden="true"></div>
-        <h1><!--site-heading--></h1>
-        <div class="hero-side">
-          <p class="answer"><!--site-answer--></p>
-          <!--site-install-->
+        <div class="wide">
+          <div class="lede">
+            <span class="eyebrow"><i aria-hidden="true"></i><!--site-eyebrow--></span>
+            <h1 id="hero-heading"><!--site-heading--></h1>
+            <div class="hero-side">
+              <p class="answer"><!--site-answer--></p>
+              <!--site-install-->
+            </div>
+          </div>
+          <section class="playground" aria-labelledby="demo-heading">
+            <h2 id="demo-heading" class="sr-only">Playground</h2>
+            <!--site-demo-->
+          </section>
         </div>
       </section>
 
-      <section class="demo wrap" aria-labelledby="demo-heading">
-        <h2 id="demo-heading" class="sr-only">Live demo</h2>
-        <!--site-demo-->
+      <section class="band" aria-labelledby="value-heading">
+        <div class="wide">
+          <!--site-cards-->
+        </div>
       </section>
 
-      <section class="wrap" aria-labelledby="value-heading">
-        <h2 id="value-heading" class="sr-only">What you get</h2>
-        <!--site-cards-->
+      <section class="proof-band" aria-label="Verifiable facts">
         <!--site-proof-->
       </section>
 
-      <section class="wrap agents" aria-labelledby="agents-heading">
-        <!--site-agents-->
+      <section class="band" aria-labelledby="agents-heading">
+        <div class="wide agents">
+          <!--site-agents-->
+        </div>
       </section>
       <p id="copy-status" class="sr-only" aria-live="polite"></p>
     </main>

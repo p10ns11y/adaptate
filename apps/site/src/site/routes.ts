@@ -17,7 +17,7 @@ export type SiteRoute = {
 export let landingRoute: SiteRoute = {
   path: "/",
   kind: "landing",
-  title: "adaptate: typed, validated data from your schema",
+  title: "adaptate: typed, validated data from any schema or stream",
   heading: landingCopy.heading,
   description: landingCopy.answer,
   answer: landingCopy.answer,
