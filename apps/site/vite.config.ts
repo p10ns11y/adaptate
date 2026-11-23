@@ -8,6 +8,7 @@ import { escapeHtml, renderHead } from "./src/site/head.ts";
 import { renderFooter, renderHeader } from "./src/site/header.ts";
 import { renderAgents, renderCards, renderEyebrow, renderHeading, renderInstall, renderProof } from "./src/site/landing-copy.ts";
 import { renderDemo } from "./src/site/landing-demo.ts";
+import { renderHeroArt, renderPadArt, renderTrailArt } from "./src/site/media.ts";
 import { landingRoute, loadRoute, type SiteRoute } from "./src/site/routes.ts";
 
 let siteDirectory = dirname(fileURLToPath(import.meta.url));
@@ -38,7 +39,10 @@ function sitePages(): Plugin {
         .replace("<!--site-demo-->", demo)
         .replace("<!--site-cards-->", renderCards())
         .replace("<!--site-proof-->", renderProof())
-        .replace("<!--site-agents-->", renderAgents());
+        .replace("<!--site-agents-->", renderAgents())
+        .replace("<!--site-hero-art-->", renderHeroArt())
+        .replace("<!--site-trail-art-->", renderTrailArt())
+        .replace("<!--site-pad-art-->", renderPadArt());
     },
     generateBundle(_options, bundle) {
       let modules: Record<string, string[]> = {};

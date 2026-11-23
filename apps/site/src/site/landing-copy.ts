@@ -2,7 +2,6 @@ import { repositoryUrl } from "./config.ts";
 import { escapeHtml } from "./head.ts";
 
 export let installCommand = "npm i adaptate @adaptate/utils zod";
-export let releaseVersion = "2.4.1";
 
 let performancePage = "/docs/performance/#measured";
 
@@ -23,8 +22,8 @@ export let landingCopy = {
     { value: "3", unit: "µs", label: "per streamed chunk", href: performancePage },
     { value: "+1.2", unit: "KB", label: "core gzip on top of Zod", href: performancePage },
     { value: "5%", unit: "", label: "slower fails the PR", href: `${repositoryUrl}/actions/workflows/ci.yml` },
-    { value: "SLSA", unit: "", label: "npm provenance", href: `https://registry.npmjs.org/-/npm/v1/attestations/adaptate@${releaseVersion}` },
-    { value: releaseVersion, unit: "", label: "on npm", href: "https://www.npmjs.com/package/adaptate" },
+    { value: "SLSA", unit: "", label: "npm provenance", href: "https://www.npmjs.com/package/adaptate#provenance" },
+    { value: "npm", unit: "", label: "latest release", href: "https://www.npmjs.com/package/adaptate" },
     { value: "MIT", unit: "", label: "licensed", href: `${repositoryUrl}/blob/main/LICENSE` },
   ],
   agentsKicker: "For SI agents",
