@@ -8,6 +8,8 @@ pnpm add @adaptate/utils
 
 Peer: `zod@^3.25.0 || ^4.0.0`. No required runtime dependencies.
 
+Network: only `fetchYamlContent(webURL)` and `getDereferencedOpenAPIDocument({ location: 'web' })` call `fetch`, and only on the URL you pass.
+
 | Doc | |
 | --- | --- |
 | [OpenAPI](../../docs/openapi.md) | Load a spec, convert both ways |

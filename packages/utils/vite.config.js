@@ -35,10 +35,7 @@ export default defineConfig(({ isSsrBuild }) => {
       target: 'esnext',
       outDir: 'build',
       sourcemap: true,
-      minify: 'terser',
-      terserOptions: {
-        keep_classnames: true,
-      },
+      minify: false,
       lib: {
         entry: ['src/index.ts'],
         formats: ['es'],
