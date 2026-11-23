@@ -44,7 +44,7 @@ jobs:
           pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
-        run: npx turbo run build
+        run: npx turbo run build --filter=@adaptate/core --filter=@adaptate/utils
 
       - name: Determine dist-tag for publishing
         id: tag
