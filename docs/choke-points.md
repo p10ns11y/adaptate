@@ -8,7 +8,7 @@ faq:
   - question: "What is on the error track?"
     answer: "The Standard Schema issues, each with a message and a path. mapError turns them into your own error type."
   - question: "How does parseStream fit the incremental parser?"
-    answer: "It reads chunks through fromAsyncIterableSteps from @adaptate/core/stream-incremental and checks each partial value against an optional partial schema. The last step checks the closed value against the full schema, or errs when the stream stops before the value closes."
+    answer: "It reads chunks through fromAsyncIterableSteps from @adaptate/core/stream-incremental and checks each partial value against an optional partial schema. The last step checks the closed value against the full schema, or errs when the stream ends without one complete JSON value."
 ---
 
 # Find your choke points

@@ -81,7 +81,7 @@ const emptyStreamIssue: StandardIssue = {
   message: "The stream ended before any JSON value arrived.",
 };
 const openStreamIssue: StandardIssue = {
-  message: "The stream ended before the JSON value closed.",
+  message: "The stream ended without one complete JSON value.",
 };
 
 export async function* parseStream<T, P = unknown>(

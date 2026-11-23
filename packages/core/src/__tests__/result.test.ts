@@ -153,8 +153,33 @@ describe("parseStream", () => {
     expect(steps.at(-1)).toMatchObject({ done: true, result: { ok: false } });
     const last = steps.at(-1);
     expect(last && !last.result.ok && last.result.error[0]?.message).toMatch(
-      /before the JSON value closed/,
+      /without one complete JSON value/,
     );
+  });
+
+  it("accepts a top-level number and rejects text after the value", async () => {
+    const number = z.number();
+    for (const text of ["42", "42 "]) {
+      const steps = await collect(parseStream(chunks(text), number));
+      expect(steps.at(-1), text).toMatchObject({
+        done: true,
+        result: { ok: true, value: 42 },
+      });
+    }
+    for (const text of [
+      '{"title":"Pasta","servings":3} x',
+      '{"title":"Pasta","servings":3}{"title":"Rice","servings":1}',
+    ]) {
+      const steps = await collect(parseStream(chunks(text), recipe));
+      expect(steps.at(-1), text).toMatchObject({
+        done: true,
+        result: { ok: false },
+      });
+    }
+    const spaced = await collect(
+      parseStream(chunks('{"title":"Pasta","servings":3} \n'), recipe),
+    );
+    expect(spaced.at(-1)).toMatchObject({ done: true, result: { ok: true } });
   });
 
   it("decodes bytes split inside a character", async () => {

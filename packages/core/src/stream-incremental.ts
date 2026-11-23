@@ -127,10 +127,13 @@ export type JsonStreamStep = {
   readonly complete: boolean;
 };
 
-function createTrackedFeed(): {
-  push: PartialJsonFeed;
-  complete: () => boolean;
-} {
+type TrackedFeed = {
+  readonly push: PartialJsonFeed;
+  readonly complete: () => boolean;
+  readonly ended: () => boolean;
+};
+
+function createTrackedFeed(): TrackedFeed {
   let source = "";
   let cursor = 0;
   let sealed = false;
@@ -497,7 +500,12 @@ function createTrackedFeed(): {
     hasCache = true;
     return cached;
   };
-  return { push, complete: () => done };
+  return {
+    push,
+    complete: () => done && !sealed,
+    ended: () =>
+      !sealed && (done || (holdingNumber && openFrames.length === 0)),
+  };
 }
 
 export function createPartialJsonFeed(): PartialJsonFeed {
@@ -507,23 +515,29 @@ export function createPartialJsonFeed(): PartialJsonFeed {
 export async function* fromAsyncIterableSteps(
   source: AsyncIterable<string | Uint8Array>,
 ): AsyncGenerator<JsonStreamStep> {
-  const { push: pushChunk, complete } = createTrackedFeed();
+  const { push: pushChunk, complete, ended } = createTrackedFeed();
   const decoder = new TextDecoder();
+  let last: JsonStreamStep | undefined;
+  function step(text: string): JsonStreamStep | undefined {
+    const partialValue = pushChunk(text);
+    if (partialValue === undefined) return undefined;
+    last = { value: partialValue, complete: complete() };
+    return last;
+  }
   for await (const sourceChunk of source) {
     const text =
       typeof sourceChunk === "string"
         ? sourceChunk
         : decoder.decode(sourceChunk, { stream: true });
     if (text.length === 0) continue;
-    const partialValue = pushChunk(text);
-    if (partialValue !== undefined)
-      yield { value: partialValue, complete: complete() };
+    const next = step(text);
+    if (next) yield next;
   }
   const flushedText = decoder.decode();
-  if (flushedText.length === 0) return;
-  const partialValue = pushChunk(flushedText);
-  if (partialValue !== undefined)
-    yield { value: partialValue, complete: complete() };
+  const flushed = flushedText.length === 0 ? undefined : step(flushedText);
+  if (flushed) yield flushed;
+  if (last && last.complete !== ended())
+    yield { value: last.value, complete: ended() };
 }
 
 export async function* fromAsyncIterable(
