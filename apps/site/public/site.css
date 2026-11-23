@@ -223,3 +223,10 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 
 .journey { max-width: 78ch; padding-top: 2rem; }
 .journey > h1:first-child { margin-top: 0; }
+
+.load-run {
+  display: block;
+  width: 100%;
+  min-height: 80vh;
+  border: 0;
+}

@@ -20,9 +20,6 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
 - [Migration 2.4](docs/migration-2.4.md): YAML and the ref parser became optional peers between 2.3 and 2.4.
 - [Development](docs/development.md): Install, test, and build this repository with pnpm.
-- [Performance](docs/performance.md): Measured cost of import, a full document, four component views, a streaming check, and bundle size.
-- [Incremental partial JSON](docs/incremental-parser.md): Tokenize a JSON stream once and reuse closed values.
-- [Proof](docs/proof.md): Each front-page sentence mapped to a test, a script, or a CI job.
 
 ## API
 

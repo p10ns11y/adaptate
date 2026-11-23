@@ -1,7 +1,7 @@
 export let defaultSiteUrl = "https://preview.invalid";
 export let repositoryUrl = "https://github.com/p10ns11y/adaptate";
 export let siteName = "adaptate";
-export let indexable = false;
+export let indexable = globalThis.process?.env?.SITE_INDEXABLE === "1";
 
 export function resolveSiteUrl(value: string | undefined): string {
   let raw = value && value.length > 0 ? value : defaultSiteUrl;

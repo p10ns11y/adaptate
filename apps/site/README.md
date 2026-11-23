@@ -16,7 +16,9 @@ flowchart LR
   Dist --> Checks["budget, seo-check, a11y"]
 ```
 
-Build the packages first. `SITE_URL` defaults to `https://preview.invalid`, and every page carries `noindex` until a public domain is approved.
+Build the packages first. `SITE_URL` defaults to `https://preview.invalid`. Pages carry `noindex` and robots.txt disallows crawling unless `SITE_INDEXABLE=1`.
+
+Vercel serves a prebuilt `dist` (`vercel deploy --prebuilt`). Chromium runs only in CI and on the build machine, never on the Vercel builder.
 
 ```sh
 pnpm --filter @adaptate/utils build
@@ -26,6 +28,7 @@ pnpm --filter adaptate-site build
 pnpm --filter adaptate-site test
 pnpm --filter adaptate-site budget
 pnpm --filter adaptate-site seo-check
+pnpm --filter adaptate-site link-check
 pnpm --filter adaptate-site a11y
 pnpm --filter adaptate-site words
 ```
