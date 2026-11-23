@@ -1,6 +1,6 @@
 import { runDemo } from "./demo-model.ts";
 import { resultParts, statusLines } from "./demo-view.ts";
-import { payloads, samples, type SampleName } from "./samples.ts";
+import { payloadFor, samples, type PayloadKind, type SampleName } from "./samples.ts";
 
 let byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -33,6 +33,7 @@ function startDemo() {
   let typeOutput = byId("type-output");
   if (!schemaInput || !payloadInput || !pick || !pickRow || !status || !result || !resultTitle || !resultLines || !zodOutput || !typeOutput) return;
   let sample: SampleName = "schema";
+  let kind: PayloadKind = "valid";
   let timer = 0;
 
   let update = () => {
@@ -63,24 +64,29 @@ function startDemo() {
     schedule();
   });
   payloadInput.addEventListener("input", schedule);
-  pick.addEventListener("change", update);
+  pick.addEventListener("change", () => {
+    payloadInput.value = payloadFor(sample, pick.value, kind);
+    update();
+  });
 
   for (let button of document.querySelectorAll<HTMLButtonElement>("[data-sample]")) {
     button.addEventListener("click", () => {
       sample = button.dataset.sample === "openapi" ? "openapi" : "schema";
+      kind = "valid";
       press("sample", sample);
-      press("payload", "valid");
+      press("payload", kind);
       schemaInput.value = samples[sample];
-      payloadInput.value = payloads[sample].valid;
       pick.value = "";
+      update();
+      payloadInput.value = payloadFor(sample, pick.value || null, kind);
       update();
     });
   }
   for (let button of document.querySelectorAll<HTMLButtonElement>("[data-payload]")) {
     button.addEventListener("click", () => {
-      let kind: "valid" | "failing" = button.dataset.payload === "failing" ? "failing" : "valid";
+      kind = button.dataset.payload === "failing" ? "failing" : "valid";
       press("payload", kind);
-      payloadInput.value = payloads[sample][kind];
+      payloadInput.value = payloadFor(sample, pick.value || null, kind);
       update();
     });
   }

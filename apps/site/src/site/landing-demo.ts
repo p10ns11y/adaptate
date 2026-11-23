@@ -1,6 +1,6 @@
 import { runDemo } from "../landing/demo-model.ts";
 import { resultParts, statusLines } from "../landing/demo-view.ts";
-import { payloads, samples } from "../landing/samples.ts";
+import { payloadFor, samples } from "../landing/samples.ts";
 import { escapeHtml } from "./head.ts";
 
 let chip = (attribute: string, value: string, label: string, pressed: boolean) =>
@@ -8,7 +8,7 @@ let chip = (attribute: string, value: string, label: string, pressed: boolean) =
 
 export function renderDemo(): string {
   let schemaText = samples.schema;
-  let payloadText = payloads.schema.valid;
+  let payloadText = payloadFor("schema", null, "valid");
   let output = runDemo(schemaText, payloadText);
   let result = resultParts(output);
   let status = statusLines(output);
@@ -19,7 +19,7 @@ export function renderDemo(): string {
     `<div class="pane"><div class="pane-head"><label for="schema-input">Schema <small>JSON Schema or OpenAPI, as JSON</small></label>`,
     `<div class="chips" role="group" aria-label="Sample schema">${chip("sample", "schema", "JSON Schema", true)}${chip("sample", "openapi", "OpenAPI with $ref", false)}</div></div>`,
     `<textarea id="schema-input" rows="11" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="schema-status">${escapeHtml(schemaText)}</textarea>`,
-    `<div class="pick" id="pick-row" hidden><label for="schema-pick">Schema to convert <small>picked by this page</small></label><select id="schema-pick"></select></div>`,
+    `<div class="pick" id="pick-row" hidden><label for="schema-pick">Schema to convert <small>picked by this page</small></label><select id="schema-pick" autocomplete="off"></select></div>`,
     `<ul id="schema-status" class="status${status.error ? " error" : ""}">${lines(status.lines)}</ul></div>`,
     `<div class="pane"><div class="pane-head"><label for="payload-input">Payload <small>edit it</small></label>`,
     `<div class="chips" role="group" aria-label="Sample payload">${chip("payload", "valid", "Valid", true)}${chip("payload", "failing", "Failing", false)}</div></div>`,
