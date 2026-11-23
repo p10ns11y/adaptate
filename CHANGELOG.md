@@ -49,6 +49,12 @@ All notable changes to this project will be documented in this file.
 - `@adaptate/core/stream`: TanStack AI `partial`/`final` and AG-UI delta adapters, `parsePartialJson`.
 - CI job on the latest zod.
 
+## 2.4.1 — 2026-11-23 — Readable @adaptate/utils build
+
+### Changed
+- `@adaptate/utils` ships an unminified browser build, so the published code reads the same as the source.
+- The `@adaptate/utils` README states its one network call: `fetchYamlContent(webURL)` fetches only the URL you pass.
+
 ## 2.4.0 — 2026-11-22 — Streaming feed, deep input, Standard Schema
 
 ### Added
