@@ -138,7 +138,7 @@ export function apiRoute(input: ApiPageInput): SiteRoute {
       answer,
       faq: [
         { question: "How is the API reference generated?", answer: "pnpm docs:api runs TypeDoc on the built .d.ts files and writes docs/api." },
-        { question: "Which packages does it cover?", answer: "@adaptate/core with its five entry points, and @adaptate/utils with its OpenAPI entry." },
+        { question: "Which packages does it cover?", answer: "@adaptate/core with its six entry points, and @adaptate/utils with its OpenAPI entry." },
       ],
     };
   }

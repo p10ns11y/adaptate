@@ -24,6 +24,17 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: Config\<T\>](core/index/type-aliases/Config.md): Type-safe configuration for `transformSchema` and conditional transformers.
 - [Type Alias: DeepPartial\<T\>](core/index/type-aliases/DeepPartial.md): Exported from @adaptate/core.
 - [Type Alias: PartialValidationResult](core/index/type-aliases/PartialValidationResult.md): Exported from @adaptate/core.
+- [Function: err()](core/result/functions/err.md): Exported from @adaptate/core/result.
+- [Function: ok()](core/result/functions/ok.md): Exported from @adaptate/core/result.
+- [Function: parse()](core/result/functions/parse.md): Exported from @adaptate/core/result.
+- [Function: parseAsync()](core/result/functions/parseAsync.md): Exported from @adaptate/core/result.
+- [Function: parseStream()](core/result/functions/parseStream.md): Exported from @adaptate/core/result.
+- [Interface: Err\<E, T\>](core/result/interfaces/Err.md): Exported from @adaptate/core/result.
+- [Interface: Ok\<T, E\>](core/result/interfaces/Ok.md): Exported from @adaptate/core/result.
+- [Interface: Track\<T, E\>](core/result/interfaces/Track.md): Exported from @adaptate/core/result.
+- [Type Alias: Issues](core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
+- [Type Alias: Result\<T, E\>](core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
+- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): Exported from @adaptate/core/result.
 - [Function: isStandardSchema()](core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.
