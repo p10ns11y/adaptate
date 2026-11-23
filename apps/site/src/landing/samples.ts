@@ -31,15 +31,30 @@ export let samples = {
 }`,
 };
 
-export let payloads = {
+export type SampleName = keyof typeof samples;
+export type PayloadKind = "valid" | "failing";
+
+export let payloads: Record<SampleName, Record<string, Record<PayloadKind, string>>> = {
   schema: {
-    valid: `{ "title": "Pasta al limone", "servings": 4, "diet": "vegan", "tags": ["quick"] }`,
-    failing: `{ "title": "", "servings": 0, "diet": "paleo" }`,
+    "": {
+      valid: `{ "title": "Pasta al limone", "servings": 4, "diet": "vegan", "tags": ["quick"] }`,
+      failing: `{ "title": "", "servings": 0, "diet": "paleo" }`,
+    },
   },
   openapi: {
-    valid: `{ "title": "Pasta al limone", "author": { "email": "cook@example.com" } }`,
-    failing: `{ "title": "Pasta al limone", "author": { "email": "not-an-email" } }`,
+    Recipe: {
+      valid: `{ "title": "Pasta al limone", "author": { "email": "cook@example.com" } }`,
+      failing: `{ "title": "Pasta al limone", "author": { "email": "not-an-email" } }`,
+    },
+    Author: {
+      valid: `{ "email": "cook@example.com" }`,
+      failing: `{ "email": "not-an-email" }`,
+    },
   },
 };
 
-export type SampleName = keyof typeof samples;
+export function payloadFor(sample: SampleName, pick: string | null, kind: PayloadKind): string {
+  let set = payloads[sample];
+  let pair = set[pick ?? ""] ?? Object.values(set)[0];
+  return pair?.[kind] ?? "";
+}

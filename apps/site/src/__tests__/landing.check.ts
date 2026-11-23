@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { runDemo } from "../landing/demo-model";
-import { payloads, samples } from "../landing/samples";
+import { payloadFor, payloads, samples, type SampleName } from "../landing/samples";
 import { installCommand, landingWords } from "../site/landing-copy";
 import { landingRoute } from "../site/routes";
 
@@ -34,7 +34,7 @@ describe("landing copy", () => {
 
 describe("live demo", () => {
   it("converts the default schema and accepts the valid payload", () => {
-    let output = runDemo(samples.schema, payloads.schema.valid);
+    let output = runDemo(samples.schema, payloadFor("schema", null, "valid"));
     expect(output.schemaError).toBeNull();
     expect(output.result).toEqual({ kind: "valid" });
     expect(output.zod).toMatchInlineSnapshot(`
@@ -56,21 +56,36 @@ describe("live demo", () => {
   });
 
   it("lists the issues of the failing payload", () => {
-    let output = runDemo(samples.schema, payloads.schema.failing);
+    let output = runDemo(samples.schema, payloadFor("schema", null, "failing"));
     expect(output.result.kind).toBe("invalid");
     if (output.result.kind !== "invalid") return;
     expect(output.result.issues.map((issue) => issue.path)).toEqual(["title", "servings", "diet"]);
   });
 
   it("picks an OpenAPI schema and resolves a local $ref on the page side", () => {
-    let output = runDemo(samples.openapi, payloads.openapi.failing);
+    let output = runDemo(samples.openapi, payloadFor("openapi", "Recipe", "failing"));
     expect(output.schemaNames).toEqual(["Recipe", "Author"]);
     expect(output.picked).toBe("Recipe");
     expect(output.notes.join(" ")).toMatch(/picked components\.schemas\.Recipe/);
     expect(output.notes.join(" ")).toMatch(/resolved \$ref #\/components\/schemas\/Author/);
     expect(output.result.kind).toBe("invalid");
-    expect(runDemo(samples.openapi, payloads.openapi.valid).result).toEqual({ kind: "valid" });
+    expect(runDemo(samples.openapi, payloadFor("openapi", "Recipe", "valid")).result).toEqual({ kind: "valid" });
     expect(runDemo(samples.openapi, '{"email":"cook@example.com"}', "Author").result).toEqual({ kind: "valid" });
+  });
+
+  it("passes Valid and fails Failing for every sample and every pick", () => {
+    for (let sample of Object.keys(samples) as SampleName[]) {
+      let names = runDemo(samples[sample], "{}").schemaNames;
+      let picks = names.length > 0 ? names : [null];
+      expect(Object.keys(payloads[sample]).sort()).toEqual(picks.map((pick) => pick ?? "").sort());
+      for (let pick of picks) {
+        let valid = runDemo(samples[sample], payloadFor(sample, pick, "valid"), pick ?? undefined);
+        expect(valid.picked, `${sample} ${pick}`).toBe(pick);
+        expect(valid.result, `${sample} ${pick} valid`).toEqual({ kind: "valid" });
+        let failing = runDemo(samples[sample], payloadFor(sample, pick, "failing"), pick ?? undefined);
+        expect(failing.result.kind, `${sample} ${pick} failing`).toBe("invalid");
+      }
+    }
   });
 
   it("does not follow external refs and stops on recursive refs", () => {

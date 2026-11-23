@@ -125,7 +125,9 @@ export function runDemo(schemaText: string, payloadText: string, pick?: string):
   if (isObject(components) && ("openapi" in document || "swagger" in document || !schemaKeys.some((key) => key in document))) {
     schemaNames = Object.keys(components).filter((name) => isObject(components[name]));
     if (schemaNames.length === 0) return empty("components.schemas has no schema objects.");
-    picked = pick && schemaNames.includes(pick) ? pick : (schemaNames[0] ?? null);
+    let referenced = new Set([...JSON.stringify(components).matchAll(/"#\/components\/schemas\/([^"/]+)"/g)].map((match) => match[1]));
+    let rootName = schemaNames.find((name) => !referenced.has(name)) ?? schemaNames[0] ?? null;
+    picked = pick && schemaNames.includes(pick) ? pick : rootName;
     root = picked ? (components[picked] ?? {}) : {};
     notes.add(`This page picked components.schemas.${picked} from the document.`);
   } else if (!schemaKeys.some((key) => key in document)) {
