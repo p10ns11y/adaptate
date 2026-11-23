@@ -172,6 +172,9 @@ describe("parseStream", () => {
       "[1] 2",
       '"a" 1',
       "true 1",
+      "[1,]",
+      '{"a":1,}',
+      '{"a":{"b":1,},"c":2}',
     ]) {
       const steps = await collect(parseStream(chunks(text), z.unknown()));
       expect(steps.at(-1)?.result, text).toMatchObject({ ok: false });

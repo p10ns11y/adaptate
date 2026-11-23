@@ -140,6 +140,8 @@ function createTrackedFeed(): TrackedFeed {
   let cursor = 0;
   let sealed = false;
   let done = false;
+  let lastWasComma = false;
+  let trailingComma = false;
   let rootValue: unknown;
   let cached: unknown;
   let hasCache = false;
@@ -217,6 +219,8 @@ function createTrackedFeed(): TrackedFeed {
   }
 
   function acceptStructural(token: string): boolean {
+    const afterComma = lastWasComma;
+    lastWasComma = false;
     if (done) return false;
     const frame = currentFrame();
     if (token === "{" || token === "[") {
@@ -233,6 +237,7 @@ function createTrackedFeed(): TrackedFeed {
       if (closesArray !== frame[frameArray]) return false;
       if (frame[framePhase] === phaseColon) return false;
       if (!closesArray && frame[framePhase] === phaseValue) return false;
+      if (afterComma) trailingComma = true;
       closeFrame();
       return true;
     }
@@ -243,10 +248,12 @@ function createTrackedFeed(): TrackedFeed {
     }
     if (!frame || frame[framePhase] !== phaseComma) return false;
     frame[framePhase] = frame[frameArray] ? phaseValue : phaseKey;
+    lastWasComma = true;
     return true;
   }
 
   function acceptValue(value: unknown, quoted: boolean): boolean {
+    lastWasComma = false;
     if (done) return false;
     const frame = currentFrame();
     if (!frame) {
@@ -504,9 +511,10 @@ function createTrackedFeed(): TrackedFeed {
   };
   return {
     push,
-    complete: () => done && !sealed && source.slice(cursor).trim() === "",
+    complete: () =>
+      done && !sealed && !trailingComma && source.slice(cursor).trim() === "",
     ended: () => {
-      if (sealed) return false;
+      if (sealed || trailingComma) return false;
       const tail = source.slice(cursor).trim();
       return done
         ? tail === ""
