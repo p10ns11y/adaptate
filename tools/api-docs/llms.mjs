@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 export function readText(filePath) {
@@ -155,6 +155,10 @@ export function docsPages(repositoryRoot) {
 
 export function buildAgentIndexes(repositoryRoot) {
   let pages = docsPages(repositoryRoot);
+  let journeyPath = join(repositoryRoot, "JOURNEY.md");
+  if (existsSync(journeyPath)) {
+    pages.splice(1, 0, { path: "JOURNEY.md", markdown: readText(journeyPath) });
+  }
   let tagline = parseFrontmatter(pages[0].markdown).frontmatter.description;
   let summary = ["# Adaptate", "", `> ${tagline}`, "", "Paths are relative to the repository root. There is no deployed documentation site.", "", "## Docs", ""];
   let full = ["# Adaptate", "", `> ${tagline}`, ""];

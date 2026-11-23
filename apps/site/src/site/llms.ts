@@ -8,5 +8,7 @@ export function rewriteLlms(text: string, siteUrl: string): string {
       `Links point to the adaptate docs at ${siteUrl}/docs/.`,
     )
     .replace(/\]\((docs\/[\w./-]+\.md)\)/g, (_match, path: string) => `](${absoluteUrl(siteUrl, routeForDoc(path))})`)
-    .replace(/^Source: (docs\/[\w./-]+\.md)$/gm, (_match, path: string) => `Source: ${absoluteUrl(siteUrl, routeForDoc(path))}`);
+    .replace(/\]\((JOURNEY\.md)\)/g, `](${absoluteUrl(siteUrl, "/journey/")})`)
+    .replace(/^Source: (docs\/[\w./-]+\.md)$/gm, (_match, path: string) => `Source: ${absoluteUrl(siteUrl, routeForDoc(path))}`)
+    .replace(/^Source: JOURNEY\.md$/gm, `Source: ${absoluteUrl(siteUrl, "/journey/")}`);
 }
