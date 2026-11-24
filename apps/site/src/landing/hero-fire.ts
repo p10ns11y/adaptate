@@ -10,7 +10,17 @@ export type FireHost = {
   requestIdleCallback?: (callback: () => void, options: { timeout: number }) => number;
 };
 
-export type Fit = { x: number; y: number; width: number; height: number };
+export let firePeriod = 64;
+
+export let fireFrameMs = 1000 / 30;
+
+let fireRates = [7, 6, 0.05, 0.08, 0.03, 0.06, 3.2, 6.5];
+
+export function firePhases(seconds: number): number[] {
+  return [...fireRates.map((rate) => (seconds * rate) % firePeriod), (seconds * 13) % (2 * Math.PI)];
+}
+
+export type Fit ={ x: number; y: number; width: number; height: number };
 
 export function firePixelRatio(devicePixelRatio: number, cssWidth: number, cssHeight: number): number {
   let ratio = Math.min(devicePixelRatio || 1, cssWidth < 700 ? 1 : 1.5);

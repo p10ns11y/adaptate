@@ -171,7 +171,7 @@ th { color: var(--exhaust); font-weight: 600; }
   .hero-art :is(picture, canvas) { top: calc(var(--art-w) * -0.04); bottom: auto; height: auto; aspect-ratio: 16 / 9; left: calc(50vw + min(168px, 11vw) - var(--art-w) * 0.74); width: var(--art-w); mask: linear-gradient(90deg, transparent, #000 30%, #000 85%, transparent); }
 }
 @media (max-width: 680px) { .hero-art img { object-position: 57% 20%; opacity: 0.7; } .hero-art[data-fire] canvas { opacity: 0.7; } }
-@media (min-width: 1300px) { .hero-art :is(img, canvas) { mix-blend-mode: lighten; filter: blur(0.6px) saturate(1.08); } }
+@media (min-width: 1300px) { .hero-art :is(img, canvas) { mix-blend-mode: lighten; } .hero-art img { filter: blur(0.6px) saturate(1.08); } .hero-art canvas { filter: saturate(1.08); } }
 .glow {
   position: absolute;
   z-index: -1;

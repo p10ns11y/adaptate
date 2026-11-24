@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
-import { coverFit, firePixelRatio, fireTokens, hexColor, lightFireLater, objectPosition, type FireHost } from "../landing/hero-fire";
+import { coverFit, fireFrameMs, firePeriod, firePhases, firePixelRatio, fireTokens, hexColor, lightFireLater, objectPosition, type FireHost } from "../landing/hero-fire";
 
 let siteRoot = new URL("../../", import.meta.url);
 let read = (path: string) => readFileSync(new URL(path, siteRoot), "utf8");
@@ -72,6 +72,27 @@ describe("hero fire wiring", () => {
     expect(firePixelRatio(1, 800, 450)).toBe(1);
     let ratio = firePixelRatio(2, 2000, 1125);
     expect(2000 * 1125 * ratio * ratio).toBeLessThanOrEqual(1_100_001);
+  });
+
+  it("keeps every phase small and steps it smoothly across the wrap", () => {
+    for (let seconds of [0, 1.5, 600, 86_400 * 30]) {
+      let phases = firePhases(seconds);
+      expect(phases).toHaveLength(9);
+      for (let [index, phase] of phases.entries()) {
+        let period = index === 8 ? 2 * Math.PI : firePeriod;
+        expect(phase).toBeGreaterThanOrEqual(0);
+        expect(phase).toBeLessThan(period);
+        let step = (firePhases(seconds + fireFrameMs / 1000)[index] ?? 0) - phase;
+        let gap = Math.min(Math.abs(step), Math.abs(Math.abs(step) - period));
+        expect(gap).toBeLessThan(0.5);
+      }
+    }
+  });
+
+  it("keeps the blur off the animated canvas", () => {
+    let css = read("public/site.css");
+    expect(css).not.toMatch(/canvas[^{]*\{[^}]*blur/);
+    expect(read("src/landing/hero-fire-gl.ts")).toContain("fireFrameMs");
   });
 
   it("maps the image like object-fit cover", () => {
