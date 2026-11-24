@@ -2,7 +2,7 @@ import type { StandardIssue, StandardSchemaV1 } from "./standard.js";
 import { withFrontier, type JsonPath } from "./frontier.js";
 import {
   fromAsyncIterableSteps,
-  type JsonStreamStep,
+  type TrackedStep,
 } from "./stream-incremental.js";
 
 export { isSettled, type JsonPath } from "./stream-incremental.js";
@@ -88,7 +88,7 @@ export async function parseAsync<T>(
 
 /**
  * One `parseStream` step. `openPath` holds the keys from the root to the deepest open
- * value. A value off `openPath` is final unless the document repeats that key later
+ * value. A value off `openPath` is final unless the document repeats a key on that path later
  * (`JSON.parse` lets the last duplicate win). A partial step whose partial schema fails
  * has no `result.value`, so no path on it is settled.
  */
@@ -118,9 +118,7 @@ export async function* parseStream<T, P = unknown>(
   schema: StandardSchemaV1<unknown, T>,
   partialSchema?: StandardSchemaV1<unknown, P>,
 ): AsyncGenerator<StreamStep<T, P>> {
-  let latest:
-    | (JsonStreamStep & { readonly openPath: JsonPath; readonly tailOpen: boolean })
-    | undefined;
+  let latest: TrackedStep | undefined;
   for await (const step of fromAsyncIterableSteps(source)) {
     latest = step;
     const result = partialSchema

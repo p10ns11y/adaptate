@@ -970,7 +970,7 @@ export async function readToolCall(chunks: AsyncIterable<string>): Promise<ToolC
 ```
 <!-- /snippet -->
 
-Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off `openPath` is final unless the document repeats that key later (`JSON.parse` lets the last duplicate win). `tailOpen` is true while the last value on `openPath` is a cut-off string or number, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final: `true` for any present path once the step is complete, `false` for a path that has not arrived, and `false` on a partial step whose partial schema failed (it has no `result.value`). A string with a raw control character or a bad escape stays open, and so does a number glued to a character other than whitespace, `,`, `}` or `]` (`12-3`). Neither is ever settled. Both fields are non-enumerable, so `toEqual` and JSON of a step do not change.
+Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off `openPath` is final unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win). `tailOpen` is true while the last value on `openPath` is a cut-off string, number or keyword, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final: `true` for any present path once the step is complete, `false` for a path that has not arrived, and `false` on a partial step whose partial schema failed (it has no `result.value`). A string with a raw control character or a bad escape stays open, and so does a number or keyword glued to a character other than whitespace, `,`, `}` or `]` (`12-3`, `truex`). Neither is ever settled. Both fields are non-enumerable, so `toEqual` and JSON of a step do not change.
 
 ```mermaid
 flowchart LR
@@ -1049,7 +1049,7 @@ flowchart LR
 | --- | --- |
 | `@adaptate/core` | `transformSchema`, `makeConditionalSchemaTransformer`, `transformPartialSchema`, `validatePartialAgainstConfigs`, `makeStreamingConditionalTransformer`, `Config`, `DeepPartial`, `PartialValidationResult` |
 | `@adaptate/core/stream` | `parsePartialJson`, `createStreamValidator`, `validateStructuredOutput`, `createAgUiPartialValidator`, `agUiValidatorWith`, `reparseFeed`, `createFrameThrottle`, `AgUiDeltaEvent`, `PartialJsonFeed` |
-| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `fromAsyncIterableSteps`, `isSettled`, `createAgUiPartialValidator`, `PartialJsonFeed`, `JsonStreamStep`, `JsonPath` |
+| `@adaptate/core/stream-incremental` | `createPartialJsonFeed`, `fromAsyncIterable`, `fromAsyncIterableSteps`, `isSettled`, `createAgUiPartialValidator`, `PartialJsonFeed`, `JsonStreamStep`, `TrackedStep`, `JsonPath` |
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
 | `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `isResult`, `isSettled`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep`, `JsonPath` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
@@ -2707,7 +2707,7 @@ Source: docs/api/core/result/type-aliases/StreamStep.md
 
 ---
 title: "Type Alias: StreamStep\\<T, P\\>"
-description: "One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats that key later (`JSON.pars..."
+description: "One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats a key on that path later (..."
 ---
 
 # Type Alias: StreamStep\<T, P\>
@@ -2715,7 +2715,7 @@ description: "One `parseStream` step. `openPath` holds the keys from the root to
 > **StreamStep**\<`T`, `P`\> = \{ `done`: `false`; `openPath?`: [`JsonPath`](../../stream-incremental/type-aliases/JsonPath.md); `result`: [`Result`](Result.md)\<`P`\>; `tailOpen?`: `boolean`; \} \| \{ `done`: `true`; `openPath?`: [`JsonPath`](../../stream-incremental/type-aliases/JsonPath.md); `result`: [`Result`](Result.md)\<`T`\>; `tailOpen?`: `boolean`; \}
 
 One `parseStream` step. `openPath` holds the keys from the root to the deepest open
-value. A value off `openPath` is final unless the document repeats that key later
+value. A value off `openPath` is final unless the document repeats a key on that path later
 (`JSON.parse` lets the last duplicate win). A partial step whose partial schema fails
 has no `result.value`, so no path on it is settled.
 
@@ -3069,7 +3069,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 # Function: fromAsyncIterableSteps()
 
-> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md) & `object`\>
+> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
 
 ## Parameters
 
@@ -3079,7 +3079,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Returns
 
-`AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md) & `object`\>
+`AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
 
 
 # Function: isSettled()
@@ -3088,17 +3088,17 @@ Source: docs/api/core/stream-incremental/functions/isSettled.md
 
 ---
 title: "Function: isSettled()"
-description: "True when `path` holds a value that later steps will not change."
+description: "True when `path` holds a value that later steps will not change, unless the document repeats a key on that path."
 ---
 
 # Function: isSettled()
 
 > **isSettled**(`step`, `path`): `boolean`
 
-True when `path` holds a value that later steps will not change.
+True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
 
 Array steps take integer index keys and object steps take string keys, as in `openPath`.
-A value off `openPath` is final unless the document repeats that key later
+A value off `openPath` is final unless the document repeats a key on that path later
 (`JSON.parse` lets the last duplicate win). A partial step whose partial schema
 fails has no `result.value`, so no path on it is settled.
 
@@ -3133,6 +3133,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [JsonPath](type-aliases/JsonPath.md)
 - [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
+- [TrackedStep](type-aliases/TrackedStep.md)
 
 ## Functions
 
@@ -3183,7 +3184,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 > `readonly` `optional` **openPath?**: [`JsonPath`](JsonPath.md)
 
 Keys from the root to the deepest open value. A value off `openPath` is final
-unless the document repeats that key later (`JSON.parse` lets the last duplicate win).
+unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win).
 
 ***
 
@@ -3191,7 +3192,7 @@ unless the document repeats that key later (`JSON.parse` lets the last duplicate
 
 > `readonly` `optional` **tailOpen?**: `boolean`
 
-True while the last value on `openPath` is a cut-off string or number.
+True while the last value on `openPath` is a cut-off string, number or keyword.
 
 ***
 
@@ -3222,6 +3223,51 @@ description: "Exported from @adaptate/core/stream-incremental."
 ## Returns
 
 `unknown`
+
+
+# Type Alias: TrackedStep
+
+Source: docs/api/core/stream-incremental/type-aliases/TrackedStep.md
+
+---
+title: "Type Alias: TrackedStep"
+description: "A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`."
+---
+
+# Type Alias: TrackedStep
+
+> **TrackedStep** = `object`
+
+A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
+
+## Properties
+
+### complete
+
+> `readonly` **complete**: `boolean`
+
+***
+
+### openPath
+
+> `readonly` **openPath**: [`JsonPath`](JsonPath.md)
+
+Keys from the root to the deepest open value. A value off `openPath` is final
+unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win).
+
+***
+
+### tailOpen
+
+> `readonly` **tailOpen**: `boolean`
+
+True while the last value on `openPath` is a cut-off string, number or keyword.
+
+***
+
+### value
+
+> `readonly` **value**: `unknown`
 
 
 # Function: agUiValidatorWith()
@@ -3628,7 +3674,7 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Interface: Track\<T, E\>](core/result/interfaces/Track.md): Exported from @adaptate/core/result.
 - [Type Alias: Issues](core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
 - [Type Alias: Result\<T, E\>](core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
-- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats that key later (`JSON.pars...
+- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats a key on that path later (...
 - [Function: isStandardSchema()](core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.
@@ -3640,10 +3686,11 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
-- [Function: isSettled()](core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change.
+- [Function: isSettled()](core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
 - [Type Alias: JsonPath](core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: TrackedStep](core/stream-incremental/type-aliases/TrackedStep.md): A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
 - [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.

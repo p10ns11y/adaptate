@@ -146,7 +146,7 @@ describe("fromAsyncIterableSteps", () => {
     expect(
       await frontiers('{"a":{"b":[1,{"c":true', ',"d":"x', '"},[', "]]}}"),
     ).toEqual([
-      { value: { a: { b: [1, { c: true }] } }, openPath: ["a", "b", 1], tailOpen: false },
+      { value: { a: { b: [1, { c: true }] } }, openPath: ["a", "b", 1, "c"], tailOpen: true },
       {
         value: { a: { b: [1, { c: true, d: "x" }] } },
         openPath: ["a", "b", 1, "d"],
@@ -236,6 +236,60 @@ describe("fromAsyncIterableSteps", () => {
     expect(await frontiers('{"a":12 ,"b":3]')).toEqual([
       { value: { a: 12, b: 3 }, openPath: [], tailOpen: false },
     ]);
+    expect(await frontiers("[7 {")).toEqual([
+      { value: [7], openPath: [], tailOpen: false },
+    ]);
+  });
+
+  it("never commits a keyword glued to a non-delimiter", async () => {
+    for (const [bad, path] of [
+      ['{"a":truex}', ["a"]],
+      ["[true1]", [0]],
+      ["nullx", []],
+      ["falsey", []],
+      ['{"a":true"b"}', ["a"]],
+    ] as const) {
+      const seen = await steps(
+        (async function* source() {
+          yield bad;
+        })(),
+      );
+      const last = seen.at(-1) as JsonStreamStep;
+      expect(last.complete).toBe(false);
+      expect(last.openPath).toEqual(path);
+      expect(last.tailOpen).toBe(true);
+      expect(isSettled(last, path)).toBe(false);
+    }
+    expect(await frontiers('{"a":true', "x}")).toEqual([
+      { value: { a: true }, openPath: ["a"], tailOpen: true },
+      { value: { a: true }, openPath: ["a"], tailOpen: true },
+    ]);
+    const split = await steps(
+      (async function* source() {
+        yield '{"a":true';
+        yield "x}";
+      })(),
+    );
+    expect(split.map((step) => step.complete)).toEqual([false, false]);
+    expect(split.some((step) => isSettled(step, ["a"]))).toBe(false);
+  });
+
+  it("commits a keyword once a delimiter follows it", async () => {
+    expect(await frontiers('{"a":nul', "l", ',"b":false}')).toEqual([
+      { value: {}, openPath: [], tailOpen: false },
+      { value: { a: null }, openPath: ["a"], tailOpen: true },
+      { value: { a: null, b: false }, openPath: [], tailOpen: false },
+    ]);
+    expect(await frontiers("tr", "ue")).toEqual([
+      { value: true, openPath: [], tailOpen: true },
+      { value: true, openPath: [], tailOpen: false },
+    ]);
+    const root = await steps(
+      (async function* source() {
+        yield "true";
+      })(),
+    );
+    expect(root.map((step) => step.complete)).toEqual([false, true]);
   });
 
   it("lets a later duplicate key replace a value it called settled", async () => {

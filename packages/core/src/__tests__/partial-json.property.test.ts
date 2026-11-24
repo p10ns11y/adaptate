@@ -310,6 +310,24 @@ describe("open path", () => {
     return offsets;
   }
 
+  // Offsets just past a number or keyword, where a glued character breaks the token.
+  function scalarEnds(text: string): number[] {
+    const offsets: number[] = [];
+    const token = /[\w.+-]/;
+    let inString = false;
+    for (let index = 0; index < text.length; index += 1) {
+      const character = text[index] as string;
+      if (inString) {
+        if (character === "\\") index += 1;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') inString = true;
+      else if (token.test(character) && !token.test(text[index + 1] ?? "")) offsets.push(index + 1);
+    }
+    return offsets;
+  }
+
   it("keeps every value off the open path equal to its final value", async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -321,8 +339,10 @@ describe("open path", () => {
           let last: JsonStreamStep | undefined;
           for await (const step of fromAsyncIterableSteps(chunked(text, widths))) {
             checkSettled(step, final, []);
-            if (step.tailOpen)
-              expect(typeof valueAt(step.value, step.openPath ?? [])).toMatch(/^(string|number)$/);
+            if (step.tailOpen) {
+              const tail = valueAt(step.value, step.openPath ?? []);
+              expect(tail === null ? "null" : typeof tail).toMatch(/^(string|number|boolean|null)$/);
+            }
             last = step;
           }
           expect(last).toMatchObject({ complete: true, openPath: [], tailOpen: false });
@@ -356,6 +376,33 @@ describe("open path", () => {
           if (!last) return;
           expect(last.complete).toBe(false);
           expect(isSettled(last, [])).toBe(false);
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+
+  it("never settles a number or keyword glued to a non-delimiter", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.nat(),
+        fc.constantFrom("x", ".", "-", "+", "e", '"', ":", "{", "["),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, pick, glue, widths) => {
+          const text = JSON.stringify(value);
+          const offsets = scalarEnds(text);
+          fc.pre(offsets.length > 0);
+          const at = offsets[pick % offsets.length] as number;
+          const broken = text.slice(0, at) + glue + text.slice(at);
+          const final = JSON.parse(text) as unknown;
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunked(broken, widths))) {
+            checkSettled(step, final, []);
+            last = step;
+          }
+          expect(last?.complete).toBe(false);
+          expect(isSettled(last as JsonStreamStep, [])).toBe(false);
         },
       ),
       { numRuns: 200 },

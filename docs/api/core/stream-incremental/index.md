@@ -10,6 +10,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [JsonPath](type-aliases/JsonPath.md)
 - [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
+- [TrackedStep](type-aliases/TrackedStep.md)
 
 ## Functions
 
