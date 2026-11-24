@@ -1,6 +1,6 @@
 ---
 title: "Credits"
-description: "Where the logo geometry, the wordmark, each palette colour, and the stream step helpers came from."
+description: "Where the logo geometry, the wordmark, and each palette colour came from."
 answer: "The logo is original geometry. The wordmark is original path outlines drawn for adaptate; no font is used. Each palette colour is a hex value sampled from a photograph listed below; no photograph ships."
 ---
 
@@ -28,14 +28,3 @@ Posts were found with a public search of @SpaceX posts with images from 1 Sep 20
 | `exhaust` | `#D2BB98` | [@SpaceX, 2121437515819159871](https://x.com/SpaceX/status/2121437515819159871), 4096×2304. Starship Flight 15 liftoff. Muted tan exhaust cloud, right-hand column | 2026-11-14 03:58 CET | 3600, 800 | [https://pbs.twimg.com/media/HXDb_kPXQAATb2F.jpg](https://pbs.twimg.com/media/HXDb_kPXQAATb2F?format=jpg&name=orig) |
 
 No OKLCH lightness change was needed. Text pairs on `void`: `cloud` 11.33:1, `exhaust` 10.47:1, `sky` 8.20:1, `plume-core` 17.56:1, `thrust` 7.26:1, `ember` 5.71:1. `cloud` on `ocean` is 4.53:1, and `void` on `cloud` is 11.33:1. `sky` and `exhaust` on `ocean` are 3.28:1 and 4.18:1, so panel text on `ocean` uses `cloud`. Text on `cloud` uses `void`. `apps/site/src/__tests__/palette.check.ts` recomputes these.
-
-## [overreacted.io](https://overreacted.io), Dan Abramov
-
-adaptate parses strict JSON incrementally as it streams in and validates each partial value against your schema. `parseStream` and `fromAsyncIterableSteps` yield those steps.
-
-[#83](https://github.com/p10ns11y/adaptate/pull/83) was inspired by "Progressive JSON": `openPath` and `tailOpen` on each step, `isSettled`, and the branded `Result` with `isResult`.
-
-Progressive JSON streams a response breadth-first, with placeholders for parts that are not ready, and fills them in later in any order. That is the producer's job (the server, or the SI response format), not a validation library's, and it is not a common standard yet. If it becomes one, adaptate may add support for it or experiment with it.
-
-- [Algebraic Effects for the Rest of Us](https://overreacted.io/algebraic-effects-for-the-rest-of-us/): a function performs an effect, a handler higher up the call stack supplies a value, and the function resumes where it stopped, like a `try/catch` that can continue.
-- [Progressive JSON](https://overreacted.io/progressive-json/): the post that describes that streaming model.

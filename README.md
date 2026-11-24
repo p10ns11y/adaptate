@@ -363,6 +363,6 @@ Ideas this library borrows, and where to read more.
 - **[Effect](https://effect.website).** Failures are typed values, not thrown exceptions. `AdaptateParseError` and `AdaptateValidationError` follow that model.
 - **[Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/), Scott Wlaschin.** A success track and an error track joined by `map` and `bind`. `@adaptate/core/result` follows it with `map`, `flatMap` and `recover`.
 - **[json-schema-ref-parser](https://github.com/APIDevTools/json-schema-ref-parser).** The reference behaviour for `$ref` resolution. It handles remote and file `$ref`s here, and the built-in resolver keeps its depth error message.
-- **[overreacted.io](https://overreacted.io), Dan Abramov.** "Progressive JSON" inspired `openPath`, `tailOpen`, and the branded `Result` on stream steps. More in [Credits](docs/credits.md).
+- **[overreacted.io](https://overreacted.io), Dan Abramov.** "Progressive JSON" inspired `openPath`, `tailOpen`, and the branded `Result` on stream steps. More in [Inspiration](docs/inspiration.md).
 
 MIT
