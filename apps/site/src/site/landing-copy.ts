@@ -46,12 +46,42 @@ export let telemetry = [
   { label: "zod", value: "3.25+ / 4" },
 ];
 
+export let siteUrl = "https://adaptate-site.vercel.app";
+
 export let agentPrompt = [
-  `Use adaptate to validate data in this project. Run: ${installCommand}`,
-  `Read ${repositoryUrl}/blob/main/llms.txt first.`,
-  `Convert an OpenAPI or JSON Schema with openAPISchemaToZod from "@adaptate/utils", then call safeParse on the result.`,
-  `Use transformSchema from "adaptate" to require only the fields a view needs.`,
-  `For streamed tool calls, add @adaptate/core and use createAgUiPartialValidator from "@adaptate/core/stream-incremental".`,
+  "Libraries",
+  "adaptate — npm entry for @adaptate/core: dynamic, adaptable model validation with Zod, interoperable with OpenAPI.",
+  "@adaptate/core — One Zod schema; a config chooses the required fields for each consumer.",
+  "@adaptate/utils — OpenAPI ↔ Zod conversion and spec loading with local $ref resolution.",
+  "",
+  "Use cases",
+  "• Each view requires only its fields → transformSchema from adaptate.",
+  "• OpenAPI or JSON Schema → Zod → openAPISchemaToZod from @adaptate/utils.",
+  "• SI tool calls still streaming → createAgUiPartialValidator from @adaptate/core/stream-incremental.",
+  "• Choke points: guard boundaries where untrusted data enters (API, SI model response, stream, form, import, config file). Use parse or parseStream; read the guide below.",
+  "",
+  "Read first",
+  `${siteUrl}/docs/`,
+  `${siteUrl}/docs/choke-points/`,
+  `${siteUrl}/docs/transform/`,
+  `${siteUrl}/docs/openapi/`,
+  `${siteUrl}/llms.txt`,
+  `${siteUrl}/llms-full.txt`,
+  "https://www.npmjs.com/package/adaptate",
+  "https://www.npmjs.com/package/@adaptate/core",
+  "https://www.npmjs.com/package/@adaptate/utils",
+  repositoryUrl,
+  "",
+  "Install",
+  installCommand,
+  "",
+  "Minimal usage (then verify both lines print true):",
+  'import { z } from "zod";',
+  'import { transformSchema } from "adaptate";',
+  'import { openAPISchemaToZod } from "@adaptate/utils";',
+  "const card = transformSchema(z.object({ title: z.string(), servings: z.number() }).partial(), { title: true });",
+  'const schema = openAPISchemaToZod({ type: "object", required: ["title"], properties: { title: { type: "string" } } });',
+  "console.log(card.safeParse({ title: \"Pasta\" }).success, schema.safeParse({ title: \"Pasta\" }).success);",
 ].join("\n");
 
 export function landingWords(): string[] {
