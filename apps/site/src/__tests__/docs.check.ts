@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
-import { apiRoute, rewriteHref, routeForDoc, slugifyHeading, sourceOnlyDocs } from "../site/docs-model";
+import { apiRoute, groupNav, railDocs, rewriteHref, routeForDoc, slugifyHeading, sourceOnlyDocs } from "../site/docs-model";
 import { guideFrontMatterSchema } from "../site/frontmatter";
 import { rewriteLlms } from "../site/llms";
 import { journeyRoute } from "../site/routes";
@@ -23,6 +23,18 @@ describe("docs", () => {
       let parsed = guideFrontMatterSchema.safeParse(load(block));
       expect(parsed.success, `${name}: ${parsed.error?.message ?? ""}`).toBe(true);
     }
+  });
+
+  it("orders the docs nav from first steps to reference and keeps every guide", () => {
+    let index = readFileSync(new URL("docs/index.md", repositoryRoot), "utf8");
+    let guides = [...index.matchAll(/^- \[([^\]]+)\]\(([\w.-]+\.md)\)/gm)]
+      .map((match) => ({ label: match[1] ?? "", path: routeForDoc(`docs/${match[2]}`) }))
+      .filter((link) => !link.path.startsWith("/docs/api/"));
+    let groups = groupNav([{ label: "Overview", path: "/docs/" }, ...guides]);
+    expect(groups.map((group) => group.title)).toEqual(["Start", "Streams", "Reference"]);
+    expect(groups[0]?.links.slice(0, 2).map((link) => link.path)).toEqual(["/docs/", "/docs/choke-points/"]);
+    expect(groups.flatMap((group) => group.links)).toHaveLength(guides.length + 1);
+    for (let path of railDocs) expect(existsSync(new URL(path, repositoryRoot)), path).toBe(true);
   });
 
   it("maps docs files to routes and rewrites links", () => {
@@ -89,6 +101,15 @@ describe("docs", () => {
     expect(rewriteLlms("- [Journey](JOURNEY.md): history\n\nSource: JOURNEY.md\n", "https://preview.invalid")).toBe(
       "- [Journey](https://preview.invalid/journey/): history\n\nSource: https://preview.invalid/journey/\n",
     );
+  });
+
+  it("ends no served llms URL with a full stop", () => {
+    let { llms, llmsFull } = buildAgentIndexes(new URL(".", repositoryRoot).pathname);
+    let served = rewriteLlms(llms, "https://preview.invalid");
+    expect(served).toContain("Docs: https://preview.invalid/docs/\n");
+    for (let text of [served, rewriteLlms(llmsFull, "https://preview.invalid")]) {
+      expect(text).not.toMatch(/https?:\/\/[^\s)>"]+\.(\s|$)/m);
+    }
   });
 
   it("slugifies heading HTML without leaving markup", () => {

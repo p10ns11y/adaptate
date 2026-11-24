@@ -6,9 +6,10 @@ import { defineConfig, type Plugin } from "vite";
 import { resolveSiteUrl } from "./src/site/config.ts";
 import { escapeHtml, renderHead } from "./src/site/head.ts";
 import { renderFooter, renderHeader } from "./src/site/header.ts";
-import { renderAgents, renderCards, renderEyebrow, renderHeading, renderInstall, renderProof } from "./src/site/landing-copy.ts";
+import { renderAgents, renderCards, renderEyebrow, renderHeading, renderInstall, renderProof, renderRailIntro } from "./src/site/landing-copy.ts";
 import { renderDemo } from "./src/site/landing-demo.ts";
 import { renderHeroArt, renderPadArt, renderTrailArt } from "./src/site/media.ts";
+import { renderRailConsole } from "./src/site/rail.ts";
 import { landingRoute, loadRoute, type SiteRoute } from "./src/site/routes.ts";
 
 let siteDirectory = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,7 @@ function sitePages(): Plugin {
         .replace("<!--site-install-->", renderInstall())
         .replace("<!--site-demo-->", demo)
         .replace("<!--site-cards-->", renderCards())
+        .replace("<!--site-rail-->", `${renderRailIntro()}${renderRailConsole()}`)
         .replace("<!--site-proof-->", renderProof())
         .replace("<!--site-agents-->", renderAgents())
         .replace("<!--site-hero-art-->", renderHeroArt())

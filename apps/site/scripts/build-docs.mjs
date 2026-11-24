@@ -9,8 +9,10 @@ import { chromium } from "playwright";
 import { repositoryUrl, resolveSiteUrl } from "../src/site/config.ts";
 import {
   apiRoute,
+  groupNav,
   guideRoute,
   plainText,
+  railDocs,
   rewriteHref,
   routeForDoc,
   slugifyHeading,
@@ -19,6 +21,7 @@ import {
 import { apiFrontMatterSchema, guideFrontMatterSchema, sourceOnlyFrontMatterSchema } from "../src/site/frontmatter.ts";
 import { escapeHtml, renderHead } from "../src/site/head.ts";
 import { renderFooter, renderHeader } from "../src/site/header.ts";
+import { renderRailFigure } from "../src/site/rail.ts";
 import { journeyRoute, staticRoutes } from "../src/site/routes.ts";
 
 let require = createRequire(import.meta.url);
@@ -128,6 +131,8 @@ function shortestSnippet(tokens) {
   return candidates.reduce((best, token) => (token.text.length < best.text.length ? token : best));
 }
 
+let navGroups = [...groupNav([{ label: "Overview", path: "/docs/" }, ...guideNav]), { title: "API", links: apiNav }];
+
 function renderNav(currentPath) {
   let item = (link) => {
     let current = link.path === currentPath ? ` aria-current="page"` : "";
@@ -135,11 +140,16 @@ function renderNav(currentPath) {
   };
   return [
     `<nav aria-label="Docs">`,
-    `<h2>Guides</h2><ul>${item({ label: "Overview", path: "/docs/" })}${guideNav.map(item).join("")}</ul>`,
-    `<h2>API</h2><ul>${apiNav.map(item).join("")}</ul>`,
+    ...navGroups.map((group) => `<h2>${escapeHtml(group.title)}</h2><ul>${group.links.map(item).join("")}</ul>`),
     `</nav>`,
   ].join("");
 }
+
+let railExample = readFileSync(join(siteDirectory, "src/usages/result-rail.ts"), "utf8").trimEnd();
+let railLead = [
+  `<div class="rail-doc">${renderRailFigure()}</div>`,
+  `<pre tabindex="0"><code class="language-ts">${escapeHtml(railExample)}</code></pre>`,
+].join("\n");
 
 function renderFaq(route) {
   let entries = route.faq
@@ -157,8 +167,12 @@ for (let page of pages) {
   });
   let headingIndex = tokens.findIndex((token) => token.type === "heading" && token.depth === 1);
   if (headingIndex >= 0) tokens.splice(headingIndex, 1);
-  let snippet = shortestSnippet(tokens);
-  let lead = "";
+  let rail = railDocs.has(page.sourcePath);
+  for (let index = tokens.length - 1; rail && index >= 0; index -= 1) {
+    if (tokens[index].type === "code" && tokens[index].lang === "mermaid") tokens.splice(index, 1);
+  }
+  let snippet = rail ? null : shortestSnippet(tokens);
+  let lead = rail ? railLead : "";
   if (snippet) {
     tokens.splice(tokens.indexOf(snippet), 1);
     lead = marked.parser([snippet]);

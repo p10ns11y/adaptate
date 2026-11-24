@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import { runDemo } from "../landing/demo-model";
 import { payloadFor, payloads, samples, type SampleName } from "../landing/samples";
 import { stillFrame, streamChunks, streamFrames } from "../landing/stream-model";
-import { installCommand, landingWords } from "../site/landing-copy";
+import { allSegments, railCode, railRoute, railSummary, runRail, type RailRun } from "../landing/rail-model";
+import { installCommand, landingWords, renderRailIntro } from "../site/landing-copy";
+import { renderRailConsole } from "../site/rail";
 import { landingRoute } from "../site/routes";
 
 let siteRoot = new URL("../../", import.meta.url);
@@ -23,13 +25,47 @@ describe("landing copy", () => {
   });
 
   it("ships no network or eval in the landing script", () => {
-    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts", "stream-model.ts"].map((name) =>
+    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts", "stream-model.ts", "rail-model.ts"].map((name) =>
       readFileSync(new URL(`src/landing/${name}`, siteRoot), "utf8"),
     );
     for (let source of sources) {
       expect(source).not.toMatch(/\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon|\beval\(|new Function|innerHTML|getDereferencedOpenAPIDocument|fetchYamlContent/);
       expect(source).not.toMatch(/@adaptate\/utils\/openapi/);
     }
+  });
+});
+
+describe("railway", () => {
+  let tracks = (name: RailRun) => runRail(name).map((stop) => `${stop.step}:${stop.track}`);
+
+  it("runs the real Result chain for each input", () => {
+    expect(tracks("stocked")).toEqual(["parse:ok", "map:ok", "flatMap:ok", "recover:ok"]);
+    expect(tracks("soldOut")).toEqual(["parse:ok", "map:ok", "flatMap:err", "recover:ok"]);
+    expect(tracks("badInput")).toEqual(["parse:err", "map:err", "flatMap:err", "recover:ok"]);
+    expect(runRail("badInput").map((stop) => stop.out)).toEqual(["issues at qty", "skipped", "skipped", '{"hold":"check qty"}']);
+    expect(railSummary("soldOut", runRail("soldOut"))).toBe('Sold out: flatMap switched to err, recover brought it back. Result {"hold":"mug-02 sold out"}.');
+    expect(railSummary("badInput", runRail("badInput"))).toBe('Bad input: parse returned err, recover brought it back. Result {"hold":"check qty"}.');
+  });
+
+  it("draws switches only where a run changes track", () => {
+    expect(railRoute(runRail("soldOut")).map((segment) => segment.key)).toEqual(["0ok-ok", "1ok-ok", "2ok-err", "3err-ok"]);
+    let switches = allSegments().filter((segment) => segment.points.length > 2);
+    expect(switches.map((segment) => segment.key).sort()).toEqual(["0ok-err", "2ok-err", "3err-ok"]);
+  });
+
+  it("renders a static figure, a trace, and a status without script", () => {
+    let html = renderRailConsole();
+    expect(html.match(/data-lit/g)).toHaveLength(4);
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-pressed="true">Sold out<');
+    expect(html.match(/<li data-track=/g)).toHaveLength(4);
+  });
+
+  it("links the choke points guide and keeps banned words out of new copy", () => {
+    expect(renderRailIntro()).toContain('href="/docs/choke-points/"');
+    let text = [renderRailIntro(), renderRailConsole(), railCode].join(" ");
+    expect(text).not.toMatch(/\b(demo|gate)/i);
+    expect(text).not.toMatch(/2\.4\.2/);
   });
 });
 
