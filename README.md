@@ -363,16 +363,6 @@ Ideas this library borrows, and where to read more.
 - **[Effect](https://effect.website).** Failures are typed values, not thrown exceptions. `AdaptateParseError` and `AdaptateValidationError` follow that model.
 - **[Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/), Scott Wlaschin.** A success track and an error track joined by `map` and `bind`. `@adaptate/core/result` follows it with `map`, `flatMap` and `recover`.
 - **[json-schema-ref-parser](https://github.com/APIDevTools/json-schema-ref-parser).** The reference behaviour for `$ref` resolution. It handles remote and file `$ref`s here, and the built-in resolver keeps its depth error message.
-
-### [overreacted.io](https://overreacted.io), Dan Abramov
-
-- [Algebraic Effects for the Rest of Us](https://overreacted.io/algebraic-effects-for-the-rest-of-us/): a function performs an effect, a handler higher up the call stack supplies a value, and the function resumes where it stopped, like a `try/catch` that can continue.
-- [Progressive JSON](https://overreacted.io/progressive-json/): send JSON breadth-first, with placeholders for parts that are not ready, and fill them in with later rows in any order.
-
-adaptate parses strict JSON incrementally as it streams in and validates each partial value against your schema. `parseStream` and `fromAsyncIterableSteps` yield those steps.
-
-[#83](https://github.com/p10ns11y/adaptate/pull/83) was inspired by "Progressive JSON": `openPath` and `tailOpen` on each step, `isSettled`, and the branded `Result` with `isResult`.
-
-Progressive JSON streams a response breadth-first and fills placeholders in later. That is the producer's job (the server, or the SI response format), not a validation library's, and it is not a common standard yet. If it becomes one, adaptate may add support for it or experiment with it.
+- **[overreacted.io](https://overreacted.io), Dan Abramov.** "Progressive JSON" inspired `openPath`, `tailOpen`, and the branded `Result` on stream steps. More in [Credits](docs/credits.md).
 
 MIT
