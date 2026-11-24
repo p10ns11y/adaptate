@@ -58,7 +58,8 @@ export function railSummary(name: RailRun, stops: RailStop[]): string {
   let switched = stops.find((stop) => stop.track === "err");
   let last = stops.at(-1)?.out ?? "";
   if (!switched) return `${railRuns[name].label}: stayed on ok. Result ${last}.`;
-  return `${railRuns[name].label}: ${switched.step} switched to err, recover brought it back. Result ${last}.`;
+  let turn = switched.step === "parse" ? "parse returned err" : `${switched.step} switched to err`;
+  return `${railRuns[name].label}: ${turn}, recover brought it back. Result ${last}.`;
 }
 
 export let railGeometry = {

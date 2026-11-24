@@ -44,6 +44,7 @@ describe("railway", () => {
     expect(tracks("badInput")).toEqual(["parse:err", "map:err", "flatMap:err", "recover:ok"]);
     expect(runRail("badInput").map((stop) => stop.out)).toEqual(["issues at qty", "skipped", "skipped", '{"hold":"check qty"}']);
     expect(railSummary("soldOut", runRail("soldOut"))).toBe('Sold out: flatMap switched to err, recover brought it back. Result {"hold":"mug-02 sold out"}.');
+    expect(railSummary("badInput", runRail("badInput"))).toBe('Bad input: parse returned err, recover brought it back. Result {"hold":"check qty"}.');
   });
 
   it("draws switches only where a run changes track", () => {

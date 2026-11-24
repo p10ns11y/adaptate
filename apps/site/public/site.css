@@ -370,6 +370,7 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .guide-card:is(:hover, :focus-visible) { color: var(--cloud); border-color: var(--thrust); transform: translateY(-3px); box-shadow: var(--thrust-glow), var(--lift); }
 .guide-card:hover i { transform: translate(5px, -50%); }
 
+.rail-chain { margin: 0; }
 .rail-code { margin: 0; border: 0; border-radius: 0; background: none; padding: 1rem 1.2rem 0; font-size: 0.8rem; }
 .rail { margin: 0; padding: 0.75rem 1.2rem 1.1rem; }
 .rail-map { display: block; width: 100%; height: auto; overflow: visible; }
@@ -440,6 +441,7 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  :is(.button, .copy, .cards li, .guide-card):is(:hover, :focus-visible, :active) { transform: none; }
 }
 
 .docs { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; padding-top: 2rem; }

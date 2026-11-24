@@ -67,7 +67,7 @@ export function renderRailConsole(): string {
     `<div class="console rail-console"><div class="console-in">`,
     `<div class="console-bar"><span class="console-id"><i aria-hidden="true"></i>Result · live</span>`,
     `<div class="chips seg" role="group" aria-label="Input">${chips}</div></div>`,
-    `<pre class="rail-code" tabindex="0" aria-label="The chain"><code>${escapeHtml(`import { parse } from "@adaptate/core/result";\n\n${railCode};`)}</code></pre>`,
+    `<figure class="rail-chain"><figcaption class="sr-only">The chain</figcaption><pre class="rail-code" tabindex="0"><code>${escapeHtml(`import { parse } from "@adaptate/core/result";\n\n${railCode};`)}</code></pre></figure>`,
     renderRailFigure(),
     `<ol id="rail-trace" class="rail-trace" aria-label="Trace">${renderTraceLines(stops)}</ol>`,
     `<p id="rail-status" class="rail-status" role="status">${escapeHtml(railSummary(defaultRun, stops))}</p>`,
