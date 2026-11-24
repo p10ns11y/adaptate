@@ -145,7 +145,7 @@ th { color: var(--exhaust); font-weight: 600; }
   mask: linear-gradient(#000 10%, transparent 70%);
 }
 .art { position: absolute; z-index: -3; pointer-events: none; overflow: hidden; }
-.art picture, .art img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.art picture, .art img, .art canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .art::after { content: ""; position: absolute; inset: 0; }
 .hero-art {
   inset: 0 0 auto;
@@ -155,8 +155,11 @@ th { color: var(--exhaust); font-weight: 600; }
     radial-gradient(40% 30% at 70% 92%, color-mix(in oklab, var(--smoke-deep) 80%, transparent), transparent 75%),
     linear-gradient(180deg, var(--void), color-mix(in oklab, var(--ocean) 14%, var(--void)));
 }
-.hero-art picture { left: auto; width: min(100%, 1640px); mask: linear-gradient(90deg, transparent, #000 30%); }
+.hero-art :is(picture, canvas) { left: auto; width: min(100%, 1640px); mask: linear-gradient(90deg, transparent, #000 30%); }
 .hero-art img { object-position: 72% 30%; opacity: 0.92; }
+.hero-art canvas { opacity: 0; transition: opacity 0.9s ease; }
+.hero-art[data-fire] canvas { opacity: 0.92; }
+.hero-art[data-fire] picture { opacity: 0; transition: opacity 0s 0.9s; }
 .hero-art::after {
   background:
     linear-gradient(90deg, var(--void) 6%, color-mix(in oklab, var(--void) 78%, transparent) 34%, color-mix(in oklab, var(--void) 20%, transparent) 60%, transparent 80%),
@@ -165,10 +168,10 @@ th { color: var(--exhaust); font-weight: 600; }
 }
 @media (min-width: 1025px) {
   .hero-art { --art-w: clamp(40rem, 63vw, 68rem); }
-  .hero-art picture { top: calc(var(--art-w) * -0.04); bottom: auto; height: auto; aspect-ratio: 16 / 9; left: calc(50vw + min(168px, 11vw) - var(--art-w) * 0.74); width: var(--art-w); mask: linear-gradient(90deg, transparent, #000 30%, #000 85%, transparent); }
+  .hero-art :is(picture, canvas) { top: calc(var(--art-w) * -0.04); bottom: auto; height: auto; aspect-ratio: 16 / 9; left: calc(50vw + min(168px, 11vw) - var(--art-w) * 0.74); width: var(--art-w); mask: linear-gradient(90deg, transparent, #000 30%, #000 85%, transparent); }
 }
-@media (max-width: 680px) { .hero-art img { object-position: 57% 20%; opacity: 0.7; } }
-@media (min-width: 1300px) { .hero-art img { mix-blend-mode: lighten; filter: blur(0.6px) saturate(1.08); } }
+@media (max-width: 680px) { .hero-art img { object-position: 57% 20%; opacity: 0.7; } .hero-art[data-fire] canvas { opacity: 0.7; } }
+@media (min-width: 1300px) { .hero-art :is(img, canvas) { mix-blend-mode: lighten; filter: blur(0.6px) saturate(1.08); } }
 .glow {
   position: absolute;
   z-index: -1;
@@ -442,6 +445,8 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
   :is(.button, .copy, .cards li, .guide-card):is(:hover, :focus-visible, :active) { transform: none; }
+  .guide-card:hover i { transform: translateY(-50%); }
+  .hero-art canvas { display: none; }
 }
 
 .docs { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; padding-top: 2rem; }

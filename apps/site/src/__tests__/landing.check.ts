@@ -25,7 +25,7 @@ describe("landing copy", () => {
   });
 
   it("ships no network or eval in the landing script", () => {
-    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts", "stream-model.ts", "rail-model.ts"].map((name) =>
+    let sources = ["main.ts", "demo-model.ts", "demo-view.ts", "zod-print.ts", "samples.ts", "stream-model.ts", "rail-model.ts", "hero-fire.ts", "hero-fire-gl.ts"].map((name) =>
       readFileSync(new URL(`src/landing/${name}`, siteRoot), "utf8"),
     );
     for (let source of sources) {

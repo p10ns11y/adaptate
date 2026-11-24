@@ -10,6 +10,7 @@ let budgets = {
   landingJs: 75 * kilobyte,
   loadJs: 80 * kilobyte,
   workerJs: 70 * kilobyte,
+  fireJs: 6 * kilobyte,
   docsJs: 0,
   cssTotal: 12 * kilobyte,
   ogImage: 120 * kilobyte,
@@ -158,6 +159,12 @@ if (!existsSync(modulesPath)) {
     }
   }
   report.push(`build-only deps (effect, marked, mermaid, playwright): 0 bytes in ${Object.keys(modules).length} chunk(s)`);
+  let fireChunk = Object.keys(modules).find((chunk) => modules[chunk].some((id) => id.endsWith("/hero-fire-gl.ts")));
+  if (!fireChunk) failures.push("the hero WebGL code is not in its own chunk");
+  else {
+    measure(`${fireChunk} lazy hero WebGL (gzip)`, gzipSize(join(distDirectory, fireChunk)), budgets.fireJs);
+    if (pageScripts(join(distDirectory, "index.html")).some((source) => source.endsWith(fireChunk))) failures.push(`/ preloads ${fireChunk}`);
+  }
 }
 
 console.log(report.join("\n"));

@@ -12,6 +12,7 @@ import {
   type RailRun,
   type RailStop,
 } from "./rail-model.ts";
+import { lightFireLater } from "./hero-fire.ts";
 import { payloadFor, samples, type PayloadKind, type SampleName } from "./samples.ts";
 import { readyText, stillFrame, streamFrames, type StreamFrame } from "./stream-model.ts";
 
@@ -307,8 +308,19 @@ function startReveal() {
   }
 }
 
+function startFire() {
+  let art = document.querySelector<HTMLElement>(".hero-art");
+  if (!art) return;
+  lightFireLater(() => {
+    import("./hero-fire-gl.ts")
+      .then(({ lightFire }) => lightFire(art))
+      .catch(() => undefined);
+  });
+}
+
 startDemo();
 startCopyButtons();
 startStream();
 startRail();
 startReveal();
+startFire();
