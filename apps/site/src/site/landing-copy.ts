@@ -75,7 +75,7 @@ export let agentPrompt = [
   "Install",
   installCommand,
   "For parse, parseStream or streamed tool calls, also install @adaptate/core: npm i @adaptate/core",
-  "On npm 2.4.2, @adaptate/core/result exports ok, err, parse, parseAsync and parseStream; isResult, isSettled and openPath in the docs ship in the next release.",
+  "The current npm release of @adaptate/core/result exports ok, err, parse, parseAsync and parseStream. If isResult, isSettled or openPath from the docs is missing, it ships in the next release.",
   "",
   "Minimal usage (save as check.mjs, run node check.mjs, expect: true true):",
   'import { z } from "zod";',
