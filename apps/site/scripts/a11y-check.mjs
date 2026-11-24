@@ -42,15 +42,22 @@ try {
   let status = await page.textContent("#schema-status");
   if (!/not a schema/.test(status ?? "")) failures.push(`/: a pasted JSON value was not explained (${status})`);
 
-  await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto(`${server.origin}/`);
-  let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  if (overflow > 0) failures.push(`/: the mobile layout scrolls sideways by ${overflow}px`);
+  for (let width of [375, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`${server.origin}/`, { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (overflow > 0) failures.push(`/: the ${width}px layout scrolls sideways by ${overflow}px`);
+  }
+  let fireCanvas = await page.evaluate(() => document.querySelector(".hero-art canvas")?.getAttribute("aria-hidden") ?? "none");
+  if (fireCanvas !== "none" && fireCanvas !== "true") failures.push("/: the hero canvas is not aria-hidden");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto(`${server.origin}/`);
+  await page.goto(`${server.origin}/`, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
   let animation = await page.evaluate(() => getComputedStyle(document.querySelector(".glow")).animationName);
   if (animation !== "none") failures.push(`/: reduced motion still runs the glow animation (${animation})`);
+  if (await page.evaluate(() => document.querySelector(".hero-art canvas") !== null)) failures.push("/: reduced motion still starts the hero WebGL");
 } finally {
   await browser.close();
   await server.close();

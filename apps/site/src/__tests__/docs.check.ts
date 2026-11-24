@@ -40,6 +40,8 @@ describe("docs", () => {
   it("maps docs files to routes and rewrites links", () => {
     expect(routeForDoc("docs/index.md")).toBe("/docs/");
     expect(routeForDoc("docs/zod.md")).toBe("/docs/zod/");
+    expect(routeForDoc("docs/migration-2.4.md")).toBe("/docs/migration-2-4/");
+    expect(rewriteHref("migration-2.4.md#peers", "docs/index.md")).toBe("/docs/migration-2-4/#peers");
     expect(routeForDoc("docs/api/core/index.md")).toBe("/docs/api/core/");
     expect(routeForDoc("docs/api/core/stream/functions/createFrameThrottle.md")).toBe(
       "/docs/api/core/stream/functions/createFrameThrottle/",

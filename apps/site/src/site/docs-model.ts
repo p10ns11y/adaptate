@@ -10,7 +10,7 @@ export type NavLink = { label: string; path: string };
 let navGroups = [
   { title: "Start", paths: ["/docs/", "/docs/choke-points/", "/docs/transform/", "/docs/openapi/", "/docs/zod/"] },
   { title: "Streams", paths: ["/docs/streaming/", "/docs/ag-ui/", "/docs/web-streams/", "/docs/effect/"] },
-  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/migration-2.4/", "/docs/development/"] },
+  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/migration-2-4/", "/docs/development/"] },
 ];
 
 export function groupNav(links: NavLink[]): Array<{ title: string; links: NavLink[] }> {
@@ -25,7 +25,7 @@ export function routeForDoc(sourcePath: string): string {
   let inner = sourcePath.replace(/^docs\//, "").replace(/\.md$/, "");
   if (inner === "index") return "/docs/";
   if (inner.endsWith("/index")) inner = inner.slice(0, -"/index".length);
-  return `/docs/${inner}/`;
+  return `/docs/${inner.replaceAll(".", "-")}/`;
 }
 
 function normalize(path: string): string {
