@@ -17,6 +17,7 @@ import { checkTanStackStream } from "../usages/tanstack";
 import { checkWithStandardSchema, readyViews } from "../usages/zod";
 import { cardOrFallback, finalReport } from "../usages/effect";
 import { checkInvoice, readToolCall } from "../usages/choke-points";
+import { ship } from "../usages/result-rail";
 
 describe("usage snippets", () => {
   it("renders the React card from the title", () => {
@@ -144,5 +145,11 @@ describe("usage snippets", () => {
     expect(good.previews.at(-1)).toBe("Malmo");
     let bad = await readToolCall(chunks('{"city":"Malmo","days":0}'));
     expect(bad.issues?.length).toBe(1);
+  });
+
+  it("ships, holds a sold-out line, and holds bad input on the railway", () => {
+    expect(ship({ sku: "tea-01", qty: 2 })).toMatchObject({ ok: true, value: { sku: "tea-01", qty: 2, total: 8 } });
+    expect(ship({ sku: "mug-02", qty: 1 })).toMatchObject({ ok: true, value: { hold: "mug-02 sold out" } });
+    expect(ship({ sku: "tea-01", qty: "two" })).toMatchObject({ ok: true, value: { hold: "check qty" } });
   });
 });

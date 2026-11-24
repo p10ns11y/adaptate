@@ -11,7 +11,7 @@ faq:
 
 # Development
 
-Tested with pnpm 11.1.1 and Node 24.22.1 (pinned, locked) on 2026-11-23. Root `package.json` sets `"packageManager": "pnpm@11.1.1"`. `.npmrc` and `pnpm-workspace.yaml` set lifecycle restrictions, store integrity, and the release-age gate. `npm install` at the repo root is unsupported: npm does not apply those settings, and the tree can diverge from CI.
+Tested with pnpm 11.1.1 and Node 24.22.1 (pinned, locked) on 2026-11-23. Root `package.json` sets `"packageManager": "pnpm@11.1.1"`. `.npmrc` and `pnpm-workspace.yaml` set lifecycle restrictions, store integrity, and the minimum release age. `npm install` at the repo root is unsupported: npm does not apply those settings, and the tree can diverge from CI.
 
 `pnpm add` / `npm install` of the published `@adaptate/*` packages is how consumers install from the registry.
 

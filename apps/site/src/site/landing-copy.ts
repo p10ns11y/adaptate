@@ -26,6 +26,10 @@ export let landingCopy = {
     { value: "npm", unit: "", label: "latest release", href: "https://www.npmjs.com/package/adaptate" },
     { value: "MIT", unit: "", label: "licensed", href: `${repositoryUrl}/blob/main/LICENSE` },
   ],
+  railKicker: "Result API",
+  railHeading: "Two tracks. No surprises.",
+  railText: "parse returns ok or err. A failing step switches tracks, and recover brings it back.",
+  railGuide: { kicker: "Guide", title: "Find your choke points", text: "Guard the few places bad data enters.", href: "/docs/choke-points/" },
   agentsKicker: "For SI agents",
   agentsHeading: "Hand it to your agent.",
   agentsText: "Point it at the docs index or the full text, or paste this prompt.",
@@ -59,6 +63,12 @@ export function landingWords(): string[] {
     landingCopy.valueHeading,
     ...landingCopy.cards.flatMap((card) => [card.title, card.text]),
     ...landingCopy.proof.map((item) => `${item.value}${item.unit} ${item.label}`),
+    landingCopy.railKicker,
+    landingCopy.railHeading,
+    landingCopy.railText,
+    landingCopy.railGuide.kicker,
+    landingCopy.railGuide.title,
+    landingCopy.railGuide.text,
     landingCopy.agentsKicker,
     landingCopy.agentsHeading,
     landingCopy.agentsText,
@@ -116,6 +126,18 @@ export function renderProof(): string {
     })
     .join("");
   return `<ul class="proof wide">${items}</ul>`;
+}
+
+export function renderRailIntro(): string {
+  let guide = landingCopy.railGuide;
+  return [
+    `<div class="rail-intro">`,
+    `<p class="kicker">${escapeHtml(landingCopy.railKicker)}</p>`,
+    `<h2 id="rail-heading">${escapeHtml(landingCopy.railHeading)}</h2>`,
+    `<p>${escapeHtml(landingCopy.railText)}</p>`,
+    `<a class="guide-card" href="${guide.href}"><span class="kicker">${escapeHtml(guide.kicker)}</span><strong>${escapeHtml(guide.title)}</strong><span>${escapeHtml(guide.text)}</span><i aria-hidden="true">→</i></a>`,
+    `</div>`,
+  ].join("");
 }
 
 export function renderAgents(): string {

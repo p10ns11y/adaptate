@@ -11,7 +11,7 @@ export function rewriteLlms(text: string, siteUrl: string): string {
   return text
     .replace(
       "Paths are relative to the repository root. There is no deployed documentation site.",
-      `Links point to the adaptate docs at ${siteUrl}/docs/.`,
+      `Docs: ${siteUrl}/docs/`,
     )
     .split("\n")
     .map((line) => {

@@ -3,6 +3,24 @@ import { descriptionFrom, type FaqEntry, type SiteRoute } from "./routes.ts";
 
 export let sourceOnlyDocs = new Set(["docs/credits.md"]);
 
+export let railDocs = new Set(["docs/choke-points.md", "docs/api/core/result/index.md"]);
+
+export type NavLink = { label: string; path: string };
+
+let navGroups = [
+  { title: "Start", paths: ["/docs/", "/docs/choke-points/", "/docs/transform/", "/docs/openapi/", "/docs/zod/"] },
+  { title: "Streams", paths: ["/docs/streaming/", "/docs/ag-ui/", "/docs/web-streams/", "/docs/effect/"] },
+  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/migration-2.4/", "/docs/development/"] },
+];
+
+export function groupNav(links: NavLink[]): Array<{ title: string; links: NavLink[] }> {
+  let byPath = new Map(links.map((link) => [link.path, link]));
+  let placed = new Set(navGroups.flatMap((group) => group.paths));
+  let groups = navGroups.map((group) => ({ title: group.title, links: group.paths.flatMap((path) => byPath.get(path) ?? []) }));
+  groups.at(-1)?.links.push(...links.filter((link) => !placed.has(link.path)));
+  return groups.filter((group) => group.links.length > 0);
+}
+
 export function routeForDoc(sourcePath: string): string {
   let inner = sourcePath.replace(/^docs\//, "").replace(/\.md$/, "");
   if (inner === "index") return "/docs/";
