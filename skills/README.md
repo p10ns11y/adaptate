@@ -23,7 +23,7 @@ Agents should:
 | Add Test | [`add-test.md`](add-test.md) | Writing new tests for existing or new code |
 | Refactor | [`refactor.md`](refactor.md) | Restructuring code without changing behavior |
 | Release | [`release.md`](release.md) | Preparing a version bump for publishing |
-| Formal verification | [`../.cursor/skills/formal-verification/SKILL.md`](../.cursor/skills/formal-verification/SKILL.md) | Re-checking partial and stream invariants I1 and I2 |
+| Property-checked invariants | [`../.cursor/skills/formal-verification/SKILL.md`](../.cursor/skills/formal-verification/SKILL.md) | Re-checking partial and stream invariants I1 and I2 |
 
 ## Conventions
 

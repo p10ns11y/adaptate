@@ -43,6 +43,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: DeepPartial\<T\>](docs/api/core/index/type-aliases/DeepPartial.md): Exported from @adaptate/core.
 - [Type Alias: PartialValidationResult](docs/api/core/index/type-aliases/PartialValidationResult.md): Exported from @adaptate/core.
 - [Function: err()](docs/api/core/result/functions/err.md): Exported from @adaptate/core/result.
+- [Function: isResult()](docs/api/core/result/functions/isResult.md): Exported from @adaptate/core/result.
 - [Function: ok()](docs/api/core/result/functions/ok.md): Exported from @adaptate/core/result.
 - [Function: parse()](docs/api/core/result/functions/parse.md): Exported from @adaptate/core/result.
 - [Function: parseAsync()](docs/api/core/result/functions/parseAsync.md): Exported from @adaptate/core/result.
@@ -66,7 +67,9 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Function: createPartialJsonFeed()](docs/api/core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](docs/api/core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](docs/api/core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
+- [Function: isSettled()](docs/api/core/stream-incremental/functions/isSettled.md): Exported from @adaptate/core/stream-incremental.
 - [stream-incremental](docs/api/core/stream-incremental/index.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: JsonPath](docs/api/core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](docs/api/core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](docs/api/core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: agUiValidatorWith()](docs/api/core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.

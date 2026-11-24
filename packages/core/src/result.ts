@@ -1,8 +1,11 @@
 import type { StandardIssue, StandardSchemaV1 } from "./standard.js";
 import {
   fromAsyncIterableSteps,
+  type JsonPath,
   type JsonStreamStep,
 } from "./stream-incremental.js";
+
+export { isSettled, type JsonPath } from "./stream-incremental.js";
 
 export type Issues = ReadonlyArray<StandardIssue>;
 
@@ -26,8 +29,18 @@ export interface Err<E, T = never> extends Track<T, E> {
 
 export type Result<T, E = Issues> = Ok<T, E> | Err<E, T>;
 
+const brand = Symbol.for("adaptate.result");
+
+function branded<R extends object>(result: R): R {
+  return Object.defineProperty(result, brand, { value: true });
+}
+
+export function isResult(value: unknown): value is Result<unknown, unknown> {
+  return typeof value === "object" && value !== null && brand in value;
+}
+
 export function ok<T, E = never>(value: T): Ok<T, E> {
-  return {
+  return branded<Ok<T, E>>({
     ok: true,
     value,
     map: (transform) => ok(transform(value)),
@@ -35,11 +48,11 @@ export function ok<T, E = never>(value: T): Ok<T, E> {
     mapError: () => ok(value),
     recover: () => ok(value),
     match: (onOk) => onOk(value),
-  };
+  });
 }
 
 export function err<E, T = never>(error: E): Err<E, T> {
-  return {
+  return branded<Err<E, T>>({
     ok: false,
     error,
     map: () => err(error),
@@ -47,7 +60,7 @@ export function err<E, T = never>(error: E): Err<E, T> {
     mapError: (transform) => err(transform(error)),
     recover: (fallback) => ok(fallback(error)),
     match: (_onOk, onErr) => onErr(error),
-  };
+  });
 }
 
 const asyncSchemaIssue: StandardIssue = {
@@ -73,9 +86,16 @@ export async function parseAsync<T>(
   return checked.issues ? err(checked.issues) : ok(checked.value);
 }
 
+type Frontier = {
+  readonly openPath: JsonPath;
+  readonly tailOpen: boolean;
+};
+
 export type StreamStep<T, P> =
-  | { readonly done: false; readonly result: Result<P> }
-  | { readonly done: true; readonly result: Result<T> };
+  | ({ readonly done: false; readonly result: Result<P> } & Frontier)
+  | ({ readonly done: true; readonly result: Result<T> } & Frontier);
+
+const settledFrontier: Frontier = { openPath: [], tailOpen: false };
 
 const emptyStreamIssue: StandardIssue = {
   message: "The stream ended before any JSON value arrived.",
@@ -95,10 +115,26 @@ export async function* parseStream<T, P = unknown>(
     const result = partialSchema
       ? await parseAsync(partialSchema, step.value)
       : ok(step.value as P);
-    yield { done: false, result };
+    yield {
+      done: false,
+      result,
+      openPath: step.openPath,
+      tailOpen: step.tailOpen,
+    };
   }
-  if (!latest) yield { done: true, result: err([emptyStreamIssue]) };
+  if (!latest)
+    yield { done: true, result: err([emptyStreamIssue]), ...settledFrontier };
   else if (!latest.complete)
-    yield { done: true, result: err([openStreamIssue]) };
-  else yield { done: true, result: await parseAsync(schema, latest.value) };
+    yield {
+      done: true,
+      result: err([openStreamIssue]),
+      openPath: latest.openPath,
+      tailOpen: latest.tailOpen,
+    };
+  else
+    yield {
+      done: true,
+      result: await parseAsync(schema, latest.value),
+      ...settledFrontier,
+    };
 }

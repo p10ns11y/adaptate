@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   fromAsyncIterable,
   fromAsyncIterableSteps,
+  isSettled,
   type JsonStreamStep,
 } from "../stream-incremental";
 
@@ -111,6 +112,67 @@ describe("fromAsyncIterableSteps", () => {
     expect(seen.at(-1)?.value).toEqual({ name: "Pasta" });
   });
 
+  async function frontiers(...parts: string[]) {
+    return (
+      await steps(
+        (async function* source() {
+          for (const part of parts) yield part;
+        })(),
+      )
+    ).map(({ value, openPath, tailOpen }) => ({ value, openPath, tailOpen }));
+  }
+
+  it("keeps a cut-off string open until it closes", async () => {
+    expect(await frontiers('{"comments":["c1","c', '2"]}')).toEqual([
+      { value: { comments: ["c1", "c"] }, openPath: ["comments", 1], tailOpen: true },
+      { value: { comments: ["c1", "c2"] }, openPath: [], tailOpen: false },
+    ]);
+  });
+
+  it("keeps a number open while digits may follow", async () => {
+    expect(await frontiers('{"n":12', '3,"m":4', "5}")).toEqual([
+      { value: { n: 12 }, openPath: ["n"], tailOpen: true },
+      { value: { n: 123, m: 4 }, openPath: ["m"], tailOpen: true },
+      { value: { n: 123, m: 45 }, openPath: [], tailOpen: false },
+    ]);
+    expect(await frontiers("4", "2")).toEqual([
+      { value: 4, openPath: [], tailOpen: true },
+      { value: 42, openPath: [], tailOpen: true },
+      { value: 42, openPath: [], tailOpen: false },
+    ]);
+  });
+
+  it("walks nested objects and arrays", async () => {
+    expect(
+      await frontiers('{"a":{"b":[1,{"c":true', ',"d":"x', '"},[', "]]}}"),
+    ).toEqual([
+      { value: { a: { b: [1, { c: true }] } }, openPath: ["a", "b", 1], tailOpen: false },
+      {
+        value: { a: { b: [1, { c: true, d: "x" }] } },
+        openPath: ["a", "b", 1, "d"],
+        tailOpen: true,
+      },
+      { value: { a: { b: [1, { c: true, d: "x" }, []] } }, openPath: ["a", "b", 2], tailOpen: false },
+      { value: { a: { b: [1, { c: true, d: "x" }, []] } }, openPath: [], tailOpen: false },
+    ]);
+    expect(await frontiers('{"a":1,"ke')).toEqual([
+      { value: { a: 1 }, openPath: [], tailOpen: false },
+    ]);
+  });
+
+  it("settles a path once the open path leaves it", async () => {
+    let [step] = await steps(
+      (async function* source() {
+        yield '{"comments":["c1","c';
+      })(),
+    );
+    let open = step as JsonStreamStep;
+    expect(isSettled(open, ["comments", 0])).toBe(true);
+    expect(isSettled(open, ["comments", 1])).toBe(false);
+    expect(isSettled(open, ["comments"])).toBe(false);
+    expect(isSettled(open, [])).toBe(false);
+  });
+
   it("flushes a dangling byte as an open step", async () => {
     const seen = await steps(
       (async function* openString() {
@@ -118,7 +180,12 @@ describe("fromAsyncIterableSteps", () => {
         yield new Uint8Array([0xc3]);
       })(),
     );
-    expect(seen.at(-1)).toEqual({ value: { name: "\uFFFD" }, complete: false });
+    expect(seen.at(-1)).toEqual({
+      value: { name: "\uFFFD" },
+      complete: false,
+      openPath: ["name"],
+      tailOpen: true,
+    });
     expect(
       await steps(
         (async function* dangling() {

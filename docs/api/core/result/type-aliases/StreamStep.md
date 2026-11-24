@@ -5,7 +5,7 @@ description: "Exported from @adaptate/core/result."
 
 # Type Alias: StreamStep\<T, P\>
 
-> **StreamStep**\<`T`, `P`\> = \{ `done`: `false`; `result`: [`Result`](Result.md)\<`P`\>; \} \| \{ `done`: `true`; `result`: [`Result`](Result.md)\<`T`\>; \}
+> **StreamStep**\<`T`, `P`\> = `object` & `Frontier` \| `object` & `Frontier`
 
 ## Type Parameters
 

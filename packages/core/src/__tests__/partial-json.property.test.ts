@@ -3,7 +3,13 @@ import fc from "fast-check";
 import { z } from "zod";
 
 import { createStreamValidator, parsePartialJson } from "../stream";
-import { createAgUiPartialValidator, createPartialJsonFeed } from "../stream-incremental";
+import {
+  createAgUiPartialValidator,
+  createPartialJsonFeed,
+  fromAsyncIterableSteps,
+  isSettled,
+  type JsonStreamStep,
+} from "../stream-incremental";
 import { createPartialJsonParser } from "./partial-json-parser";
 
 const recipe = z.object({
@@ -250,5 +256,57 @@ describe("incremental partial JSON", () => {
     }
     expect(cursor).toBe(1);
     expect(parser.visits).toBe(text.length);
+  });
+});
+
+describe("open path", () => {
+  function valueAt(root: unknown, path: ReadonlyArray<string | number>): unknown {
+    let cursor = root;
+    for (const key of path) cursor = (cursor as Record<string | number, unknown>)[key];
+    return cursor;
+  }
+
+  function checkSettled(step: JsonStreamStep, final: unknown, path: Array<string | number>): void {
+    let here = valueAt(step.value, path);
+    if (isSettled(step, path)) {
+      expect(sameValue(here, valueAt(final, path)), JSON.stringify(path)).toBe(true);
+      return;
+    }
+    if (typeof here !== "object" || here === null) return;
+    let keys = Array.isArray(here) ? here.map((_, index) => index) : Object.keys(here);
+    for (const key of keys) checkSettled(step, final, [...path, key]);
+  }
+
+  it("keeps every value off the open path equal to its final value", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, widths) => {
+          const text = JSON.stringify(value);
+          const final = JSON.parse(text) as unknown;
+          async function* chunks() {
+            let at = 0;
+            let widthIndex = 0;
+            while (at < text.length) {
+              const width = widths[widthIndex % Math.max(widths.length, 1)] ?? text.length;
+              widthIndex += 1;
+              yield text.slice(at, at + width);
+              at += width;
+            }
+          }
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunks())) {
+            checkSettled(step, final, []);
+            if (step.tailOpen)
+              expect(typeof valueAt(step.value, step.openPath)).toMatch(/^(string|number)$/);
+            last = step;
+          }
+          expect(last).toMatchObject({ complete: true, openPath: [], tailOpen: false });
+          expect(sameValue(last?.value, final)).toBe(true);
+        },
+      ),
+      { numRuns: 150 },
+    );
   });
 });

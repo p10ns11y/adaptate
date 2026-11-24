@@ -15,6 +15,18 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ***
 
+### openPath
+
+> `readonly` **openPath**: [`JsonPath`](JsonPath.md)
+
+***
+
+### tailOpen
+
+> `readonly` **tailOpen**: `boolean`
+
+***
+
 ### value
 
 > `readonly` **value**: `unknown`

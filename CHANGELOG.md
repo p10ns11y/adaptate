@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 > **Note**: This project has been in development for approximately **2 years**. The changelog below summarizes major phases.
 
+## Unreleased
+
+### Added
+- `fromAsyncIterableSteps` and `parseStream` steps carry `openPath` (keys from the root to the deepest open value) and `tailOpen` (that value is a cut-off string or number). Every value off `openPath` is final. A complete document has `openPath: []` and `tailOpen: false`.
+- `isSettled(step, path)` from `@adaptate/core/stream-incremental` and `@adaptate/core/result`, and the `JsonPath` type.
+- `isResult(value)` from `@adaptate/core/result`. `ok` and `err` carry a non-enumerable `Symbol.for("adaptate.result")` brand, so a plain `{ ok: true, value }` is not a `Result`.
+
+### Changed
+- The fast-check suite is described as property-checked invariants.
+- Docs: `parseStream` reads strict JSON only, with no revivers or references.
+
+### Edge
+- The brand is an own symbol property. A JSON round trip or an object spread (`{ ...result }`) drops it, so the copy fails `isResult`. `structuredClone` throws on a `Result` because it holds methods.
+
 ## Early Development (~2024 – early 2026)
 
 ### Added

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   err,
+  isResult,
   ok,
   parse,
   parseAsync,
@@ -112,7 +113,56 @@ describe("Result", () => {
   });
 });
 
+describe("isResult", () => {
+  it("accepts ok and err and rejects look-alikes", () => {
+    expect(isResult(ok(1))).toBe(true);
+    expect(isResult(err("bad"))).toBe(true);
+    expect(isResult(parse(recipe, {}))).toBe(true);
+    expect(isResult(ok(1).map(String).recover(() => ""))).toBe(true);
+    expect(isResult({ ok: true, value: 1 })).toBe(false);
+    expect(isResult(JSON.parse(JSON.stringify(ok(1))))).toBe(false);
+    expect(isResult(null)).toBe(false);
+    expect(isResult(1)).toBe(false);
+  });
+
+  it("hides the brand from keys, JSON, and equality", () => {
+    expect(
+      Object.prototype.propertyIsEnumerable.call(
+        ok(1),
+        Symbol.for("adaptate.result"),
+      ),
+    ).toBe(false);
+    expect(JSON.stringify(ok(1))).toBe('{"ok":true,"value":1}');
+    expect(ok(1)).toMatchObject({ ok: true, value: 1 });
+    expect(Object.getOwnPropertySymbols(ok(1))).toEqual([
+      runInNewContext('Symbol.for("adaptate.result")'),
+    ]);
+  });
+});
+
 describe("parseStream", () => {
+  it("reports where the stream is still open", async () => {
+    const steps = await collect(
+      parseStream(chunks('{"tags":["c1","c', '2"]}'), z.unknown()),
+    );
+    expect(
+      steps.map(({ done, openPath, tailOpen }) => ({ done, openPath, tailOpen })),
+    ).toEqual([
+      { done: false, openPath: ["tags", 1], tailOpen: true },
+      { done: false, openPath: [], tailOpen: false },
+      { done: true, openPath: [], tailOpen: false },
+    ]);
+    const cut = await collect(parseStream(chunks('{"a":{"b":1'), z.unknown()));
+    expect(cut.at(-1)).toMatchObject({
+      done: true,
+      result: { ok: false },
+      openPath: ["a", "b"],
+      tailOpen: true,
+    });
+    const empty = await collect(parseStream(chunks(), z.unknown()));
+    expect(empty[0]).toMatchObject({ openPath: [], tailOpen: false });
+  });
+
   it("checks each partial and the final value", async () => {
     const steps = await collect(
       parseStream(

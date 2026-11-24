@@ -122,10 +122,21 @@ function keywordSpan(literal: string): number | undefined {
 
 export type PartialJsonFeed = (chunk: string) => unknown;
 
+export type JsonPath = ReadonlyArray<string | number>;
+
 export type JsonStreamStep = {
   readonly value: unknown;
   readonly complete: boolean;
+  readonly openPath: JsonPath;
+  readonly tailOpen: boolean;
 };
+
+export function isSettled(
+  step: { readonly openPath: JsonPath },
+  path: JsonPath,
+): boolean {
+  return !path.every((key, index) => step.openPath[index] === key);
+}
 
 const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
@@ -133,6 +144,8 @@ type TrackedFeed = {
   readonly push: PartialJsonFeed;
   readonly complete: () => boolean;
   readonly ended: () => boolean;
+  readonly openPath: () => JsonPath;
+  readonly tailOpen: () => boolean;
 };
 
 function createTrackedFeed(): TrackedFeed {
@@ -509,8 +522,27 @@ function createTrackedFeed(): TrackedFeed {
     hasCache = true;
     return cached;
   };
+  function openPath(): JsonPath {
+    let path: Array<string | number> = [];
+    for (let index = 1; index < openFrames.length; index += 1) {
+      let link = (openFrames[index] as OpenFrame)[frameLink];
+      path.push(
+        (openFrames[index - 1] as OpenFrame)[frameArray] ? Number(link) : link,
+      );
+    }
+    let frame = currentFrame();
+    if (frame && partialTail().include)
+      path.push(
+        frame[frameArray]
+          ? (frame[frameItems] as unknown[]).length
+          : (frame[frameKey] as string),
+      );
+    return path;
+  }
   return {
     push,
+    openPath,
+    tailOpen: () => partialTail().include,
     complete: () =>
       done && !sealed && !trailingComma && source.slice(cursor).trim() === "",
     ended: () => {
@@ -530,13 +562,18 @@ export function createPartialJsonFeed(): PartialJsonFeed {
 export async function* fromAsyncIterableSteps(
   source: AsyncIterable<string | Uint8Array>,
 ): AsyncGenerator<JsonStreamStep> {
-  const { push: pushChunk, complete, ended } = createTrackedFeed();
+  const feed = createTrackedFeed();
   const decoder = new TextDecoder();
   let last: JsonStreamStep | undefined;
   function step(text: string): JsonStreamStep | undefined {
-    const partialValue = pushChunk(text);
+    const partialValue = feed.push(text);
     if (partialValue === undefined) return undefined;
-    last = { value: partialValue, complete: complete() };
+    last = {
+      value: partialValue,
+      complete: feed.complete(),
+      openPath: feed.openPath(),
+      tailOpen: feed.tailOpen(),
+    };
     return last;
   }
   for await (const sourceChunk of source) {
@@ -551,8 +588,10 @@ export async function* fromAsyncIterableSteps(
   const flushedText = decoder.decode();
   const flushed = flushedText.length === 0 ? undefined : step(flushedText);
   if (flushed) yield flushed;
-  if (last && last.complete !== ended())
-    yield { value: last.value, complete: ended() };
+  if (last && last.complete !== feed.ended())
+    yield feed.ended()
+      ? { value: last.value, complete: true, openPath: [], tailOpen: false }
+      : { ...last, complete: false };
 }
 
 export async function* fromAsyncIterable(
