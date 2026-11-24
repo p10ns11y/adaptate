@@ -267,14 +267,47 @@ describe("open path", () => {
   }
 
   function checkSettled(step: JsonStreamStep, final: unknown, path: Array<string | number>): void {
-    let here = valueAt(step.value, path);
+    const here = valueAt(step.value, path);
     if (isSettled(step, path)) {
       expect(sameValue(here, valueAt(final, path)), JSON.stringify(path)).toBe(true);
       return;
     }
     if (typeof here !== "object" || here === null) return;
-    let keys = Array.isArray(here) ? here.map((_, index) => index) : Object.keys(here);
+    const keys = Array.isArray(here) ? here.map((_, index) => index) : Object.keys(here);
     for (const key of keys) checkSettled(step, final, [...path, key]);
+  }
+
+  function chunked(text: string, widths: number[]): AsyncIterable<string> {
+    return (async function* chunks() {
+      let at = 0;
+      let widthIndex = 0;
+      while (at < text.length) {
+        const width = widths[widthIndex % Math.max(widths.length, 1)] ?? text.length;
+        widthIndex += 1;
+        yield text.slice(at, at + width);
+        at += width;
+      }
+    })();
+  }
+
+  // Offsets inside string literals where an insert cannot split an escape sequence.
+  function stringInteriors(text: string): number[] {
+    const offsets: number[] = [];
+    let inString = false;
+    for (let index = 0; index < text.length; index += 1) {
+      const character = text[index];
+      if (!inString) {
+        if (character === '"') inString = true;
+        continue;
+      }
+      offsets.push(index);
+      if (character === "\\") {
+        index += text[index + 1] === "u" ? 5 : 1;
+        continue;
+      }
+      if (character === '"') inString = false;
+    }
+    return offsets;
   }
 
   it("keeps every value off the open path equal to its final value", async () => {
@@ -285,28 +318,47 @@ describe("open path", () => {
         async (value, widths) => {
           const text = JSON.stringify(value);
           const final = JSON.parse(text) as unknown;
-          async function* chunks() {
-            let at = 0;
-            let widthIndex = 0;
-            while (at < text.length) {
-              const width = widths[widthIndex % Math.max(widths.length, 1)] ?? text.length;
-              widthIndex += 1;
-              yield text.slice(at, at + width);
-              at += width;
-            }
-          }
           let last: JsonStreamStep | undefined;
-          for await (const step of fromAsyncIterableSteps(chunks())) {
+          for await (const step of fromAsyncIterableSteps(chunked(text, widths))) {
             checkSettled(step, final, []);
             if (step.tailOpen)
-              expect(typeof valueAt(step.value, step.openPath)).toMatch(/^(string|number)$/);
+              expect(typeof valueAt(step.value, step.openPath ?? [])).toMatch(/^(string|number)$/);
             last = step;
           }
           expect(last).toMatchObject({ complete: true, openPath: [], tailOpen: false });
           expect(sameValue(last?.value, final)).toBe(true);
+          expect(isSettled(last as JsonStreamStep, [])).toBe(true);
         },
       ),
       { numRuns: 150 },
+    );
+  });
+
+  it("never settles a value cut by a malformed string", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.nat(),
+        fc.constantFrom("\n", "\t", "\u0001", "\\q", "\\u12zz"),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, pick, flaw, widths) => {
+          const text = JSON.stringify(value);
+          const offsets = stringInteriors(text);
+          fc.pre(offsets.length > 0);
+          const at = offsets[pick % offsets.length] as number;
+          const broken = text.slice(0, at) + flaw + text.slice(at);
+          const final = JSON.parse(text) as unknown;
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunked(broken, widths))) {
+            checkSettled(step, final, []);
+            last = step;
+          }
+          if (!last) return;
+          expect(last.complete).toBe(false);
+          expect(isSettled(last, [])).toBe(false);
+        },
+      ),
+      { numRuns: 200 },
     );
   });
 });

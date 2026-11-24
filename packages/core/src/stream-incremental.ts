@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { withFrontier, type JsonPath } from "./frontier.js";
 import { type Config } from "./index.js";
 import { type DeepPartial } from "./partial.js";
 import { agUiValidatorWith } from "./stream.js";
@@ -122,20 +123,46 @@ function keywordSpan(literal: string): number | undefined {
 
 export type PartialJsonFeed = (chunk: string) => unknown;
 
-export type JsonPath = ReadonlyArray<string | number>;
+export type { JsonPath };
 
 export type JsonStreamStep = {
   readonly value: unknown;
   readonly complete: boolean;
-  readonly openPath: JsonPath;
-  readonly tailOpen: boolean;
+  readonly openPath?: JsonPath;
+  readonly tailOpen?: boolean;
 };
 
+function hasPath(root: unknown, path: JsonPath): boolean {
+  let cursor = root;
+  for (const key of path) {
+    if (typeof cursor !== "object" || cursor === null) return false;
+    if (!Object.hasOwn(cursor, key)) return false;
+    cursor = (cursor as Record<string | number, unknown>)[key];
+  }
+  return true;
+}
+
+/** True when `path` holds a value that later steps will not change. */
 export function isSettled(
-  step: { readonly openPath: JsonPath },
+  step:
+    | JsonStreamStep
+    | {
+        readonly done: boolean;
+        readonly result: { readonly ok: boolean; readonly value?: unknown };
+        readonly openPath?: JsonPath;
+      },
   path: JsonPath,
 ): boolean {
-  return !path.every((key, index) => step.openPath[index] === key);
+  if ("result" in step) {
+    if (!step.result.ok || !hasPath(step.result.value, path)) return false;
+    if (step.done) return true;
+  } else {
+    if (!hasPath(step.value, path)) return false;
+    if (step.complete) return true;
+  }
+  const openPath = step.openPath;
+  if (!openPath) return false;
+  return !path.every((key, index) => openPath[index] === key);
 }
 
 const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
@@ -405,17 +432,17 @@ function createTrackedFeed(): TrackedFeed {
       if (openString) {
         const outcome = feedOpenString(openString);
         if (outcome === "open") break;
+        // A bad string stays the open tail: it is never committed, so it never reads as settled.
+        if (outcome === "bad") {
+          sealed = true;
+          break;
+        }
         const value = openString.decoded;
         const start = openString.start;
-        const bad = outcome === "bad";
         cursor = openString.next;
         openString = undefined;
         if (!acceptValue(value, true)) {
           cursor = start;
-          sealed = true;
-          break;
-        }
-        if (bad) {
           sealed = true;
           break;
         }
@@ -523,14 +550,14 @@ function createTrackedFeed(): TrackedFeed {
     return cached;
   };
   function openPath(): JsonPath {
-    let path: Array<string | number> = [];
+    const path: Array<string | number> = [];
     for (let index = 1; index < openFrames.length; index += 1) {
-      let link = (openFrames[index] as OpenFrame)[frameLink];
+      const link = (openFrames[index] as OpenFrame)[frameLink];
       path.push(
         (openFrames[index - 1] as OpenFrame)[frameArray] ? Number(link) : link,
       );
     }
-    let frame = currentFrame();
+    const frame = currentFrame();
     if (frame && partialTail().include)
       path.push(
         frame[frameArray]
@@ -568,12 +595,11 @@ export async function* fromAsyncIterableSteps(
   function step(text: string): JsonStreamStep | undefined {
     const partialValue = feed.push(text);
     if (partialValue === undefined) return undefined;
-    last = {
-      value: partialValue,
-      complete: feed.complete(),
-      openPath: feed.openPath(),
-      tailOpen: feed.tailOpen(),
-    };
+    last = withFrontier(
+      { value: partialValue, complete: feed.complete() },
+      feed.openPath(),
+      feed.tailOpen(),
+    );
     return last;
   }
   for await (const sourceChunk of source) {
@@ -590,8 +616,12 @@ export async function* fromAsyncIterableSteps(
   if (flushed) yield flushed;
   if (last && last.complete !== feed.ended())
     yield feed.ended()
-      ? { value: last.value, complete: true, openPath: [], tailOpen: false }
-      : { ...last, complete: false };
+      ? withFrontier({ value: last.value, complete: true }, [], false)
+      : withFrontier(
+          { value: last.value, complete: false },
+          last.openPath ?? [],
+          last.tailOpen ?? false,
+        );
 }
 
 export async function* fromAsyncIterable(

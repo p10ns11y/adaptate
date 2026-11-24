@@ -1,7 +1,7 @@
 import type { StandardIssue, StandardSchemaV1 } from "./standard.js";
+import { withFrontier, type JsonPath } from "./frontier.js";
 import {
   fromAsyncIterableSteps,
-  type JsonPath,
   type JsonStreamStep,
 } from "./stream-incremental.js";
 
@@ -36,7 +36,7 @@ function branded<R extends object>(result: R): R {
 }
 
 export function isResult(value: unknown): value is Result<unknown, unknown> {
-  return typeof value === "object" && value !== null && brand in value;
+  return typeof value === "object" && value !== null && Object.hasOwn(value, brand);
 }
 
 export function ok<T, E = never>(value: T): Ok<T, E> {
@@ -86,16 +86,19 @@ export async function parseAsync<T>(
   return checked.issues ? err(checked.issues) : ok(checked.value);
 }
 
-type Frontier = {
-  readonly openPath: JsonPath;
-  readonly tailOpen: boolean;
-};
-
 export type StreamStep<T, P> =
-  | ({ readonly done: false; readonly result: Result<P> } & Frontier)
-  | ({ readonly done: true; readonly result: Result<T> } & Frontier);
-
-const settledFrontier: Frontier = { openPath: [], tailOpen: false };
+  | {
+      readonly done: false;
+      readonly result: Result<P>;
+      readonly openPath?: JsonPath;
+      readonly tailOpen?: boolean;
+    }
+  | {
+      readonly done: true;
+      readonly result: Result<T>;
+      readonly openPath?: JsonPath;
+      readonly tailOpen?: boolean;
+    };
 
 const emptyStreamIssue: StandardIssue = {
   message: "The stream ended before any JSON value arrived.",
@@ -115,26 +118,28 @@ export async function* parseStream<T, P = unknown>(
     const result = partialSchema
       ? await parseAsync(partialSchema, step.value)
       : ok(step.value as P);
-    yield {
-      done: false,
-      result,
-      openPath: step.openPath,
-      tailOpen: step.tailOpen,
-    };
+    yield withFrontier(
+      { done: false as const, result },
+      step.openPath ?? [],
+      step.tailOpen ?? false,
+    );
   }
   if (!latest)
-    yield { done: true, result: err([emptyStreamIssue]), ...settledFrontier };
+    yield withFrontier(
+      { done: true as const, result: err<Issues, T>([emptyStreamIssue]) },
+      [],
+      false,
+    );
   else if (!latest.complete)
-    yield {
-      done: true,
-      result: err([openStreamIssue]),
-      openPath: latest.openPath,
-      tailOpen: latest.tailOpen,
-    };
+    yield withFrontier(
+      { done: true as const, result: err<Issues, T>([openStreamIssue]) },
+      latest.openPath ?? [],
+      latest.tailOpen ?? false,
+    );
   else
-    yield {
-      done: true,
-      result: await parseAsync(schema, latest.value),
-      ...settledFrontier,
-    };
+    yield withFrontier(
+      { done: true as const, result: await parseAsync(schema, latest.value) },
+      [],
+      false,
+    );
 }

@@ -15,15 +15,15 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ***
 
-### openPath
+### openPath?
 
-> `readonly` **openPath**: [`JsonPath`](JsonPath.md)
+> `readonly` `optional` **openPath?**: [`JsonPath`](JsonPath.md)
 
 ***
 
-### tailOpen
+### tailOpen?
 
-> `readonly` **tailOpen**: `boolean`
+> `readonly` `optional` **tailOpen?**: `boolean`
 
 ***
 

@@ -1,19 +1,19 @@
 ---
 title: "Function: isSettled()"
-description: "Exported from @adaptate/core/stream-incremental."
+description: "True when `path` holds a value that later steps will not change."
 ---
 
 # Function: isSettled()
 
 > **isSettled**(`step`, `path`): `boolean`
 
+True when `path` holds a value that later steps will not change.
+
 ## Parameters
 
 ### step
 
-#### openPath
-
-[`JsonPath`](../type-aliases/JsonPath.md)
+[`JsonStreamStep`](../type-aliases/JsonStreamStep.md) \| \{ `done`: `boolean`; `openPath?`: [`JsonPath`](../type-aliases/JsonPath.md); `result`: \{ `ok`: `boolean`; `value?`: `unknown`; \}; \}
 
 ### path
 

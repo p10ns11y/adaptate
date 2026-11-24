@@ -970,7 +970,7 @@ export async function readToolCall(chunks: AsyncIterable<string>): Promise<ToolC
 ```
 <!-- /snippet -->
 
-Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off openPath is final. `tailOpen` is true while the last value on `openPath` is a cut-off string or number, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final.
+Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off openPath is final. `tailOpen` is true while the last value on `openPath` is a cut-off string or number, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final: `true` for any present path once the step is complete, `false` for a path that has not arrived. A string with a raw control character or a bad escape stays open, so it is never settled. Both fields are non-enumerable, so `toEqual` and JSON of a step do not change.
 
 ```mermaid
 flowchart LR
@@ -2712,7 +2712,7 @@ description: "Exported from @adaptate/core/result."
 
 # Type Alias: StreamStep\<T, P\>
 
-> **StreamStep**\<`T`, `P`\> = `object` & `Frontier` \| `object` & `Frontier`
+> **StreamStep**\<`T`, `P`\> = \{ `done`: `false`; `openPath?`: [`JsonPath`](../../stream-incremental/type-aliases/JsonPath.md); `result`: [`Result`](Result.md)\<`P`\>; `tailOpen?`: `boolean`; \} \| \{ `done`: `true`; `openPath?`: [`JsonPath`](../../stream-incremental/type-aliases/JsonPath.md); `result`: [`Result`](Result.md)\<`T`\>; `tailOpen?`: `boolean`; \}
 
 ## Type Parameters
 
@@ -3083,20 +3083,20 @@ Source: docs/api/core/stream-incremental/functions/isSettled.md
 
 ---
 title: "Function: isSettled()"
-description: "Exported from @adaptate/core/stream-incremental."
+description: "True when `path` holds a value that later steps will not change."
 ---
 
 # Function: isSettled()
 
 > **isSettled**(`step`, `path`): `boolean`
 
+True when `path` holds a value that later steps will not change.
+
 ## Parameters
 
 ### step
 
-#### openPath
-
-[`JsonPath`](../type-aliases/JsonPath.md)
+[`JsonStreamStep`](../type-aliases/JsonStreamStep.md) \| \{ `done`: `boolean`; `openPath?`: [`JsonPath`](../type-aliases/JsonPath.md); `result`: \{ `ok`: `boolean`; `value?`: `unknown`; \}; \}
 
 ### path
 
@@ -3168,15 +3168,15 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ***
 
-### openPath
+### openPath?
 
-> `readonly` **openPath**: [`JsonPath`](JsonPath.md)
+> `readonly` `optional` **openPath?**: [`JsonPath`](JsonPath.md)
 
 ***
 
-### tailOpen
+### tailOpen?
 
-> `readonly` **tailOpen**: `boolean`
+> `readonly` `optional` **tailOpen?**: `boolean`
 
 ***
 
@@ -3625,7 +3625,7 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
-- [Function: isSettled()](core/stream-incremental/functions/isSettled.md): Exported from @adaptate/core/stream-incremental.
+- [Function: isSettled()](core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change.
 - [Type Alias: JsonPath](core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.

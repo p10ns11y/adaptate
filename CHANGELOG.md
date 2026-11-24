@@ -8,8 +8,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `fromAsyncIterableSteps` and `parseStream` steps carry `openPath` (keys from the root to the deepest open value) and `tailOpen` (that value is a cut-off string or number). Every value off `openPath` is final. A complete document has `openPath: []` and `tailOpen: false`.
-- `isSettled(step, path)` from `@adaptate/core/stream-incremental` and `@adaptate/core/result`, and the `JsonPath` type.
+- `isSettled(step, path)` from `@adaptate/core/stream-incremental` and `@adaptate/core/result`, and the `JsonPath` type. It is `true` for any present path on a complete (or `done` and ok) step, and `false` for a path that has not arrived.
 - `isResult(value)` from `@adaptate/core/result`. `ok` and `err` carry a non-enumerable `Symbol.for("adaptate.result")` brand, so a plain `{ ok: true, value }` is not a `Result`.
+
+### Compatibility
+- `openPath` and `tailOpen` are additive. They are optional (`readonly openPath?`, `readonly tailOpen?`) on `JsonStreamStep` and `StreamStep`, so hand-built steps still typecheck. At runtime they are non-enumerable own properties, so `toEqual({ value, complete })`, `toEqual({ done, result })`, spreads, and `JSON.stringify` of a step are unchanged. A spread copy drops them; `isSettled` then answers `false` until the step is complete.
+- Malformed input: a string with a raw control character or a bad escape is never committed. It stays the open tail (`tailOpen: true`) on a step that never completes, so a cut or bad string never reads as settled.
 
 ### Changed
 - The fast-check suite is described as property-checked invariants.

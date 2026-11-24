@@ -5,12 +5,14 @@ import { z } from "zod";
 import {
   err,
   isResult,
+  isSettled,
   ok,
   parse,
   parseAsync,
   parseStream,
   type Issues,
   type Result,
+  type StreamStep,
 } from "../result";
 import type { StandardSchemaV1 } from "../standard";
 
@@ -161,6 +163,12 @@ describe("parseStream", () => {
     });
     const empty = await collect(parseStream(chunks(), z.unknown()));
     expect(empty[0]).toMatchObject({ openPath: [], tailOpen: false });
+    expect(Object.keys(steps[0] as object)).toEqual(["done", "result"]);
+    expect(isSettled(steps[0] as StreamStep<unknown, unknown>, ["tags", 0])).toBe(true);
+    expect(isSettled(steps[0] as StreamStep<unknown, unknown>, ["tags", 1])).toBe(false);
+    expect(isSettled(steps[2] as StreamStep<unknown, unknown>, [])).toBe(true);
+    expect(isSettled(steps[2] as StreamStep<unknown, unknown>, ["nope"])).toBe(false);
+    expect(isSettled(cut.at(-1) as StreamStep<unknown, unknown>, ["a"])).toBe(false);
   });
 
   it("checks each partial and the final value", async () => {

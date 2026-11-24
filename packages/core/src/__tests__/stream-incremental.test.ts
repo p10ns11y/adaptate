@@ -161,16 +161,61 @@ describe("fromAsyncIterableSteps", () => {
   });
 
   it("settles a path once the open path leaves it", async () => {
-    let [step] = await steps(
+    const [step] = await steps(
       (async function* source() {
         yield '{"comments":["c1","c';
       })(),
     );
-    let open = step as JsonStreamStep;
+    const open = step as JsonStreamStep;
     expect(isSettled(open, ["comments", 0])).toBe(true);
     expect(isSettled(open, ["comments", 1])).toBe(false);
     expect(isSettled(open, ["comments"])).toBe(false);
     expect(isSettled(open, [])).toBe(false);
+    expect(isSettled(open, ["missing"])).toBe(false);
+    expect(isSettled(open, ["comments", 2])).toBe(false);
+  });
+
+  it("settles the root of a complete step and nothing absent", async () => {
+    const seen = await steps(
+      (async function* source() {
+        yield '{"a":1,"b":';
+        yield "[2]}";
+      })(),
+    );
+    const [cut, whole] = seen as [JsonStreamStep, JsonStreamStep];
+    expect(isSettled(cut, ["a"])).toBe(true);
+    expect(isSettled(cut, ["b"])).toBe(false);
+    expect(isSettled(cut, [])).toBe(false);
+    expect(isSettled(whole, [])).toBe(true);
+    expect(isSettled(whole, ["b", 0])).toBe(true);
+    expect(isSettled(whole, ["c"])).toBe(false);
+    expect(isSettled({ value: 1, complete: true }, [])).toBe(true);
+    expect(isSettled({ value: { a: 1 }, complete: false }, ["a"])).toBe(false);
+  });
+
+  it("keeps a malformed string open and never settles it", async () => {
+    for (const bad of ['{"a":"hel\nlo"}', '{"a":"hel\\qlo"}', '{"a":"he\\u12zz"}']) {
+      const seen = await steps(
+        (async function* source() {
+          yield bad;
+        })(),
+      );
+      const last = seen.at(-1) as JsonStreamStep;
+      expect(last.complete).toBe(false);
+      expect(last.openPath).toEqual(["a"]);
+      expect(last.tailOpen).toBe(true);
+      expect(isSettled(last, ["a"])).toBe(false);
+    }
+  });
+
+  it("keeps the frontier out of keys and JSON", async () => {
+    const [step] = await steps(
+      (async function* source() {
+        yield '{"a":"x';
+      })(),
+    );
+    expect(Object.keys(step as object)).toEqual(["value", "complete"]);
+    expect(JSON.stringify(step)).toBe('{"value":{"a":"x"},"complete":false}');
   });
 
   it("flushes a dangling byte as an open step", async () => {
@@ -180,12 +225,7 @@ describe("fromAsyncIterableSteps", () => {
         yield new Uint8Array([0xc3]);
       })(),
     );
-    expect(seen.at(-1)).toEqual({
-      value: { name: "\uFFFD" },
-      complete: false,
-      openPath: ["name"],
-      tailOpen: true,
-    });
+    expect(seen.at(-1)).toEqual({ value: { name: "\uFFFD" }, complete: false });
     expect(
       await steps(
         (async function* dangling() {
