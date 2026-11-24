@@ -1,7 +1,7 @@
 import { repositoryUrl } from "./config.ts";
 import { descriptionFrom, type FaqEntry, type SiteRoute } from "./routes.ts";
 
-export let sourceOnlyDocs = new Set(["docs/credits.md"]);
+export let sourceOnlyDocs = new Set(["docs/credits.md", "docs/inspiration.md"]);
 
 export let railDocs = new Set(["docs/choke-points.md", "docs/api/core/result/index.md"]);
 

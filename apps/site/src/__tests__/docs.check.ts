@@ -54,6 +54,7 @@ describe("docs", () => {
     expect(rewriteHref("../llms.txt", "docs/index.md")).toBe("/llms.txt");
     expect(rewriteHref("../JOURNEY.md", "docs/index.md")).toBe("/journey/");
     expect(rewriteHref("credits.md", "docs/index.md")).toBe("https://github.com/p10ns11y/adaptate/blob/main/docs/credits.md");
+    expect(rewriteHref("inspiration.md", "docs/index.md")).toBe("https://github.com/p10ns11y/adaptate/blob/main/docs/inspiration.md");
     expect(rewriteHref("https://example.com", "docs/index.md")).toBe("https://example.com");
   });
 

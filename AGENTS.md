@@ -8,6 +8,31 @@ Adaptate is a TypeScript library for dynamic and adaptable model validation usin
 - `packages/utils/`: **Feature-complete** OpenAPI ↔ Zod conversion utilities + YAML loading with full `$ref` resolution
 - `apps/site/`: private static site (landing, docs, SEO). Build with `pnpm --filter adaptate-site build`; see [apps/site/README.md](apps/site/README.md)
 
+## Docs files
+
+What each file under `docs/` is for. The public guide list is [docs/index.md](docs/index.md).
+
+- `index.md`: docs home and install
+- `transform.md`: one Zod schema and a per-view config
+- `streaming.md`: check a tool call while JSON is still arriving
+- `ag-ui.md`: AG-UI tool-call deltas against each view
+- `web-streams.md`: ReadableStream, SSE, or a Node stream into the parser
+- `openapi.md`: OpenAPI to Zod and back
+- `zod.md`: Config per view and the Standard Schema interface
+- `effect.md`: the same checks in an Effect pipeline
+- `choke-points.md`: parse to an ok or error track, then map, flatMap, or recover
+- `typescript.md`: shipped types, checked on TypeScript 7 and 6
+- `subpaths.md`: published entry points and their peers
+- `optional-peers.md`: effect, js-yaml, and the ref parser load only when imported
+- `migration-2.4.md`: YAML and the ref parser became optional peers
+- `development.md`: install, test, and build this repository
+- `incremental-parser.md`: tokenize a JSON stream once and reuse closed values
+- `performance.md`: measured cost and recorded runs
+- `proof.md`: each front-page claim and the test or script that covers it
+- `credits.md`: site media credits (logo, wordmark, palette). Not a product guide
+- `inspiration.md`: ideas the library borrows, including overreacted.io
+- `api/`: generated API reference
+
 ## Using adaptate
 
 Consumer recipes. Types ship in the packages. The doc map is [docs/index.md](docs/index.md). The agent index is [llms.txt](llms.txt). A runnable React view is [examples/react-view](examples/react-view). A runnable stream check is [examples/streaming-tool-call](examples/streaming-tool-call). Vue, Svelte, and Solid can call `transformSchema` the same way. This repository includes the React example.
