@@ -5,7 +5,7 @@ import { runDemo } from "../landing/demo-model";
 import { payloadFor, payloads, samples, type SampleName } from "../landing/samples";
 import { stillFrame, streamChunks, streamFrames } from "../landing/stream-model";
 import { allSegments, railCode, railRoute, railSummary, runRail, type RailRun } from "../landing/rail-model";
-import { installCommand, landingWords, renderRailIntro } from "../site/landing-copy";
+import { agentPrompt, installCommand, landingWords, renderAgents, renderRailIntro } from "../site/landing-copy";
 import { renderRailConsole } from "../site/rail";
 import { landingRoute } from "../site/routes";
 
@@ -63,9 +63,14 @@ describe("railway", () => {
 
   it("links the choke points guide and keeps banned words out of new copy", () => {
     expect(renderRailIntro()).toContain('href="/docs/choke-points/"');
-    let text = [renderRailIntro(), renderRailConsole(), railCode].join(" ");
+    let text = [renderRailIntro(), renderRailConsole(), railCode, agentPrompt, renderAgents()].join(" ");
     expect(text).not.toMatch(/\b(demo|gate)/i);
     expect(text).not.toMatch(/2\.4\.2/);
+    expect(agentPrompt).toContain("choke-points");
+    expect(agentPrompt).toContain(installCommand);
+    expect(agentPrompt.indexOf("Libraries")).toBeLessThan(agentPrompt.indexOf("Use cases"));
+    expect(agentPrompt.indexOf("Use cases")).toBeLessThan(agentPrompt.indexOf("Read first"));
+    expect(agentPrompt.indexOf("Read first")).toBeLessThan(agentPrompt.indexOf("Install"));
   });
 });
 
