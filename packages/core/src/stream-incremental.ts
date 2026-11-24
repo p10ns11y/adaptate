@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { withFrontier, type JsonPath } from "./frontier.js";
 import { type Config } from "./index.js";
 import { type DeepPartial } from "./partial.js";
 import { agUiValidatorWith } from "./stream.js";
@@ -92,40 +93,94 @@ function literalEnd(source: string, start: number): number {
   return index;
 }
 
-function readNumber(
-  literal: string,
-): { length: number; value: number } | undefined {
-  if (literal === "-") return { length: 0, value: 0 };
+type Scalar = { length: number; value: unknown; numeric: boolean };
+
+function readScalar(literal: string): Scalar | undefined {
+  const keyword = keywords.find((word) => literal.startsWith(word));
+  if (keyword !== undefined) {
+    let value = keyword === "true" ? true : keyword === "false" ? false : null;
+    return { length: keyword.length, value, numeric: false };
+  }
   const matched = numberGrammar.exec(literal);
-  if (!matched || matched.index !== 0) return undefined;
-  const valid = matched[0];
-  return { length: valid.length, value: Number(valid) };
+  if (!matched) return undefined;
+  return { length: matched[0].length, value: Number(matched[0]), numeric: true };
 }
 
-function numberHolds(
-  literal: string,
-  validLength: number,
-  atEnd: boolean,
-): boolean {
+// `-` and `tru` may still grow into a scalar, but have no value yet.
+function scalarPrefix(literal: string): boolean {
+  return literal === "-" || keywords.some((word) => word.startsWith(literal));
+}
+
+// A scalar that reaches the end of the buffer may still grow: `tru` + `e`, `1` + `2`, `1.` + `5`.
+function scalarHolds(literal: string, scalar: Scalar, atEnd: boolean): boolean {
   if (!atEnd) return false;
-  if (validLength === 0) return literal === "-";
-  const rest = literal.slice(validLength);
-  return rest.length === 0 || incompleteTail.test(rest);
+  const rest = literal.slice(scalar.length);
+  return rest.length === 0 || (scalar.numeric && incompleteTail.test(rest));
 }
 
-function keywordSpan(literal: string): number | undefined {
-  const full = keywords.find((keyword) => literal.startsWith(keyword));
-  if (full) return full.length;
-  if (keywords.some((keyword) => keyword.startsWith(literal))) return 0;
-  return undefined;
+function closesScalar(character: string): boolean {
+  return " \n\r\t,}]".includes(character);
 }
 
 export type PartialJsonFeed = (chunk: string) => unknown;
 
+export type { JsonPath };
+
 export type JsonStreamStep = {
   readonly value: unknown;
   readonly complete: boolean;
+  /**
+   * Keys from the root to the deepest open value. A value off `openPath` is final
+   * unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win).
+   */
+  readonly openPath?: JsonPath;
+  /** True while the last value on `openPath` is a cut-off string, number or keyword. */
+  readonly tailOpen?: boolean;
 };
+
+function hasPath(root: unknown, path: JsonPath): boolean {
+  let cursor = root;
+  for (const key of path) {
+    if (typeof cursor !== "object" || cursor === null) return false;
+    if (Array.isArray(cursor)) {
+      if (!Number.isInteger(key) || (key as number) < 0) return false;
+      if ((key as number) >= cursor.length) return false;
+    } else if (typeof key !== "string" || !Object.hasOwn(cursor, key))
+      return false;
+    cursor = (cursor as Record<string | number, unknown>)[key];
+  }
+  return true;
+}
+
+/**
+ * True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
+ *
+ * Array steps take integer index keys and object steps take string keys, as in `openPath`.
+ * A value off `openPath` is final unless the document repeats a key on that path later
+ * (`JSON.parse` lets the last duplicate win). A partial step whose partial schema
+ * fails has no `result.value`, so no path on it is settled.
+ */
+export function isSettled(
+  step:
+    | JsonStreamStep
+    | {
+        readonly done: boolean;
+        readonly result: { readonly ok: boolean; readonly value?: unknown };
+        readonly openPath?: JsonPath;
+      },
+  path: JsonPath,
+): boolean {
+  if ("result" in step) {
+    if (!step.result.ok || !hasPath(step.result.value, path)) return false;
+    if (step.done) return true;
+  } else {
+    if (!hasPath(step.value, path)) return false;
+    if (step.complete) return true;
+  }
+  const openPath = step.openPath;
+  if (!openPath) return false;
+  return !path.every((key, index) => openPath[index] === key);
+}
 
 const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
@@ -133,6 +188,8 @@ type TrackedFeed = {
   readonly push: PartialJsonFeed;
   readonly complete: () => boolean;
   readonly ended: () => boolean;
+  readonly openPath: () => JsonPath;
+  readonly tailOpen: () => boolean;
 };
 
 function createTrackedFeed(): TrackedFeed {
@@ -145,8 +202,8 @@ function createTrackedFeed(): TrackedFeed {
   let rootValue: unknown;
   let cached: unknown;
   let hasCache = false;
-  let holdingNumber = false;
-  let heldNumber = 0;
+  let holdingScalar = false;
+  let heldScalar: unknown;
   let openString: OpenString | undefined;
   let dirty = false;
   let tailStamp = 0;
@@ -339,7 +396,7 @@ function createTrackedFeed(): TrackedFeed {
   function partialTail(): { include: boolean; value: unknown } {
     if (!expectsValue()) return { include: false, value: undefined };
     if (openString) return { include: true, value: openString.decoded };
-    if (holdingNumber) return { include: true, value: heldNumber };
+    if (holdingScalar) return { include: true, value: heldScalar };
     return { include: false, value: undefined };
   }
 
@@ -385,24 +442,24 @@ function createTrackedFeed(): TrackedFeed {
   const push = (chunk: string): unknown => {
     if (sealed) return cached;
     if (chunk.length === 0 && hasCache) return cached;
-    const heldBefore = holdingNumber;
-    const heldValueBefore = heldNumber;
+    const heldBefore = holdingScalar;
+    const heldValueBefore = heldScalar;
     source += chunk;
     while (cursor < source.length && !sealed) {
       if (openString) {
         const outcome = feedOpenString(openString);
         if (outcome === "open") break;
+        // A bad string stays the open tail: it is never committed, so it never reads as settled.
+        if (outcome === "bad") {
+          sealed = true;
+          break;
+        }
         const value = openString.decoded;
         const start = openString.start;
-        const bad = outcome === "bad";
         cursor = openString.next;
         openString = undefined;
         if (!acceptValue(value, true)) {
           cursor = start;
-          sealed = true;
-          break;
-        }
-        if (bad) {
           sealed = true;
           break;
         }
@@ -447,53 +504,32 @@ function createTrackedFeed(): TrackedFeed {
       const end = literalEnd(source, cursor);
       const literal = source.slice(cursor, end);
       const atEnd = end === source.length;
-      const number = readNumber(literal);
-      if (number && (number.length > 0 || literal === "-")) {
-        if (numberHolds(literal, number.length, atEnd)) {
-          if (number.length > 0) {
-            holdingNumber = true;
-            heldNumber = number.value;
-          }
-          break;
-        }
-        if (number.length === 0) {
-          sealed = true;
-          break;
-        }
-        holdingNumber = false;
-        cursor += number.length;
-        if (!acceptValue(number.value, false)) {
-          cursor -= number.length;
-          sealed = true;
-          break;
-        }
-        continue;
+      const scalar = readScalar(literal);
+      if (!scalar) {
+        if (!atEnd || !scalarPrefix(literal)) sealed = true;
+        break;
       }
-      const keyword = keywordSpan(literal);
-      if (keyword === 0) {
-        if (atEnd) break;
+      // Every scalar commits only once a delimiter follows it. Until then it is the
+      // open tail, so `truex`, `1.x` and `12-3` never read as settled.
+      holdingScalar = true;
+      heldScalar = scalar.value;
+      if (scalarHolds(literal, scalar, atEnd)) break;
+      if (!closesScalar(source[cursor + scalar.length] as string)) {
         sealed = true;
         break;
       }
-      if (keyword !== undefined) {
-        const word = literal.slice(0, keyword);
-        const value = word === "true" ? true : word === "false" ? false : null;
-        holdingNumber = false;
-        cursor += keyword;
-        if (!acceptValue(value, false)) {
-          cursor -= keyword;
-          sealed = true;
-          break;
-        }
-        continue;
+      holdingScalar = false;
+      cursor += scalar.length;
+      if (!acceptValue(scalar.value, false)) {
+        cursor -= scalar.length;
+        sealed = true;
+        break;
       }
-      sealed = true;
-      break;
     }
     if (tailStamp !== publishedStamp) dirty = true;
     if (
-      holdingNumber !== heldBefore ||
-      (holdingNumber && !Object.is(heldNumber, heldValueBefore))
+      holdingScalar !== heldBefore ||
+      (holdingScalar && !Object.is(heldScalar, heldValueBefore))
     ) {
       dirty = true;
     }
@@ -509,8 +545,27 @@ function createTrackedFeed(): TrackedFeed {
     hasCache = true;
     return cached;
   };
+  function openPath(): JsonPath {
+    const path: Array<string | number> = [];
+    for (let index = 1; index < openFrames.length; index += 1) {
+      const link = (openFrames[index] as OpenFrame)[frameLink];
+      path.push(
+        (openFrames[index - 1] as OpenFrame)[frameArray] ? Number(link) : link,
+      );
+    }
+    const frame = currentFrame();
+    if (frame && partialTail().include)
+      path.push(
+        frame[frameArray]
+          ? (frame[frameItems] as unknown[]).length
+          : (frame[frameKey] as string),
+      );
+    return path;
+  }
   return {
     push,
+    openPath,
+    tailOpen: () => partialTail().include,
     complete: () =>
       done && !sealed && !trailingComma && source.slice(cursor).trim() === "",
     ended: () => {
@@ -518,7 +573,8 @@ function createTrackedFeed(): TrackedFeed {
       const tail = source.slice(cursor).trim();
       return done
         ? tail === ""
-        : openFrames.length === 0 && jsonNumber.test(tail);
+        : openFrames.length === 0 &&
+            (jsonNumber.test(tail) || keywords.includes(tail));
     },
   };
 }
@@ -527,16 +583,33 @@ export function createPartialJsonFeed(): PartialJsonFeed {
   return createTrackedFeed().push;
 }
 
+/** A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`. */
+export type TrackedStep = {
+  readonly value: unknown;
+  readonly complete: boolean;
+  /**
+   * Keys from the root to the deepest open value. A value off `openPath` is final
+   * unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win).
+   */
+  readonly openPath: JsonPath;
+  /** True while the last value on `openPath` is a cut-off string, number or keyword. */
+  readonly tailOpen: boolean;
+};
+
 export async function* fromAsyncIterableSteps(
   source: AsyncIterable<string | Uint8Array>,
-): AsyncGenerator<JsonStreamStep> {
-  const { push: pushChunk, complete, ended } = createTrackedFeed();
+): AsyncGenerator<TrackedStep> {
+  const feed = createTrackedFeed();
   const decoder = new TextDecoder();
-  let last: JsonStreamStep | undefined;
-  function step(text: string): JsonStreamStep | undefined {
-    const partialValue = pushChunk(text);
+  let last: TrackedStep | undefined;
+  function step(text: string): TrackedStep | undefined {
+    const partialValue = feed.push(text);
     if (partialValue === undefined) return undefined;
-    last = { value: partialValue, complete: complete() };
+    last = withFrontier(
+      { value: partialValue, complete: feed.complete() },
+      feed.openPath(),
+      feed.tailOpen(),
+    );
     return last;
   }
   for await (const sourceChunk of source) {
@@ -551,8 +624,9 @@ export async function* fromAsyncIterableSteps(
   const flushedText = decoder.decode();
   const flushed = flushedText.length === 0 ? undefined : step(flushedText);
   if (flushed) yield flushed;
-  if (last && last.complete !== ended())
-    yield { value: last.value, complete: ended() };
+  // A complete step has already ended, so only an open step can end here.
+  if (last && !last.complete && feed.ended())
+    yield withFrontier({ value: last.value, complete: true }, [], false);
 }
 
 export async function* fromAsyncIterable(

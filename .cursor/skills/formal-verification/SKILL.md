@@ -17,7 +17,7 @@ flowchart TD
   fullCheck --> agree
 ```
 
-# Formal verification of partial and stream validation
+# Property-checked invariants of partial and stream validation
 
 I1 and I2 are input-output properties of pure functions. fast-check generates Zod schemas, configs, and values and runs the real TypeScript. No separate TLA+ or Lean model is checked in. A model of the prefix scanner would not execute `partialSchemaFor`, so it could pass while a present field is accepted. The prefix machine is a single-threaded scan in `parsePartialJson`, not a set of concurrent events. CI does not install a model checker or a proof assistant. The model-based fast-check run below drives that scan on the real parser and demands I1 at every parsed prefix. That run has been seen to fail when the fallback schema accepts every value.
 
@@ -40,7 +40,7 @@ Harm: a streamed form can keep an already-wrong field and only fail after the mo
 
 Statement: for a schema and a config in the fragment below, and for any partial value, `transformPartialSchema`, `validatePartialAgainstConfigs`, and `createStreamValidator().partial` accept the partial if and only if every present field conforms to its schema type. A missing key may pass. An unknown key is not a schema field. Zod object schemas strip unknown keys, and the oracle ignores them.
 
-Oracle: `presentFieldsConform` in the proof file. It walks the partial. It does not call the functions under test. Leaves are string, finite number, boolean, or a fixed enum. A present object must be a non-null non-array object. A present array must be an array whose elements conform. Optionality does not weaken a present value.
+Oracle: `presentFieldsConform` in the property file. It walks the partial. It does not call the functions under test. Leaves are string, finite number, boolean, or a fixed enum. A present object must be a non-null non-array object. A present array must be an array whose elements conform. Optionality does not weaken a present value.
 
 ### I2 — final validation matches full validation
 
@@ -54,7 +54,7 @@ Statement: let `parsed` be `JSON.parse(text)`. For each config, `createStreamVal
 
 ## How to run
 
-Proof file: `packages/core/src/__tests__/partial-stream.invariants.property.test.ts`.
+Property file: `packages/core/src/__tests__/partial-stream.invariants.property.test.ts`.
 
 Tool: fast-check 4.10.3 (root devDependency) and Vitest.
 
@@ -62,7 +62,7 @@ Tool: fast-check 4.10.3 (root devDependency) and Vitest.
 pnpm exec vitest run packages/core/src/__tests__/partial-stream.invariants.property.test.ts
 ```
 
-CI runs this file inside the existing `verify` and `zod-latest` jobs via `pnpm test` (typecheck, then `vitest run --coverage`). There is no separate proof job. Each `it` has a 15 second timeout. A local run of the file is well under 20 seconds.
+CI runs this file inside the existing `verify` and `zod-latest` jobs via `pnpm test` (typecheck, then `vitest run --coverage`). There is no separate job. Each `it` has a 15 second timeout. A local run of the file is well under 20 seconds.
 
 On failure, fast-check prints `{ seed, path }`. Replay by adding that `seed` and `path` to the failing `fc.assert` options, confirm the counterexample, then remove them.
 
@@ -101,13 +101,13 @@ After both edits were reverted, the three tests passed.
 
 Sync commit for the covered functions: `fa857ef0a84720482854b7fc31bf0c93a3513449`.
 
-At that commit, `partial.ts`, `stream.ts`, and `transformSchema` are the functions this harness describes. Move the sync commit forward only after you have re-read those functions, confirmed the harness still describes them, seen the check pass, and seen one real break of the guarded check fail. A pass on a stale description is not a proof.
+At that commit, `partial.ts`, `stream.ts`, and `transformSchema` are the functions this harness describes. Move the sync commit forward only after you have re-read those functions, confirmed the harness still describes them, seen the check pass, and seen one real break of the guarded check fail. A pass on a stale description checks nothing.
 
 If the promise itself changes on purpose, rewrite the property in the same change and cite the test, the changelog, or the commit message. Otherwise leave the property alone and fix the code.
 
 For drift that landed without this skill, use `/maintain-formal-verification-skill`.
 
-## Not proven
+## Not checked
 
 - Schemas deeper than the bound, or with more than three fields, or with array lengths above two, except whatever a single shrunk counterexample happens to use.
 - Unions, intersections, tuples, records, lazy schemas, recursive `z.lazy`, refinements (`email`, `min`, `int`), defaults, catch, preprocess, pipes, and branded types.

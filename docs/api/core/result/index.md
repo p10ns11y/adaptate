@@ -20,7 +20,20 @@ description: "Exported from @adaptate/core/result."
 ## Functions
 
 - [err](functions/err.md)
+- [isResult](functions/isResult.md)
 - [ok](functions/ok.md)
 - [parse](functions/parse.md)
 - [parseAsync](functions/parseAsync.md)
 - [parseStream](functions/parseStream.md)
+
+## References
+
+### isSettled
+
+Re-exports [isSettled](../stream-incremental/functions/isSettled.md)
+
+***
+
+### JsonPath
+
+Re-exports [JsonPath](../stream-incremental/type-aliases/JsonPath.md)

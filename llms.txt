@@ -43,6 +43,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: DeepPartial\<T\>](docs/api/core/index/type-aliases/DeepPartial.md): Exported from @adaptate/core.
 - [Type Alias: PartialValidationResult](docs/api/core/index/type-aliases/PartialValidationResult.md): Exported from @adaptate/core.
 - [Function: err()](docs/api/core/result/functions/err.md): Exported from @adaptate/core/result.
+- [Function: isResult()](docs/api/core/result/functions/isResult.md): Exported from @adaptate/core/result.
 - [Function: ok()](docs/api/core/result/functions/ok.md): Exported from @adaptate/core/result.
 - [Function: parse()](docs/api/core/result/functions/parse.md): Exported from @adaptate/core/result.
 - [Function: parseAsync()](docs/api/core/result/functions/parseAsync.md): Exported from @adaptate/core/result.
@@ -53,7 +54,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Interface: Track\<T, E\>](docs/api/core/result/interfaces/Track.md): Exported from @adaptate/core/result.
 - [Type Alias: Issues](docs/api/core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
 - [Type Alias: Result\<T, E\>](docs/api/core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
-- [Type Alias: StreamStep\<T, P\>](docs/api/core/result/type-aliases/StreamStep.md): Exported from @adaptate/core/result.
+- [Type Alias: StreamStep\<T, P\>](docs/api/core/result/type-aliases/StreamStep.md): One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats a key on that path later (...
 - [Function: isStandardSchema()](docs/api/core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](docs/api/core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](docs/api/core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.
@@ -66,9 +67,12 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Function: createPartialJsonFeed()](docs/api/core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](docs/api/core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](docs/api/core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
+- [Function: isSettled()](docs/api/core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
 - [stream-incremental](docs/api/core/stream-incremental/index.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: JsonPath](docs/api/core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](docs/api/core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](docs/api/core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: TrackedStep](docs/api/core/stream-incremental/type-aliases/TrackedStep.md): A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
 - [Function: agUiValidatorWith()](docs/api/core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
 - [Function: createFrameThrottle()](docs/api/core/stream/functions/createFrameThrottle.md): Exported from @adaptate/core/stream.

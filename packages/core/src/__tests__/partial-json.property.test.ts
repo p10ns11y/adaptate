@@ -3,7 +3,13 @@ import fc from "fast-check";
 import { z } from "zod";
 
 import { createStreamValidator, parsePartialJson } from "../stream";
-import { createAgUiPartialValidator, createPartialJsonFeed } from "../stream-incremental";
+import {
+  createAgUiPartialValidator,
+  createPartialJsonFeed,
+  fromAsyncIterableSteps,
+  isSettled,
+  type JsonStreamStep,
+} from "../stream-incremental";
 import { createPartialJsonParser } from "./partial-json-parser";
 
 const recipe = z.object({
@@ -250,5 +256,156 @@ describe("incremental partial JSON", () => {
     }
     expect(cursor).toBe(1);
     expect(parser.visits).toBe(text.length);
+  });
+});
+
+describe("open path", () => {
+  function valueAt(root: unknown, path: ReadonlyArray<string | number>): unknown {
+    let cursor = root;
+    for (const key of path) cursor = (cursor as Record<string | number, unknown>)[key];
+    return cursor;
+  }
+
+  function checkSettled(step: JsonStreamStep, final: unknown, path: Array<string | number>): void {
+    const here = valueAt(step.value, path);
+    if (isSettled(step, path)) {
+      expect(sameValue(here, valueAt(final, path)), JSON.stringify(path)).toBe(true);
+      return;
+    }
+    if (typeof here !== "object" || here === null) return;
+    const keys = Array.isArray(here) ? here.map((_, index) => index) : Object.keys(here);
+    for (const key of keys) checkSettled(step, final, [...path, key]);
+  }
+
+  function chunked(text: string, widths: number[]): AsyncIterable<string> {
+    return (async function* chunks() {
+      let at = 0;
+      let widthIndex = 0;
+      while (at < text.length) {
+        const width = widths[widthIndex % Math.max(widths.length, 1)] ?? text.length;
+        widthIndex += 1;
+        yield text.slice(at, at + width);
+        at += width;
+      }
+    })();
+  }
+
+  // Offsets inside string literals where an insert cannot split an escape sequence.
+  function stringInteriors(text: string): number[] {
+    const offsets: number[] = [];
+    let inString = false;
+    for (let index = 0; index < text.length; index += 1) {
+      const character = text[index];
+      if (!inString) {
+        if (character === '"') inString = true;
+        continue;
+      }
+      offsets.push(index);
+      if (character === "\\") {
+        index += text[index + 1] === "u" ? 5 : 1;
+        continue;
+      }
+      if (character === '"') inString = false;
+    }
+    return offsets;
+  }
+
+  // Offsets just past a number or keyword, where a glued character breaks the token.
+  function scalarEnds(text: string): number[] {
+    const offsets: number[] = [];
+    const token = /[\w.+-]/;
+    let inString = false;
+    for (let index = 0; index < text.length; index += 1) {
+      const character = text[index] as string;
+      if (inString) {
+        if (character === "\\") index += 1;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') inString = true;
+      else if (token.test(character) && !token.test(text[index + 1] ?? "")) offsets.push(index + 1);
+    }
+    return offsets;
+  }
+
+  it("keeps every value off the open path equal to its final value", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, widths) => {
+          const text = JSON.stringify(value);
+          const final = JSON.parse(text) as unknown;
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunked(text, widths))) {
+            checkSettled(step, final, []);
+            if (step.tailOpen) {
+              const tail = valueAt(step.value, step.openPath ?? []);
+              expect(tail === null ? "null" : typeof tail).toMatch(/^(string|number|boolean|null)$/);
+            }
+            last = step;
+          }
+          expect(last).toMatchObject({ complete: true, openPath: [], tailOpen: false });
+          expect(sameValue(last?.value, final)).toBe(true);
+          expect(isSettled(last as JsonStreamStep, [])).toBe(true);
+        },
+      ),
+      { numRuns: 150 },
+    );
+  });
+
+  it("never settles a value cut by a malformed string", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.nat(),
+        fc.constantFrom("\n", "\t", "\u0001", "\\q", "\\u12zz"),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, pick, flaw, widths) => {
+          const text = JSON.stringify(value);
+          const offsets = stringInteriors(text);
+          fc.pre(offsets.length > 0);
+          const at = offsets[pick % offsets.length] as number;
+          const broken = text.slice(0, at) + flaw + text.slice(at);
+          const final = JSON.parse(text) as unknown;
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunked(broken, widths))) {
+            checkSettled(step, final, []);
+            last = step;
+          }
+          if (!last) return;
+          expect(last.complete).toBe(false);
+          expect(isSettled(last, [])).toBe(false);
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+
+  it("never settles a number or keyword glued to a non-delimiter", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.jsonValue({ maxDepth: 4 }),
+        fc.nat(),
+        fc.constantFrom("x", ".", "-", "+", "e", '"', ":", "{", "["),
+        fc.array(fc.integer({ min: 1, max: 9 }), { maxLength: 24 }),
+        async (value, pick, glue, widths) => {
+          const text = JSON.stringify(value);
+          const offsets = scalarEnds(text);
+          fc.pre(offsets.length > 0);
+          const at = offsets[pick % offsets.length] as number;
+          const broken = text.slice(0, at) + glue + text.slice(at);
+          const final = JSON.parse(text) as unknown;
+          let last: JsonStreamStep | undefined;
+          for await (const step of fromAsyncIterableSteps(chunked(broken, widths))) {
+            checkSettled(step, final, []);
+            last = step;
+          }
+          expect(last?.complete).toBe(false);
+          expect(isSettled(last as JsonStreamStep, [])).toBe(false);
+        },
+      ),
+      { numRuns: 200 },
+    );
   });
 });

@@ -7,8 +7,10 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Type Aliases
 
+- [JsonPath](type-aliases/JsonPath.md)
 - [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
+- [TrackedStep](type-aliases/TrackedStep.md)
 
 ## Functions
 
@@ -16,3 +18,4 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [createPartialJsonFeed](functions/createPartialJsonFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)
 - [fromAsyncIterableSteps](functions/fromAsyncIterableSteps.md)
+- [isSettled](functions/isSettled.md)

@@ -5,7 +5,7 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 # Function: fromAsyncIterableSteps()
 
-> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
 
 ## Parameters
 
@@ -15,4 +15,4 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 ## Returns
 
-`AsyncGenerator`\<[`JsonStreamStep`](../type-aliases/JsonStreamStep.md)\>
+`AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
