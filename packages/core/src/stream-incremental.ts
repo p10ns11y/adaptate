@@ -114,6 +114,10 @@ function numberHolds(
   return rest.length === 0 || incompleteTail.test(rest);
 }
 
+function closesNumber(character: string): boolean {
+  return " \n\r\t,}]".includes(character);
+}
+
 function keywordSpan(literal: string): number | undefined {
   const full = keywords.find((keyword) => literal.startsWith(keyword));
   if (full) return full.length;
@@ -128,7 +132,12 @@ export type { JsonPath };
 export type JsonStreamStep = {
   readonly value: unknown;
   readonly complete: boolean;
+  /**
+   * Keys from the root to the deepest open value. A value off `openPath` is final
+   * unless the document repeats that key later (`JSON.parse` lets the last duplicate win).
+   */
   readonly openPath?: JsonPath;
+  /** True while the last value on `openPath` is a cut-off string or number. */
   readonly tailOpen?: boolean;
 };
 
@@ -136,13 +145,24 @@ function hasPath(root: unknown, path: JsonPath): boolean {
   let cursor = root;
   for (const key of path) {
     if (typeof cursor !== "object" || cursor === null) return false;
-    if (!Object.hasOwn(cursor, key)) return false;
+    if (Array.isArray(cursor)) {
+      if (!Number.isInteger(key) || (key as number) < 0) return false;
+      if ((key as number) >= cursor.length) return false;
+    } else if (typeof key !== "string" || !Object.hasOwn(cursor, key))
+      return false;
     cursor = (cursor as Record<string | number, unknown>)[key];
   }
   return true;
 }
 
-/** True when `path` holds a value that later steps will not change. */
+/**
+ * True when `path` holds a value that later steps will not change.
+ *
+ * Array steps take integer index keys and object steps take string keys, as in `openPath`.
+ * A value off `openPath` is final unless the document repeats that key later
+ * (`JSON.parse` lets the last duplicate win). A partial step whose partial schema
+ * fails has no `result.value`, so no path on it is settled.
+ */
 export function isSettled(
   step:
     | JsonStreamStep
@@ -500,6 +520,13 @@ function createTrackedFeed(): TrackedFeed {
           sealed = true;
           break;
         }
+        // A number glued to a non-delimiter (`1.x`, `12-3`) is never committed, so it never reads as settled.
+        if (!closesNumber(source[cursor + number.length] as string)) {
+          holdingNumber = true;
+          heldNumber = number.value;
+          sealed = true;
+          break;
+        }
         holdingNumber = false;
         cursor += number.length;
         if (!acceptValue(number.value, false)) {
@@ -586,13 +613,20 @@ export function createPartialJsonFeed(): PartialJsonFeed {
   return createTrackedFeed().push;
 }
 
+type TrackedStep = JsonStreamStep & {
+  readonly openPath: JsonPath;
+  readonly tailOpen: boolean;
+};
+
 export async function* fromAsyncIterableSteps(
   source: AsyncIterable<string | Uint8Array>,
-): AsyncGenerator<JsonStreamStep> {
+): AsyncGenerator<
+  JsonStreamStep & { readonly openPath: JsonPath; readonly tailOpen: boolean }
+> {
   const feed = createTrackedFeed();
   const decoder = new TextDecoder();
-  let last: JsonStreamStep | undefined;
-  function step(text: string): JsonStreamStep | undefined {
+  let last: TrackedStep | undefined;
+  function step(text: string): TrackedStep | undefined {
     const partialValue = feed.push(text);
     if (partialValue === undefined) return undefined;
     last = withFrontier(
@@ -614,14 +648,9 @@ export async function* fromAsyncIterableSteps(
   const flushedText = decoder.decode();
   const flushed = flushedText.length === 0 ? undefined : step(flushedText);
   if (flushed) yield flushed;
-  if (last && last.complete !== feed.ended())
-    yield feed.ended()
-      ? withFrontier({ value: last.value, complete: true }, [], false)
-      : withFrontier(
-          { value: last.value, complete: false },
-          last.openPath ?? [],
-          last.tailOpen ?? false,
-        );
+  // A complete step has already ended, so only an open step can end here.
+  if (last && !last.complete && feed.ended())
+    yield withFrontier({ value: last.value, complete: true }, [], false);
 }
 
 export async function* fromAsyncIterable(

@@ -208,6 +208,66 @@ describe("fromAsyncIterableSteps", () => {
     }
   });
 
+  it("never commits a number glued to a non-delimiter", async () => {
+    const glued = await frontiers('{"a":1.', "x}");
+    expect(glued).toEqual([
+      { value: { a: 1 }, openPath: ["a"], tailOpen: true },
+      { value: { a: 1 }, openPath: ["a"], tailOpen: true },
+    ]);
+    const split = await steps(
+      (async function* source() {
+        yield '{"a":1.';
+        yield "x}";
+      })(),
+    );
+    expect(split.map((step) => step.complete)).toEqual([false, false]);
+    expect(isSettled(split.at(-1) as JsonStreamStep, ["a"])).toBe(false);
+    for (const bad of ['{"a":12-3}', '{"a":12:', '{"a":1"b"}', "[7{"]) {
+      const [last] = await steps(
+        (async function* source() {
+          yield bad;
+        })(),
+      );
+      const step = last as JsonStreamStep;
+      expect(step.complete).toBe(false);
+      expect(step.tailOpen).toBe(true);
+      expect(isSettled(step, step.openPath as (string | number)[])).toBe(false);
+    }
+    expect(await frontiers('{"a":12 ,"b":3]')).toEqual([
+      { value: { a: 12, b: 3 }, openPath: [], tailOpen: false },
+    ]);
+  });
+
+  it("lets a later duplicate key replace a value it called settled", async () => {
+    const seen = await steps(
+      (async function* source() {
+        yield '{"a":1,';
+        yield '"a":2}';
+      })(),
+    );
+    const [first, last] = seen as [JsonStreamStep, JsonStreamStep];
+    expect(isSettled(first, ["a"])).toBe(true);
+    expect(first.value).toEqual({ a: 1 });
+    expect(last).toEqual({ value: { a: 2 }, complete: true });
+    expect(last.value).toEqual(JSON.parse('{"a":1,"a":2}'));
+  });
+
+  it("takes integer index keys for arrays and string keys for objects", () => {
+    let done: JsonStreamStep = { value: { tags: ["x"], 0: "y" }, complete: true };
+    expect(isSettled(done, ["tags", 0])).toBe(true);
+    expect(isSettled(done, ["tags", "length"])).toBe(false);
+    expect(isSettled(done, ["tags", "0"])).toBe(false);
+    expect(isSettled(done, ["tags", 0.5])).toBe(false);
+    expect(isSettled(done, ["tags", -1])).toBe(false);
+    expect(isSettled(done, ["tags", 1])).toBe(false);
+    expect(isSettled(done, ["0"])).toBe(true);
+    expect(isSettled(done, [0])).toBe(false);
+    done = { value: { a: null, b: 1 }, complete: true };
+    expect(isSettled(done, ["a"])).toBe(true);
+    expect(isSettled(done, ["a", "x"])).toBe(false);
+    expect(isSettled(done, ["b", "x"])).toBe(false);
+  });
+
   it("keeps the frontier out of keys and JSON", async () => {
     const [step] = await steps(
       (async function* source() {

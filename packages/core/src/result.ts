@@ -86,6 +86,12 @@ export async function parseAsync<T>(
   return checked.issues ? err(checked.issues) : ok(checked.value);
 }
 
+/**
+ * One `parseStream` step. `openPath` holds the keys from the root to the deepest open
+ * value. A value off `openPath` is final unless the document repeats that key later
+ * (`JSON.parse` lets the last duplicate win). A partial step whose partial schema fails
+ * has no `result.value`, so no path on it is settled.
+ */
 export type StreamStep<T, P> =
   | {
       readonly done: false;
@@ -112,7 +118,9 @@ export async function* parseStream<T, P = unknown>(
   schema: StandardSchemaV1<unknown, T>,
   partialSchema?: StandardSchemaV1<unknown, P>,
 ): AsyncGenerator<StreamStep<T, P>> {
-  let latest: JsonStreamStep | undefined;
+  let latest:
+    | (JsonStreamStep & { readonly openPath: JsonPath; readonly tailOpen: boolean })
+    | undefined;
   for await (const step of fromAsyncIterableSteps(source)) {
     latest = step;
     const result = partialSchema
@@ -120,8 +128,8 @@ export async function* parseStream<T, P = unknown>(
       : ok(step.value as P);
     yield withFrontier(
       { done: false as const, result },
-      step.openPath ?? [],
-      step.tailOpen ?? false,
+      step.openPath,
+      step.tailOpen,
     );
   }
   if (!latest)
@@ -133,8 +141,8 @@ export async function* parseStream<T, P = unknown>(
   else if (!latest.complete)
     yield withFrontier(
       { done: true as const, result: err<Issues, T>([openStreamIssue]) },
-      latest.openPath ?? [],
-      latest.tailOpen ?? false,
+      latest.openPath,
+      latest.tailOpen,
     );
   else
     yield withFrontier(

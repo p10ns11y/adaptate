@@ -9,6 +9,11 @@ description: "True when `path` holds a value that later steps will not change."
 
 True when `path` holds a value that later steps will not change.
 
+Array steps take integer index keys and object steps take string keys, as in `openPath`.
+A value off `openPath` is final unless the document repeats that key later
+(`JSON.parse` lets the last duplicate win). A partial step whose partial schema
+fails has no `result.value`, so no path on it is settled.
+
 ## Parameters
 
 ### step

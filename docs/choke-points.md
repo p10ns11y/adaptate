@@ -95,7 +95,7 @@ export async function readToolCall(chunks: AsyncIterable<string>): Promise<ToolC
 ```
 <!-- /snippet -->
 
-Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off openPath is final. `tailOpen` is true while the last value on `openPath` is a cut-off string or number, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final: `true` for any present path once the step is complete, `false` for a path that has not arrived. A string with a raw control character or a bad escape stays open, so it is never settled. Both fields are non-enumerable, so `toEqual` and JSON of a step do not change.
+Each `parseStream` step also carries `openPath` and `tailOpen`. A partial step checks the fields that are present; a field off `openPath` is final unless the document repeats that key later (`JSON.parse` lets the last duplicate win). `tailOpen` is true while the last value on `openPath` is a cut-off string or number, so `"c"` in `{"comments":["c1","c` may still become `"c2"`. `isSettled(step, path)` tells you whether one path is final: `true` for any present path once the step is complete, `false` for a path that has not arrived, and `false` on a partial step whose partial schema failed (it has no `result.value`). A string with a raw control character or a bad escape stays open, and so does a number glued to a character other than whitespace, `,`, `}` or `]` (`12-3`). Neither is ever settled. Both fields are non-enumerable, so `toEqual` and JSON of a step do not change.
 
 ```mermaid
 flowchart LR

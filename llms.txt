@@ -54,7 +54,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Interface: Track\<T, E\>](docs/api/core/result/interfaces/Track.md): Exported from @adaptate/core/result.
 - [Type Alias: Issues](docs/api/core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
 - [Type Alias: Result\<T, E\>](docs/api/core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
-- [Type Alias: StreamStep\<T, P\>](docs/api/core/result/type-aliases/StreamStep.md): Exported from @adaptate/core/result.
+- [Type Alias: StreamStep\<T, P\>](docs/api/core/result/type-aliases/StreamStep.md): One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats that key later (`JSON.pars...
 - [Function: isStandardSchema()](docs/api/core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](docs/api/core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](docs/api/core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.

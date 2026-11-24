@@ -171,6 +171,20 @@ describe("parseStream", () => {
     expect(isSettled(cut.at(-1) as StreamStep<unknown, unknown>, ["a"])).toBe(false);
   });
 
+  it("settles no path on a partial step whose partial schema fails", async () => {
+    const steps = await collect(
+      parseStream(
+        chunks('{"a":1,"b":"x'),
+        z.unknown(),
+        z.object({ a: z.string() }),
+      ),
+    );
+    const partial = steps[0] as StreamStep<unknown, unknown>;
+    expect(partial.result.ok).toBe(false);
+    expect(isSettled(partial, ["a"])).toBe(false);
+    expect(isSettled(partial, [])).toBe(false);
+  });
+
   it("checks each partial and the final value", async () => {
     const steps = await collect(
       parseStream(

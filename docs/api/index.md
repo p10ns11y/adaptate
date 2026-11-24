@@ -35,7 +35,7 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Interface: Track\<T, E\>](core/result/interfaces/Track.md): Exported from @adaptate/core/result.
 - [Type Alias: Issues](core/result/type-aliases/Issues.md): Exported from @adaptate/core/result.
 - [Type Alias: Result\<T, E\>](core/result/type-aliases/Result.md): Exported from @adaptate/core/result.
-- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): Exported from @adaptate/core/result.
+- [Type Alias: StreamStep\<T, P\>](core/result/type-aliases/StreamStep.md): One `parseStream` step. `openPath` holds the keys from the root to the deepest open value. A value off `openPath` is final unless the document repeats that key later (`JSON.pars...
 - [Function: isStandardSchema()](core/standard/functions/isStandardSchema.md): Exported from @adaptate/core/standard.
 - [Function: validateAgainstStandardSchemas()](core/standard/functions/validateAgainstStandardSchemas.md): Exported from @adaptate/core/standard.
 - [Function: validateStandard()](core/standard/functions/validateStandard.md): Exported from @adaptate/core/standard.

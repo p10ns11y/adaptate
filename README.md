@@ -267,7 +267,7 @@ for await (const step of parseStream(chunks(), invoice)) {
 }
 ```
 
-Prints `2 issues`, `0`, then `A-1`. `parseStream` reads chunks through the incremental parser, and its last step errs unless the stream held one complete JSON value. A partial step checks the fields that are present; a field off openPath is final. It reads strict JSON only, with no revivers or references: such revival is how CVE-2025-55182 (React Server Components, CVSS 10.0, December 2025) became remote code execution.
+Prints `2 issues`, `0`, then `A-1`. `parseStream` reads chunks through the incremental parser, and its last step errs unless the stream held one complete JSON value. A partial step checks the fields that are present; a field off `openPath` is final unless the document repeats that key later (`JSON.parse` lets the last duplicate win). It reads strict JSON only, with no revivers or references: such revival is how CVE-2025-55182 (React Server Components, CVSS 10.0, December 2025) became remote code execution.
 
 [Find your choke points](https://adaptate-site.vercel.app/docs/choke-points/) · [Guide source](docs/choke-points.md)
 
