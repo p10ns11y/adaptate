@@ -109,8 +109,8 @@ jobs:
           corepack enable
           corepack prepare pnpm@11.1.1 --activate
           pnpm install --frozen-lockfile --ignore-scripts
-          pnpm -r --filter '!@adaptate/api-docs' update zod@latest --ignore-scripts
-          pnpm -r --filter '!@adaptate/api-docs' exec node -e "console.log(require('zod/package.json').version)"
+          pnpm -r --filter '!@adaptate/api-docs' --filter '!@adaptate/accel' --filter '!@adaptate/wasm' --filter '!@adaptate/native' update zod@latest --ignore-scripts
+          pnpm -r --filter '!@adaptate/api-docs' --filter '!@adaptate/accel' --filter '!@adaptate/wasm' --filter '!@adaptate/native' exec node -e "console.log(require('zod/package.json').version)"
 
       - name: Test on latest zod
         run: pnpm test

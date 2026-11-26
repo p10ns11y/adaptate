@@ -37,3 +37,9 @@ Re-exports [isSettled](../stream-incremental/functions/isSettled.md)
 ### JsonPath
 
 Re-exports [JsonPath](../stream-incremental/type-aliases/JsonPath.md)
+
+***
+
+### TrackedFeed
+
+Re-exports [TrackedFeed](../stream-incremental/type-aliases/TrackedFeed.md)

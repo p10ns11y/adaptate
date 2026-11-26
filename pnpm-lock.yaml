@@ -156,6 +156,22 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
+  packages/accel:
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: 8.3.8
+        version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(terser@5.51.2)(yaml@2.9.1)
+    optionalDependencies:
+      '@adaptate/native':
+        specifier: workspace:*
+        version: link:../native
+      '@adaptate/wasm':
+        specifier: workspace:*
+        version: link:../wasm
+
   packages/core:
     devDependencies:
       '@adaptate/utils':
@@ -173,6 +189,15 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+
+  packages/native:
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: 8.3.8
+        version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(terser@5.51.2)(yaml@2.9.1)
 
   packages/utils:
     devDependencies:
@@ -194,6 +219,15 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+
+  packages/wasm:
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: 8.3.8
+        version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(terser@5.51.2)(yaml@2.9.1)
 
   tools/api-docs:
     devDependencies:

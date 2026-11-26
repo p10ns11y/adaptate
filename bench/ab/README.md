@@ -9,3 +9,5 @@ pnpm --filter @adaptate/core build && node bench/ab/run.js
 ```
 
 Gate, from the repo root, after both checkouts are built: `node bench/ab/compare.js <base checkout> . 1.05`
+
+`node bench/ab/crossover.js` records JS parse and SHA-256 baselines at ~1 KiB, 32 KiB+, and multi-MB, written to `bench/ab/results/crossover.json` when `run.js` runs.

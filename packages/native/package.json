@@ -1,0 +1,46 @@
+{
+  "name": "@adaptate/native",
+  "version": "2.4.2",
+  "description": "Optional Node-API wrapper for non-blocking hashing, batch manifest checks, and streaming UTF-8 JSON",
+  "author": {
+    "name": "Peramanathan Sathyamoorthy",
+    "url": "https://github.com/p10ns11y/adaptate.git"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/p10ns11y/adaptate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/p10ns11y/adaptate/issues"
+  },
+  "homepage": "https://github.com/p10ns11y/adaptate#readme",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "source": "./src/index.ts",
+  "main": "./build/index.es.js",
+  "types": "./build/index.d.ts",
+  "files": [
+    "build",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "check-types": "tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint --type-aware -c ../../.oxlintrc.json ./src"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.8"
+  },
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.es.js",
+      "default": "./build/index.es.js"
+    }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

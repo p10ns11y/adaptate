@@ -5,7 +5,7 @@ description: "Exported from @adaptate/core/result."
 
 # Function: parseStream()
 
-> **parseStream**\<`T`, `P`\>(`source`, `schema`, `partialSchema?`): `AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
+> **parseStream**\<`T`, `P`\>(`source`, `schema`, `partialSchema?`, `makeFeed?`): `AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
 
 ## Type Parameters
 
@@ -30,6 +30,10 @@ description: "Exported from @adaptate/core/result."
 ### partialSchema?
 
 [`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `P`\>
+
+### makeFeed?
+
+() => [`TrackedFeed`](../../stream-incremental/type-aliases/TrackedFeed.md)
 
 ## Returns
 

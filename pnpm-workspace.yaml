@@ -2,6 +2,9 @@
 packages:
   - packages/core
   - packages/utils
+  - packages/accel
+  - packages/wasm
+  - packages/native
   - bench/ab
   - tools/api-docs
   - examples/react-view

@@ -184,7 +184,7 @@ export function isSettled(
 
 const jsonNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
-type TrackedFeed = {
+export type TrackedFeed = {
   readonly push: PartialJsonFeed;
   readonly complete: () => boolean;
   readonly ended: () => boolean;
@@ -192,7 +192,7 @@ type TrackedFeed = {
   readonly tailOpen: () => boolean;
 };
 
-function createTrackedFeed(): TrackedFeed {
+export function createTrackedFeed(): TrackedFeed {
   let source = "";
   let cursor = 0;
   let sealed = false;
@@ -598,8 +598,9 @@ export type TrackedStep = {
 
 export async function* fromAsyncIterableSteps(
   source: AsyncIterable<string | Uint8Array>,
+  makeFeed: () => TrackedFeed = createTrackedFeed,
 ): AsyncGenerator<TrackedStep> {
-  const feed = createTrackedFeed();
+  const feed = makeFeed();
   const decoder = new TextDecoder();
   let last: TrackedStep | undefined;
   function step(text: string): TrackedStep | undefined {

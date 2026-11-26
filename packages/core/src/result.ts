@@ -2,10 +2,11 @@ import type { StandardIssue, StandardSchemaV1 } from "./standard.js";
 import { withFrontier, type JsonPath } from "./frontier.js";
 import {
   fromAsyncIterableSteps,
+  type TrackedFeed,
   type TrackedStep,
 } from "./stream-incremental.js";
 
-export { isSettled, type JsonPath } from "./stream-incremental.js";
+export { isSettled, type JsonPath, type TrackedFeed } from "./stream-incremental.js";
 
 export type Issues = ReadonlyArray<StandardIssue>;
 
@@ -117,9 +118,10 @@ export async function* parseStream<T, P = unknown>(
   source: AsyncIterable<string | Uint8Array>,
   schema: StandardSchemaV1<unknown, T>,
   partialSchema?: StandardSchemaV1<unknown, P>,
+  makeFeed?: () => TrackedFeed,
 ): AsyncGenerator<StreamStep<T, P>> {
   let latest: TrackedStep | undefined;
-  for await (const step of fromAsyncIterableSteps(source)) {
+  for await (const step of fromAsyncIterableSteps(source, makeFeed)) {
     latest = step;
     const result = partialSchema
       ? await parseAsync(partialSchema, step.value)

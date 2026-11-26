@@ -142,3 +142,7 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Optional acceleration binaries built locally (C ABI wasm / Node-API addon)
+packages/wasm/adaptate_accel.wasm
+packages/native/adaptate-accel.node

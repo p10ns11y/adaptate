@@ -46,6 +46,7 @@ export function renderSummary(directory) {
   const browser = readJson(directory, "browser.json");
   const bundle = readJson(directory, "bundle.json");
   const gate = readJson(directory, "gate.json");
+  const crossover = readJson(directory, "crossover.json");
   const lines = [];
   const sample = node || bun || browser;
   if (!sample) {
@@ -163,6 +164,17 @@ export function renderSummary(directory) {
   lines.push(
     "Gated on pull request, Node only, head build versus the base commit on the same runner, fail above 5%: adaptate import median, full-document validations/sec, AG-UI µs/chunk, parsed-partial µs/chunk, and each entry's min and gzip bytes (full bundle and zod-external bundle). Not gated: JSON repair, four views per render, import p95, heap, the raw-zod rows, Bun, and Chromium.",
   );
+  if (crossover?.rows) {
+    lines.push("");
+    lines.push("Crossover baselines (JS parse and SHA-256):");
+    lines.push("| Size | Payload bytes | Parse MB/s | Hash MB/s | Parse µs/chunk |");
+    lines.push("| --- | --- | --- | --- | --- |");
+    for (const row of crossover.rows) {
+      lines.push(
+        `| ${row.name} | ${group(row.payloadBytes)} | ${formatValue(row.parseMbPerSec, 3)} | ${formatValue(row.hashMbPerSec, 3)} | ${formatValue(row.parseUsPerChunk, 3)} |`,
+      );
+    }
+  }
   if (gate) {
     lines.push("");
     lines.push(`Gate: ${gate.failed ? "FAIL" : "PASS"} (limit ${gate.limit}).`);

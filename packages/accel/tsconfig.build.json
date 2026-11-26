@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "esnext",
+    "moduleResolution": "Bundler",
+    "rootDir": "./src",
+    "outDir": "./build",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/__tests__/**"]
+}
