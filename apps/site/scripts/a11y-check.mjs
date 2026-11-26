@@ -60,6 +60,16 @@ try {
       let found = await page.locator(".snippet").count();
       if (found === 0) failures.push(`${path} @${width}px: expected snippet blocks`);
       for (let clip of await clippedSnippets()) failures.push(`${path} @${width}px: ${clip}`);
+      if (width === 1280 && (path === "/docs/" || path === "/docs/v3/")) {
+        let overflow = await page.evaluate(() =>
+          [...document.querySelectorAll(".snippet pre")].flatMap((pre, index) =>
+            pre.scrollWidth > pre.clientWidth + 1
+              ? [`snippet ${index + 1}: scrollWidth ${pre.scrollWidth} > clientWidth ${pre.clientWidth}`]
+              : [],
+          ),
+        );
+        for (let issue of overflow) failures.push(`${path} @${width}px: ${issue}`);
+      }
     }
   }
 

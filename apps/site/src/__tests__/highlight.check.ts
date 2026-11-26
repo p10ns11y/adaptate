@@ -66,6 +66,8 @@ describe("docs snippet highlighting", () => {
     expect(pre).toMatch(/min-width:\s*0/);
     expect(pre).toMatch(/max-width:\s*100%/);
     expect(pre).toMatch(/overflow-x:\s*auto/);
+    expect(pre).toMatch(/scrollbar-width:\s*thin/);
+    expect(pre).toMatch(/scrollbar-color:\s*var\(--ocean\)\s+var\(--void\)/);
     expect(css).toMatch(/@media \(max-width: 680px\) \{[\s\S]*?\.snippet pre \{[^}]*white-space:\s*pre-wrap/);
     expect(css).toMatch(/@media \(max-width: 680px\) \{[\s\S]*?\.snippet pre \{[^}]*overflow-wrap:\s*anywhere/);
   });

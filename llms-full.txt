@@ -37,7 +37,10 @@ import { openAPISchemaToZod } from "@adaptate/utils";
 const recipe = openAPISchemaToZod({
   type: "object",
   required: ["title"],
-  properties: { title: { type: "string" }, servings: { type: "integer" } },
+  properties: {
+    title: { type: "string" },
+    servings: { type: "integer" },
+  },
 });
 recipe.safeParse({ title: "Pasta", servings: 4 }).success; // true
 ```
@@ -321,7 +324,9 @@ What that buys you:
 `makeFeed` matches the factory already used by `agUiValidatorWith` and `createEffectStreamValidator`.
 
 ```ts
-import { fromAsyncIterableSteps } from "@adaptate/core/stream-incremental";
+import {
+  fromAsyncIterableSteps,
+} from "@adaptate/core/stream-incremental";
 import { parseStream } from "@adaptate/core/result";
 
 const steps = fromAsyncIterableSteps(chunks, {

@@ -29,7 +29,10 @@ import { openAPISchemaToZod } from "@adaptate/utils";
 const recipe = openAPISchemaToZod({
   type: "object",
   required: ["title"],
-  properties: { title: { type: "string" }, servings: { type: "integer" } },
+  properties: {
+    title: { type: "string" },
+    servings: { type: "integer" },
+  },
 });
 recipe.safeParse({ title: "Pasta", servings: 4 }).success; // true
 ```
