@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
+    "build:wasm": "node ./scripts/build-wasm.mjs",
     "check-types": "tsc --noEmit -p tsconfig.json",
     "lint": "oxlint --type-aware -c ../../.oxlintrc.json ./src"
   },
