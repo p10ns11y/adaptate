@@ -467,11 +467,28 @@ describe("capability probe and routing", () => {
       capabilities: gpuCaps,
       loadBackend: async (backend) => {
         gpuCalls.push(backend);
-        return { verifyPayload: async () => ({ ok: true, sha256: "accelerated", byteLength: 1 }) };
+        return {
+          verifyBatch: async (items: Array<{ payload: Uint8Array }>) => [
+            { ok: true, sha256: "accelerated", byteLength: items[0]?.payload.byteLength ?? 0 },
+          ],
+          verifyPayload: async () => ({ ok: true, sha256: "cpu-path", byteLength: 1 }),
+        };
       },
     });
     expect(gpuCalls).toEqual(["gpu"]);
-    expect(accelerated).toEqual({ ok: true, sha256: "accelerated", byteLength: 1 });
+    expect(accelerated).toEqual({ ok: true, sha256: "accelerated", byteLength: GPU_THRESHOLD_BYTES });
+
+    const gpuFallbackCalls: BackendName[] = [];
+    const gpuThenNative = await verifyInMemory(new Uint8Array(GPU_THRESHOLD_BYTES), { sha256: "ab" }, {}, {
+      capabilities: gpuCaps,
+      loadBackend: async (backend) => {
+        gpuFallbackCalls.push(backend);
+        if (backend === "gpu") return { verifyPayload: async () => ({ ok: true, sha256: "should-not-use", byteLength: 1 }) };
+        return { verifyPayload: async () => ({ ok: true, sha256: "from-native", byteLength: GPU_THRESHOLD_BYTES }) };
+      },
+    });
+    expect(gpuFallbackCalls).toEqual(["gpu", "native"]);
+    expect(gpuThenNative).toEqual({ ok: true, sha256: "from-native", byteLength: GPU_THRESHOLD_BYTES });
 
     const order: BackendName[] = [];
     const second = await verifyInMemory(new Uint8Array(SMALL_THRESHOLD_BYTES), { sha256: hash }, { filename: "a" }, {

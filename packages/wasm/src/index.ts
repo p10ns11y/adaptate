@@ -1,22 +1,21 @@
 import {
   closeScanner,
+  createWasmBindings,
   finishScanner,
   hashWithBindings,
-  isAvailable,
-  loadWasmModule,
   openScanner,
   pushScanner,
   verifyWithBindings,
-  wasmBinaryPath,
   type WasmBindings,
   type WasmLoadHooks,
   type WasmStatus,
   type WasmUnavailable,
 } from "./bindings.js";
+import { clearWasmBindingsCache, isAvailable, loadWasmModule, wasmBinaryPath } from "./node-load.js";
 import type { ScanSnapshot, VerifyResult } from "./parse.js";
 
-export { isAvailable, wasmBinaryPath };
-export type { WasmLoadHooks, WasmStatus, WasmUnavailable };
+export { clearWasmBindingsCache, createWasmBindings, hashWithBindings, isAvailable, loadWasmModule, verifyWithBindings, wasmBinaryPath };
+export type { WasmBindings, WasmLoadHooks, WasmStatus, WasmUnavailable };
 export type { ScanSnapshot, VerifyResult } from "./parse.js";
 
 export interface WasmStream {

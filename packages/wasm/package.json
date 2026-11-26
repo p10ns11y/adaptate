@@ -38,6 +38,11 @@
       "types": "./build/index.d.ts",
       "import": "./build/index.es.js",
       "default": "./build/index.es.js"
+    },
+    "./runtime": {
+      "types": "./build/runtime.d.ts",
+      "import": "./build/runtime.es.js",
+      "default": "./build/runtime.es.js"
     }
   },
   "engines": {

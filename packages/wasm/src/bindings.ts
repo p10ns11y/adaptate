@@ -1,7 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type { ScanSnapshot, VerifyResult } from "./parse.js";
 import { parseScanText, parseVerifyText } from "./parse.js";
 
@@ -51,6 +47,8 @@ export interface WasmLoadHooks {
   mapExports: (instance: WebAssembly.Instance) => WasmBindings | null;
 }
 
+export type WasmLoadResult = { status: WasmStatus; bindings: WasmBindings | null };
+
 const EXPORT_NAMES = [
   "adaptate_alloc",
   "adaptate_dealloc",
@@ -62,16 +60,13 @@ const EXPORT_NAMES = [
   "adaptate_scanner_finish",
 ] as const;
 
-const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const OUTPUT_CAPACITY = 4096;
+/** First output buffer size; grown when the C ABI reports a larger required length. */
+export const INITIAL_OUTPUT_CAPACITY = 4096;
+/** Snapshots larger than this are rejected instead of allocating unbounded memory. */
+export const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 
-export function wasmBinaryPath(): string {
-  return join(packageRoot, "adaptate_accel.wasm");
-}
-
-export function isAvailable(binaryPath = wasmBinaryPath()): boolean {
-  return existsSync(binaryPath);
-}
+const utf8Decoder = new TextDecoder("utf-8");
+const createdBindings = new Map<Uint8Array, Promise<WasmLoadResult>>();
 
 export function bindingsFromInstance(instance: WebAssembly.Instance): WasmBindings | null {
   const exports = instance.exports;
@@ -95,15 +90,43 @@ export function bindingsFromInstance(instance: WebAssembly.Instance): WasmBindin
   };
 }
 
-export async function loadWasmModule(
-  binaryPath = wasmBinaryPath(),
-  hooks: Partial<WasmLoadHooks> = {},
-): Promise<{ status: WasmStatus; bindings: WasmBindings | null }> {
-  const readBytes = hooks.readBytes ?? defaultReadBytes;
+/**
+ * Instantiate C-ABI bindings from already-fetched `.wasm` bytes.
+ * This path does not import `node:fs`, so a browser can prefetch the module
+ * and reuse the returned bindings for honest timings.
+ */
+export async function createWasmBindings(
+  bytes: Uint8Array,
+  hooks: Pick<Partial<WasmLoadHooks>, "instantiate" | "mapExports"> = {},
+): Promise<WasmLoadResult> {
+  const custom = hooks.instantiate !== undefined || hooks.mapExports !== undefined;
+  if (!custom) {
+    const cached = createdBindings.get(bytes);
+    if (cached) return cached;
+  }
+  const pending = instantiateBindings(bytes, hooks);
+  if (!custom) {
+    const cached = pending.then((result) => {
+      if (!result.bindings) createdBindings.delete(bytes);
+      return result;
+    });
+    createdBindings.set(bytes, cached);
+    return cached;
+  }
+  return pending;
+}
+
+export function clearCreatedWasmBindingsCache(): void {
+  createdBindings.clear();
+}
+
+async function instantiateBindings(
+  bytes: Uint8Array,
+  hooks: Pick<Partial<WasmLoadHooks>, "instantiate" | "mapExports">,
+): Promise<WasmLoadResult> {
+  if (bytes.byteLength === 0) return { status: "wasm-binary-missing", bindings: null };
   const instantiate = hooks.instantiate ?? defaultInstantiate;
   const mapExports = hooks.mapExports ?? bindingsFromInstance;
-  const bytes = readBytes(binaryPath);
-  if (bytes === null || bytes.byteLength === 0) return { status: "wasm-binary-missing", bindings: null };
   let instance: WebAssembly.Instance;
   try {
     instance = await instantiate(bytes);
@@ -130,7 +153,7 @@ export function hashWithBindings(bindings: WasmBindings, payload: Uint8Array): s
   try {
     const written = bindings.sha256(input, payload.byteLength, output);
     if (written !== 64) return null;
-    return readLatin1(bindings.memory, output, 64);
+    return readUtf8(bindings.memory, output, 64);
   } catch {
     return null;
   } finally {
@@ -148,28 +171,25 @@ export function verifyWithBindings(
   const payloadCopy = allocateCopy(bindings, payload);
   const manifestCopy = allocateCopy(bindings, encodeText(manifestJson));
   const observedCopy = allocateCopy(bindings, encodeText(observedJson));
-  const output = bindings.alloc(OUTPUT_CAPACITY);
   try {
-    if (!payloadCopy || !manifestCopy || !observedCopy || output === 0) return null;
-    const written = bindings.verify(
-      payloadCopy.pointer,
-      payloadCopy.size,
-      manifestCopy.pointer,
-      manifestCopy.size,
-      observedCopy.pointer,
-      observedCopy.size,
-      output,
-      OUTPUT_CAPACITY,
+    if (!payloadCopy || !manifestCopy || !observedCopy) return null;
+    const text = readGrowableOutput(bindings, (output, capacity) =>
+      bindings.verify(
+        payloadCopy.pointer,
+        payloadCopy.size,
+        manifestCopy.pointer,
+        manifestCopy.size,
+        observedCopy.pointer,
+        observedCopy.size,
+        output,
+        capacity,
+      ),
     );
-    if (written < 0 || written > OUTPUT_CAPACITY) return null;
-    return parseVerifyText(readLatin1(bindings.memory, output, written));
-  } catch {
-    return null;
+    return text === null ? null : parseVerifyText(text);
   } finally {
     releaseAllocation(bindings, payloadCopy);
     releaseAllocation(bindings, manifestCopy);
     releaseAllocation(bindings, observedCopy);
-    if (output !== 0) bindings.dealloc(output, OUTPUT_CAPACITY);
   }
 }
 
@@ -183,23 +203,16 @@ export function closeScanner(bindings: WasmBindings, handle: number): void {
 }
 
 export function pushScanner(bindings: WasmBindings, handle: number, chunk: Uint8Array): ScanSnapshot | null {
-  return callScanner(bindings, chunk, (copy, output) =>
-    bindings.scannerPush(handle, copy.pointer, copy.size, output, OUTPUT_CAPACITY),
+  return callScanner(bindings, chunk, (copy, output, capacity) =>
+    bindings.scannerPush(handle, copy.pointer, copy.size, output, capacity),
   );
 }
 
 export function finishScanner(bindings: WasmBindings, handle: number): ScanSnapshot | null {
-  const output = bindings.alloc(OUTPUT_CAPACITY);
-  if (output === 0) return null;
-  try {
-    const written = bindings.scannerFinish(handle, output, OUTPUT_CAPACITY);
-    if (written < 0 || written > OUTPUT_CAPACITY) return null;
-    return parseScanText(readLatin1(bindings.memory, output, written));
-  } catch {
-    return null;
-  } finally {
-    bindings.dealloc(output, OUTPUT_CAPACITY);
-  }
+  const text = readGrowableOutput(bindings, (output, capacity) =>
+    bindings.scannerFinish(handle, output, capacity),
+  );
+  return text === null ? null : parseScanText(text);
 }
 
 interface Allocation {
@@ -210,20 +223,38 @@ interface Allocation {
 function callScanner(
   bindings: WasmBindings,
   chunk: Uint8Array,
-  invoke: (copy: Allocation, output: number) => number,
+  invoke: (copy: Allocation, output: number, capacity: number) => number,
 ): ScanSnapshot | null {
   const copy = allocateCopy(bindings, chunk);
-  const output = bindings.alloc(OUTPUT_CAPACITY);
   try {
-    if (!copy || output === 0) return null;
-    const written = invoke(copy, output);
-    if (written < 0 || written > OUTPUT_CAPACITY) return null;
-    return parseScanText(readLatin1(bindings.memory, output, written));
-  } catch {
-    return null;
+    if (!copy) return null;
+    const text = readGrowableOutput(bindings, (output, capacity) => invoke(copy, output, capacity));
+    return text === null ? null : parseScanText(text);
   } finally {
     releaseAllocation(bindings, copy);
-    if (output !== 0) bindings.dealloc(output, OUTPUT_CAPACITY);
+  }
+}
+
+function readGrowableOutput(
+  bindings: WasmBindings,
+  invoke: (output: number, capacity: number) => number,
+): string | null {
+  let capacity = INITIAL_OUTPUT_CAPACITY;
+  for (;;) {
+    const thisCapacity = capacity;
+    const output = bindings.alloc(thisCapacity);
+    if (output === 0) return null;
+    try {
+      const written = invoke(output, thisCapacity);
+      if (written < 0) return null;
+      if (written <= thisCapacity) return readUtf8(bindings.memory, output, written);
+      if (written > MAX_OUTPUT_BYTES) return null;
+      capacity = written;
+    } catch {
+      return null;
+    } finally {
+      bindings.dealloc(output, thisCapacity);
+    }
   }
 }
 
@@ -248,23 +279,15 @@ function copyBytes(memory: WebAssembly.Memory, pointer: number, bytes: Uint8Arra
   new Uint8Array(memory.buffer).set(bytes, pointer);
 }
 
-function readLatin1(memory: WebAssembly.Memory, pointer: number, length: number): string {
-  const bytes = new Uint8Array(memory.buffer, pointer, length);
-  let text = "";
-  for (const byte of bytes) text += String.fromCharCode(byte);
-  return text;
+function readUtf8(memory: WebAssembly.Memory, pointer: number, length: number): string {
+  return utf8Decoder.decode(new Uint8Array(memory.buffer, pointer, length));
 }
 
 function encodeText(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
 
-function defaultReadBytes(binaryPath: string): Uint8Array | null {
-  if (!existsSync(binaryPath)) return null;
-  return new Uint8Array(readFileSync(binaryPath));
-}
-
-async function defaultInstantiate(bytes: Uint8Array): Promise<WebAssembly.Instance> {
+export async function defaultInstantiate(bytes: Uint8Array): Promise<WebAssembly.Instance> {
   const compiled = (await WebAssembly.instantiate(bytes)) as unknown as { instance: WebAssembly.Instance };
   return compiled.instance;
 }
