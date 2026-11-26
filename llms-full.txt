@@ -1181,6 +1181,8 @@ faq:
 
 Most callers never need this. `@adaptate/core` stays zero-dependency and is the right path for ordinary JS objects and buffers under about 32 KiB.
 
+`@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` ship with v3 as optional add-ons alongside `@adaptate/core`.
+
 When a buffer is large, optional packages take over without changing how you call the core APIs. `@adaptate/accel` probes what the runtime can do and size-routes the work.
 
 | Input | Runtime |

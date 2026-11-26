@@ -17,6 +17,30 @@ let server = await startStaticServer(distDirectory);
 let browser = await chromium.launch();
 try {
   let page = await browser.newPage();
+  let clippedSnippets = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll(".snippet")].flatMap((snippet, index) => {
+        let pre = snippet.querySelector("pre");
+        if (!pre) return [`snippet ${index + 1}: missing pre`];
+        let figure = snippet.getBoundingClientRect();
+        let box = pre.getBoundingClientRect();
+        if (box.right > figure.right + 1 || box.left < figure.left - 1) {
+          return [`snippet ${index + 1}: pre overflows the figure and is clipped`];
+        }
+        if (pre.clientWidth > snippet.clientWidth + 1) {
+          return [`snippet ${index + 1}: pre is wider than the figure`];
+        }
+        let overflowX = getComputedStyle(pre).overflowX;
+        let whiteSpace = getComputedStyle(pre).whiteSpace;
+        let wraps = whiteSpace === "pre-wrap" || whiteSpace === "pre-line" || whiteSpace === "break-spaces";
+        let canScroll = overflowX === "auto" || overflowX === "scroll";
+        if (pre.scrollWidth > pre.clientWidth + 1 && !canScroll && !wraps) {
+          return [`snippet ${index + 1}: long line is clipped`];
+        }
+        return [];
+      }),
+    );
+
   for (let route of routes) {
     await page.goto(`${server.origin}${route.path}`, { waitUntil: "load" });
     await page.addScriptTag({ content: axeSource });
@@ -25,8 +49,21 @@ try {
       return result.violations.map((violation) => `${violation.id}: ${violation.nodes.length} node(s) ${violation.nodes[0]?.target.join(" ")}`);
     });
     for (let violation of violations) failures.push(`${route.path}: ${violation}`);
+    for (let clip of await clippedSnippets()) failures.push(`${route.path} @${page.viewportSize()?.width}px: ${clip}`);
   }
 
+  let snippetRoutes = ["/docs/", "/docs/streaming/", "/docs/v3/", "/docs/accel/", "/docs/verification/"];
+  for (let width of [1280, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+    for (let path of snippetRoutes) {
+      await page.goto(`${server.origin}${path}`, { waitUntil: "load" });
+      let found = await page.locator(".snippet").count();
+      if (found === 0) failures.push(`${path} @${width}px: expected snippet blocks`);
+      for (let clip of await clippedSnippets()) failures.push(`${path} @${width}px: ${clip}`);
+    }
+  }
+
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`${server.origin}/`);
   await page.keyboard.press("Tab");
   let skip = await page.evaluate(() => document.activeElement?.textContent);

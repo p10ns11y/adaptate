@@ -450,14 +450,17 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 }
 
 
-.snippet { margin: 1rem 0 1.25rem; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--void); overflow: hidden; }
-.snippet-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 2.75rem; padding: 0.3rem 0.5rem 0.3rem 0.9rem; border-bottom: 1px solid var(--line); background: var(--deep); }
-.snippet-lang { font-family: var(--mono); font-size: 0.72rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--exhaust); }
-.snippet pre { margin: 0; border: 0; border-radius: 0; background: transparent; padding: 1rem 1.1rem; }
+.snippet { margin: 1rem 0 1.25rem; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--void); min-width: 0; max-width: 100%; overflow: hidden; }
+.snippet-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; min-height: 2.75rem; padding: 0.3rem 0.5rem 0.3rem 0.9rem; border-bottom: 1px solid var(--line); background: var(--deep); }
+.snippet-lang { font-family: var(--mono); font-size: 0.72rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--exhaust); min-width: 0; }
+.snippet pre { margin: 0; border: 0; border-radius: 0; background: transparent; padding: 1rem 1.1rem; min-width: 0; max-width: 100%; overflow-x: auto; }
 .snippet pre code, .snippet .shiki { color: inherit; font-size: inherit; background: transparent !important; }
 .snippet .copy { min-width: 4.75rem; color: var(--cloud); background: none; border-color: var(--line); }
 .snippet .copy:hover, .snippet .copy:focus-visible { color: var(--void); background: var(--thrust); border-color: var(--thrust); }
-@media (max-width: 680px) { .snippet-bar { min-height: 3.25rem; } }
+@media (max-width: 680px) {
+  .snippet-bar { min-height: 3.25rem; }
+  .snippet pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+}
 
 .docs { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; padding-top: 2rem; }
 .docs nav ul { list-style: none; margin: 0 0 1.25rem; padding: 0; }
@@ -465,7 +468,7 @@ textarea:focus-visible, select:focus-visible { outline: 2px solid var(--thrust);
 .docs nav a { color: var(--cloud); text-decoration: none; font-size: 0.94rem; }
 .docs nav a[aria-current="page"] { color: var(--thrust); font-weight: 650; }
 .docs nav h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--exhaust); margin: 0 0 0.4rem; }
-.docs article { max-width: 78ch; }
+.docs article { min-width: 0; max-width: 78ch; }
 .docs article > h1:first-child { margin-top: 0; }
 .diagram { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; }
 .diagram svg { max-width: 100%; height: auto; }

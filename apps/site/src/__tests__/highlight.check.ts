@@ -56,6 +56,20 @@ describe("docs snippet highlighting", () => {
     expect(snippetCopyRuntime).toContain('src="/snippet-copy.js"');
   });
 
+  it("constrains snippet pre so long lines scroll on desktop and wrap at 680px", () => {
+    let css = readFileSync(new URL("../../public/site.css", import.meta.url), "utf8");
+    let block = (selector: string) => css.match(new RegExp(`${selector.replaceAll(".", "\\.")} \\{([^}]+)\\}`))?.[1] ?? "";
+    let snippet = block(".snippet");
+    let pre = block(".snippet pre");
+    expect(snippet).toMatch(/min-width:\s*0/);
+    expect(snippet).toMatch(/max-width:\s*100%/);
+    expect(pre).toMatch(/min-width:\s*0/);
+    expect(pre).toMatch(/max-width:\s*100%/);
+    expect(pre).toMatch(/overflow-x:\s*auto/);
+    expect(css).toMatch(/@media \(max-width: 680px\) \{[\s\S]*?\.snippet pre \{[^}]*white-space:\s*pre-wrap/);
+    expect(css).toMatch(/@media \(max-width: 680px\) \{[\s\S]*?\.snippet pre \{[^}]*overflow-wrap:\s*anywhere/);
+  });
+
   it("keeps the copy helper free of network and eval", () => {
     let source = readFileSync(new URL("../../public/snippet-copy.js", import.meta.url), "utf8");
     expect(source).not.toMatch(/\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon|\beval\(|new Function|innerHTML/);
