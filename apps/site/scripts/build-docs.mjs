@@ -21,6 +21,7 @@ import {
 import { apiFrontMatterSchema, guideFrontMatterSchema, sourceOnlyFrontMatterSchema } from "../src/site/frontmatter.ts";
 import { escapeHtml, renderHead } from "../src/site/head.ts";
 import { renderFooter, renderHeader } from "../src/site/header.ts";
+import { createSnippetHighlighter, withSnippetCopy } from "../src/site/highlight.ts";
 import { renderRailFigure } from "../src/site/rail.ts";
 import { journeyRoute, staticRoutes } from "../src/site/routes.ts";
 
@@ -32,6 +33,8 @@ let metaDirectory = join(siteDirectory, ".site-meta");
 let siteUrl = resolveSiteUrl(process.env.SITE_URL);
 let version = JSON.parse(readFileSync(join(repositoryRoot, "packages/core/package.json"), "utf8")).version;
 let palette = JSON.parse(readFileSync(join(siteDirectory, "palette.json"), "utf8")).tokens;
+
+let highlight = await createSnippetHighlighter();
 
 function walk(directory) {
   let files = [];
@@ -115,8 +118,7 @@ let marked = new Marked({
         let index = diagrams.push({ source: text, svg: "" }) - 1;
         return `<!--diagram:${index}-->`;
       }
-      let language = lang ? ` class="language-${escapeHtml(lang)}"` : "";
-      return `<pre tabindex="0"><code${language}>${escapeHtml(text)}</code></pre>\n`;
+      return `${highlight.render(text, lang)}\n`;
     },
     html({ text }) {
       if (/^\s*<!--[\s\S]*-->\s*$/.test(text)) return "";
@@ -148,7 +150,7 @@ function renderNav(currentPath) {
 let railExample = readFileSync(join(siteDirectory, "src/usages/result-rail.ts"), "utf8").trimEnd();
 let railLead = [
   `<div class="rail-doc">${renderRailFigure()}</div>`,
-  `<pre tabindex="0"><code class="language-ts">${escapeHtml(railExample)}</code></pre>`,
+  highlight.render(railExample, "ts"),
 ].join("\n");
 
 function renderFaq(route) {
@@ -282,6 +284,7 @@ for (let page of pages) {
     `    <main id="main" tabindex="-1"><div class="wrap docs">${renderNav(page.route.path)}<article>`,
     withDiagrams(page.html),
     "</article></div></main>",
+    `    ${withSnippetCopy(page.html)}`,
     `    ${renderFooter()}`,
     "  </body>",
     "</html>",
@@ -303,6 +306,7 @@ let journeyDocument = [
   `    <main id="main" tabindex="-1"><div class="wrap journey"><article>`,
   withDiagrams(journeyHtml),
   "</article></div></main>",
+  `    ${withSnippetCopy(journeyHtml)}`,
   `    ${renderFooter()}`,
   "  </body>",
   "</html>",

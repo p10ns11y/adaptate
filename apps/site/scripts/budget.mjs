@@ -11,12 +11,12 @@ let budgets = {
   loadJs: 80 * kilobyte,
   workerJs: 70 * kilobyte,
   fireJs: 6 * kilobyte,
-  docsJs: 0,
+  docsJs: 2 * kilobyte,
   cssTotal: 12 * kilobyte,
   ogImage: 120 * kilobyte,
   clip: 2 * kilobyte * kilobyte,
 };
-let buildOnly = [/\/node_modules\/(\.pnpm\/)?effect[@/]/, /\/node_modules\/(\.pnpm\/)?marked[@/]/, /\/node_modules\/(\.pnpm\/)?mermaid[@/]/, /\/node_modules\/(\.pnpm\/)?playwright/];
+let buildOnly = [/\/node_modules\/(\.pnpm\/)?effect[@/]/, /\/node_modules\/(\.pnpm\/)?marked[@/]/, /\/node_modules\/(\.pnpm\/)?mermaid[@/]/, /\/node_modules\/(\.pnpm\/)?playwright/, /\/node_modules\/(\.pnpm\/)?(shiki|@shikijs)[@/]/];
 let failures = [];
 let report = [];
 
@@ -136,8 +136,14 @@ for (let worker of files.filter((path) => /worker[^/]*\.js$/.test(path))) {
 }
 
 let docsPages = files.filter((path) => path.startsWith(join(distDirectory, "docs")) && path.endsWith(".html"));
-let docsWithScripts = docsPages.filter((path) => pageScripts(path).length > 0);
-measure(`/docs/** JS across ${docsPages.length} pages`, docsWithScripts.reduce((sum, path) => sum + scriptBytes(path), 0), budgets.docsJs);
+let docsScriptSources = [...new Set(docsPages.flatMap((path) => pageScripts(path)))];
+if (docsScriptSources.includes("inline")) failures.push("docs pages ship inline JS");
+let unexpectedDocsScripts = docsScriptSources.filter((source) => source !== "/snippet-copy.js");
+if (unexpectedDocsScripts.length > 0) failures.push(`docs pages ship unexpected JS: ${unexpectedDocsScripts.join(", ")}`);
+let docsJsBytes = docsScriptSources
+  .filter((source) => source !== "inline")
+  .reduce((sum, source) => sum + gzipSize(join(distDirectory, source.replace(/^\//, ""))), 0);
+measure(`unique docs JS (${docsScriptSources.length || "none"} file) across ${docsPages.length} pages`, docsJsBytes, budgets.docsJs);
 
 measure("CSS total (gzip)", files.filter((path) => path.endsWith(".css")).reduce((sum, path) => sum + gzipSize(path), 0), budgets.cssTotal);
 
@@ -158,7 +164,7 @@ if (!existsSync(modulesPath)) {
       if (buildOnly.some((pattern) => pattern.test(id.replaceAll("\\", "/")))) failures.push(`${chunk} ships build-only module ${id}`);
     }
   }
-  report.push(`build-only deps (effect, marked, mermaid, playwright): 0 bytes in ${Object.keys(modules).length} chunk(s)`);
+  report.push(`build-only deps (effect, marked, mermaid, playwright, shiki): 0 bytes in ${Object.keys(modules).length} chunk(s)`);
   let fireChunk = Object.keys(modules).find((chunk) => modules[chunk].some((id) => id.endsWith("/hero-fire-gl.ts")));
   if (!fireChunk) failures.push("the hero WebGL code is not in its own chunk");
   else {

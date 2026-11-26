@@ -11,6 +11,7 @@ export type ExtractedPage = {
   jsonLd: string[];
   firstMainParagraph: string | null;
   scriptCount: number;
+  scriptSrcs: string[];
   h1Count: number;
 };
 
@@ -28,6 +29,9 @@ export function extractPage(): ExtractedPage {
     canonical: document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? null,
     jsonLd: scripts.filter((script) => script.type === "application/ld+json").map((script) => script.textContent ?? ""),
     firstMainParagraph: document.querySelector("main p")?.textContent?.replace(/\s+/g, " ").trim() ?? null,
+    scriptSrcs: scripts
+      .filter((script) => script.type !== "application/ld+json")
+      .map((script) => script.getAttribute("src") ?? "inline"),
     scriptCount: scripts.filter((script) => script.type !== "application/ld+json").length,
     h1Count: document.querySelectorAll("h1").length,
   };
@@ -119,7 +123,11 @@ export function checkPage(page: ExtractedPage, route: SiteRoute, siteUrl: string
     let faq = typed("FAQPage");
     if (faq.length !== 1) issues.push("docs pages need exactly one FAQPage");
     for (let item of faq) issues.push(...issuesOf("FAQPage", faqSchema.safeParse(item)));
-    if (page.scriptCount !== 0) issues.push(`docs pages ship 0 JS, found ${page.scriptCount} script(s)`);
+    let docsScriptsOk =
+      page.scriptSrcs.length === 0 || (page.scriptSrcs.length === 1 && page.scriptSrcs[0] === "/snippet-copy.js");
+    if (!docsScriptsOk) {
+      issues.push(`docs pages may only ship /snippet-copy.js, found ${page.scriptSrcs.join(", ") || "no script src"}`);
+    }
   }
   return issues;
 }

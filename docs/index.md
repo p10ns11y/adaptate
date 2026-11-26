@@ -53,6 +53,7 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 
 - [Transform](transform.md): one Zod schema, and a config that marks which fields each screen requires.
 - [Streaming](streaming.md): check a tool call while the JSON is still arriving.
+- [v3 feeds](v3.md): a `makeFeed` hook on stream steps, with `openPath` and `tailOpen` unchanged.
 - [AG-UI](ag-ui.md): check AG-UI tool-call deltas against each view.
 - [Web streams](web-streams.md): feed a ReadableStream, SSE, or a Node stream into the parser.
 - [OpenAPI](openapi.md): turn an OpenAPI schema into Zod, and write a Zod schema back out.
@@ -62,6 +63,8 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
+- [Accel](accel.md): optional native, WASM, and GPU packages for large buffers.
+- [Runtime verification](verification.md): fail-closed in-memory hooks before any write to disk.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
 - [Development](development.md): install, test, and build this repository.
 

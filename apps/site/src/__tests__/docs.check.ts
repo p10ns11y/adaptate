@@ -137,6 +137,14 @@ describe("docs", () => {
     expect(llmsFull).toContain("Source: JOURNEY.md");
   });
 
+  it("keeps SI wording and omits banned words in the new v3 guides", () => {
+    for (let name of ["v3.md", "accel.md", "verification.md", "index.md", "streaming.md"]) {
+      let markdown = readFileSync(new URL(`docs/${name}`, repositoryRoot), "utf8");
+      expect(markdown, name).not.toMatch(/\b(demo|gate)\b/i);
+      expect(markdown, name).not.toMatch(/(?<![A-Za-z])AI(?![A-Za-z])/);
+    }
+  });
+
   it("has no snippet drift", () => {
 
     let output = execFileSync(process.execPath, ["scripts/snippets.mjs", "--check"], {

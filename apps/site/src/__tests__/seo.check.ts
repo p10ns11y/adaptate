@@ -64,8 +64,13 @@ describe("seo-check rules", () => {
   it("fails a docs page that ships a script or loses its answer", async () => {
     let html = fixture(goodHead).replace(`<p class="answer">${route.answer}</p>`, "<p>Intro</p><script>1</script>");
     let issues = (await issuesFor(html)).join("\n");
-    expect(issues).toMatch(/0 JS/);
+    expect(issues).toMatch(/snippet-copy\.js/);
     expect(issues).toMatch(/answer/);
+  });
+
+  it("allows the shared snippet copy helper on docs pages", async () => {
+    let html = fixture(goodHead).replace("</body>", '<script src="/snippet-copy.js" defer></script></body>');
+    expect(await issuesFor(html)).toEqual([]);
   });
 
   it("accepts only an https origin for SITE_URL", () => {

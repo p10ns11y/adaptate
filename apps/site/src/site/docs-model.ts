@@ -9,8 +9,8 @@ export type NavLink = { label: string; path: string };
 
 let navGroups = [
   { title: "Start", paths: ["/docs/", "/docs/choke-points/", "/docs/transform/", "/docs/openapi/", "/docs/zod/"] },
-  { title: "Streams", paths: ["/docs/streaming/", "/docs/ag-ui/", "/docs/web-streams/", "/docs/effect/"] },
-  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/migration-2-4/", "/docs/development/"] },
+  { title: "Streams", paths: ["/docs/streaming/", "/docs/v3/", "/docs/ag-ui/", "/docs/web-streams/", "/docs/effect/"] },
+  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/accel/", "/docs/verification/", "/docs/migration-2-4/", "/docs/development/"] },
 ];
 
 export function groupNav(links: NavLink[]): Array<{ title: string; links: NavLink[] }> {
