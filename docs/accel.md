@@ -13,23 +13,19 @@ faq:
 
 # Acceleration
 
-Most callers never need this. `@adaptate/core` stays zero-dependency and is the right path for ordinary JS objects, buffers under about 32 KiB, and streaming chunks around 3 µs, where measured JS is already faster.
-
-`@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` are optional Advanced add-ons. They do not change the default install.
+Skip this for ordinary JS objects, buffers under ~32 KiB, and ~3 µs streaming chunks. `@adaptate/core` stays zero-dependency. `@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` are optional Advanced add-ons.
 
 ## When it makes sense
 
-Use an acceleration package when you have at least one of these:
-
-- Large buffers, especially multi-MB in-memory [runtime verification](verification.md) (#84)
-- Batched hash or manifest checks
-- A Rust or WASM host embed that wants the C ABI core
-
-Leave them out when you are parsing small streaming chunks. The incremental JS parser already sits around 3 µs per chunk, with no extra install.
+| Use it | Leave it out |
+| --- | --- |
+| Multi-MB in-memory [runtime verification](verification.md) (#84) | Small streaming chunks (~3 µs JS parser) |
+| Batched hash or manifest checks | Buffers under ~32 KiB |
+| A Rust or WASM host embed of the C ABI core | The default zero-dep install |
 
 ## Native, WASM, and GPU
 
-`@adaptate/accel` probes what the runtime can do and size-routes the work. JavaScript remains the fallback at every step.
+`@adaptate/accel` probes the runtime and size-routes the work. JavaScript is the fallback at every step.
 
 | Path | Package | When it is considered |
 | --- | --- | --- |
@@ -41,14 +37,16 @@ Leave them out when you are parsing small streaming chunks. The incremental JS p
 ```ts
 import { verifyInMemory } from "@adaptate/accel";
 
-const checked = await verifyInMemory(bytes, { sha256: expectedDigest });
+const checked = await verifyInMemory(bytes, {
+  sha256: expectedDigest,
+});
 ```
 
 `verifyInMemory` probes `@adaptate/native` and `@adaptate/wasm` when they are installed, then falls back to JavaScript. A browser can ship `@adaptate/wasm` without the Node-API package. A Node service can use `@adaptate/native` and skip WASM.
 
 ## Measured numbers
 
-These medians come from a real-binary end-to-end run of the Track 2 fixes (SHA-256, 7 runs unless noted). JS here is the `@adaptate/core/verify` / Web Crypto path. No number in this table is mocked.
+Medians from a real-binary Track 2 run (SHA-256, 7 runs unless noted). JS is `@adaptate/core/verify` / Web Crypto. No number is mocked.
 
 | Work | Size | JS median | Cached WASM median | Native median |
 | --- | --- | --- | --- | --- |
@@ -59,12 +57,14 @@ These medians come from a real-binary end-to-end run of the Track 2 fixes (SHA-2
 | verify | 32 KiB | 0.020 ms | 0.103 ms | 0.057 ms |
 | verify | 2 MiB | 1.166 ms | 6.242 ms | 1.740 ms |
 
-WASM bindings themselves have a cold cost: a first hash took 6.394 ms, and a later hash on the cached bindings took 0.104 ms. Digests matched JS on every size above.
+| Note | Result |
+| --- | --- |
+| WASM bindings, cold first hash | 6.394 ms |
+| WASM bindings, later cached hash | 0.104 ms |
+| Digests | Matched JS on every size above |
+| 4 MiB GPU probe | Software renderer only, so GPU stayed unavailable. Native 3.274 ms (3 runs), JS 2.391 ms. Native batch of the same payload: 3.080 ms. |
+| UTF-8 scan | `café — こんにちは` and `ä` buffers at 1 KiB, 32 KiB, and 2 MiB: JS, WASM, and native agreed. |
 
-A 4 MiB in-memory verify was probed for GPU. The host exposed only a software renderer, so the hardware-only probe left GPU unavailable and the work fell back to native (3.274 ms median over 3 runs; JS was 2.391 ms). A native batch of the same payload was 3.080 ms median.
+These tables are one host. The [live benchmark](#live-benchmark) on this page runs the same JS vs WASM hash in your browser, with a digest check.
 
-UTF-8 scanning was checked on `café — こんにちは` and on 1 KiB, 32 KiB, and 2 MiB buffers filled with `ä`. JS, WASM, and native all agreed.
-
-The tables above are one host. The [live benchmark](#live-benchmark) on this page runs the same JS vs WASM hash in your browser, with a digest check, so you can see the difference on the machine in front of you.
-
-Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [runtime verification](verification.md) when a buffer must be checked before anything is stored. Full citation for the front-page claims stays in [Proof](proof.md).
+Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [runtime verification](verification.md) when a buffer must be checked before anything is stored. Citations: [Proof](proof.md).
