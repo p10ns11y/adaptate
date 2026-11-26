@@ -6,21 +6,16 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/adaptate"><img alt="npm adaptate" src="https://img.shields.io/npm/v/adaptate?label=adaptate&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9ImFkYXB0YXRlIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI3IiBmaWxsPSIjMEEwRDEyIi8%2BPHBhdGggZD0iTTcuNyAyMy40QzkuMiAyMS4xNSAxMy4yIDExLjUgMTQuMyA3LjA1IiBmaWxsPSJub25lIiBzdHJva2U9IiNDNEM2QzUiIHN0cm9rZS13aWR0aD0iMy44NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8%2BPHBhdGggZD0iTTI0LjMgMjMuNEMyMi44IDIxLjE1IDE4LjggMTEuNSAxNy43IDcuMDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0M0QzZDNSIgc3Ryb2tlLXdpZHRoPSIzLjg1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjIzLjciIHI9IjIuNjUiIGZpbGw9IiNEMTkwNTciLz48L3N2Zz4%3D&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="npm @adaptate/core" src="https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9ImFkYXB0YXRlIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI3IiBmaWxsPSIjMEEwRDEyIi8%2BPHBhdGggZD0iTTcuNyAyMy40QzkuMiAyMS4xNSAxMy4yIDExLjUgMTQuMyA3LjA1IiBmaWxsPSJub25lIiBzdHJva2U9IiNDNEM2QzUiIHN0cm9rZS13aWR0aD0iMy44NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8%2BPHBhdGggZD0iTTI0LjMgMjMuNEMyMi44IDIxLjE1IDE4LjggMTEuNSAxNy43IDcuMDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0M0QzZDNSIgc3Ryb2tlLXdpZHRoPSIzLjg1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjIzLjciIHI9IjIuNjUiIGZpbGw9IiNEMTkwNTciLz48L3N2Zz4%3D&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/utils"><img alt="npm @adaptate/utils" src="https://img.shields.io/npm/v/@adaptate/utils?label=%40adaptate%2Futils&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9ImFkYXB0YXRlIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI3IiBmaWxsPSIjMEEwRDEyIi8%2BPHBhdGggZD0iTTcuNyAyMy40QzkuMiAyMS4xNSAxMy4yIDExLjUgMTQuMyA3LjA1IiBmaWxsPSJub25lIiBzdHJva2U9IiNDNEM2QzUiIHN0cm9rZS13aWR0aD0iMy44NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8%2BPHBhdGggZD0iTTI0LjMgMjMuNEMyMi44IDIxLjE1IDE4LjggMTEuNSAxNy43IDcuMDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0M0QzZDNSIgc3Ryb2tlLXdpZHRoPSIzLjg1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjIzLjciIHI9IjIuNjUiIGZpbGw9IiNEMTkwNTciLz48L3N2Zz4%3D&color=cb3837"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="downloads per month" src="https://img.shields.io/npm/dm/@adaptate/core?logo=npm&label=downloads%2Fmonth"></a>
-  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="types included" src="https://img.shields.io/npm/types/@adaptate/core"></a>
-  <a href="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/p10ns11y/adaptate/ci.yml?branch=main&logo=github&label=CI"></a>
+  <a href="https://www.npmjs.com/package/adaptate"><img alt="npm adaptate" src="https://img.shields.io/npm/v/adaptate?label=adaptate&amp;logo=npm&amp;color=cb3837"></a>
+  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="npm @adaptate/core" src="https://img.shields.io/npm/v/@adaptate/core?label=%40adaptate%2Fcore&amp;logo=npm&amp;color=cb3837"></a>
+  <a href="https://www.npmjs.com/package/@adaptate/utils"><img alt="npm @adaptate/utils" src="https://img.shields.io/npm/v/@adaptate/utils?label=%40adaptate%2Futils&amp;logo=npm&amp;color=cb3837"></a>
+  <a href="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/p10ns11y/adaptate/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="./coverage"><img alt="coverage" src="./coverage-badge.svg"></a>
   <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/@adaptate/core?color=blue"></a>
-  <a href="./tsconfig.json"><img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white"></a>
-  <a href="https://nodejs.org"><img alt="Node.js version" src="https://img.shields.io/node/v/@adaptate/core?logo=node.js&logoColor=white"></a>
-  <a href="https://zod.dev"><img alt="zod peer" src="https://img.shields.io/badge/zod-%5E3.25.0%20%7C%7C%20%5E4.0.0-3b82f6?logo=zod&logoColor=white"></a>
-  <a href="https://github.com/p10ns11y/adaptate/commits/main"><img alt="last commit" src="https://img.shields.io/github/last-commit/p10ns11y/adaptate?logo=github"></a>
-  <a href="https://github.com/p10ns11y/adaptate/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/p10ns11y/adaptate?logo=github"></a>
-  <a href="https://github.com/p10ns11y/adaptate"><img alt="GitHub stars" src="https://img.shields.io/github/stars/p10ns11y/adaptate?style=flat&logo=github"></a>
-  <a href="./.devcontainer/README.md"><img alt="dev container" src="https://img.shields.io/badge/dev%20container-ready-2496ED?logo=docker&logoColor=white"></a>
+  <a href="https://www.npmjs.com/package/@adaptate/core"><img alt="types included" src="https://img.shields.io/npm/types/@adaptate/core"></a>
+  <a href="./tsconfig.json"><img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&amp;logoColor=white"></a>
+  <a href="https://nodejs.org"><img alt="Node.js version" src="https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen?logo=node.js&amp;logoColor=white"></a>
+  <a href="https://zod.dev"><img alt="zod peer" src="https://img.shields.io/badge/zod-%5E3.25.0%20%7C%7C%20%5E4.0.0-3b82f6?logo=zod&amp;logoColor=white"></a>
 </p>
 
 <h3 align="center">Typed, validated data from any schema or stream, safely.</h3>
