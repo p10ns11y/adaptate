@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/accel",
-  "version": "2.4.2",
+  "version": "3.0.0",
   "description": "Optional acceleration router with a pure JavaScript streaming scanner and in-memory manifest verifier",
   "author": {
     "name": "Peramanathan Sathyamoorthy",

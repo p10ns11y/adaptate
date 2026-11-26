@@ -5,7 +5,7 @@ import { defaultSiteUrl, resolveSiteUrl } from "../site/config";
 import { renderHead } from "../site/head";
 import { renderFooter, renderHeader } from "../site/header";
 import { guideRoute } from "../site/docs-model";
-import { checkPage, extractPage } from "../site/seo-rules";
+import { allowedDocsScript, checkPage, extractPage } from "../site/seo-rules";
 
 let route = guideRoute("docs/zod.md", {
   title: "Zod",
@@ -64,8 +64,23 @@ describe("seo-check rules", () => {
   it("fails a docs page that ships a script or loses its answer", async () => {
     let html = fixture(goodHead).replace(`<p class="answer">${route.answer}</p>`, "<p>Intro</p><script>1</script>");
     let issues = (await issuesFor(html)).join("\n");
-    expect(issues).toMatch(/0 JS/);
+    expect(issues).toMatch(/snippet-copy\.js/);
     expect(issues).toMatch(/answer/);
+  });
+
+  it("allows the shared snippet copy helper on docs pages", async () => {
+    let html = fixture(goodHead).replace("</body>", '<script src="/snippet-copy.js" defer></script></body>');
+    expect(await issuesFor(html)).toEqual([]);
+  });
+
+  it("allows the live benchmark script only on the acceleration page", async () => {
+    let html = fixture(goodHead).replace(
+      "</body>",
+      '<script src="/snippet-copy.js" defer></script><script type="module" src="/assets/live-benchmark-test.js"></script></body>',
+    );
+    expect((await issuesFor(html)).join("\n")).toMatch(/snippet-copy\.js/);
+    expect(allowedDocsScript("/docs/accel/", "/assets/live-benchmark-CHyM3o7G.js")).toBe(true);
+    expect(allowedDocsScript("/docs/zod/", "/assets/live-benchmark-CHyM3o7G.js")).toBe(false);
   });
 
   it("accepts only an https origin for SITE_URL", () => {

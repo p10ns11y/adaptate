@@ -11,12 +11,13 @@ let budgets = {
   loadJs: 80 * kilobyte,
   workerJs: 70 * kilobyte,
   fireJs: 6 * kilobyte,
-  docsJs: 0,
+  docsJs: 2 * kilobyte,
+  liveBenchmarkJs: 30 * kilobyte,
   cssTotal: 12 * kilobyte,
   ogImage: 120 * kilobyte,
   clip: 2 * kilobyte * kilobyte,
 };
-let buildOnly = [/\/node_modules\/(\.pnpm\/)?effect[@/]/, /\/node_modules\/(\.pnpm\/)?marked[@/]/, /\/node_modules\/(\.pnpm\/)?mermaid[@/]/, /\/node_modules\/(\.pnpm\/)?playwright/];
+let buildOnly = [/\/node_modules\/(\.pnpm\/)?effect[@/]/, /\/node_modules\/(\.pnpm\/)?marked[@/]/, /\/node_modules\/(\.pnpm\/)?mermaid[@/]/, /\/node_modules\/(\.pnpm\/)?playwright/, /\/node_modules\/(\.pnpm\/)?(shiki|@shikijs)[@/]/];
 let failures = [];
 let report = [];
 
@@ -136,8 +137,34 @@ for (let worker of files.filter((path) => /worker[^/]*\.js$/.test(path))) {
 }
 
 let docsPages = files.filter((path) => path.startsWith(join(distDirectory, "docs")) && path.endsWith(".html"));
-let docsWithScripts = docsPages.filter((path) => pageScripts(path).length > 0);
-measure(`/docs/** JS across ${docsPages.length} pages`, docsWithScripts.reduce((sum, path) => sum + scriptBytes(path), 0), budgets.docsJs);
+let liveBenchmarkMetaPath = join(siteDirectory, ".site-meta/live-benchmark.json");
+let liveBenchmarkFile = existsSync(liveBenchmarkMetaPath)
+  ? `/${JSON.parse(readFileSync(liveBenchmarkMetaPath, "utf8")).fileName.replace(/^\//, "")}`
+  : "";
+if (!liveBenchmarkFile) failures.push(".site-meta/live-benchmark.json is missing; run the site build");
+let accelPage = join(distDirectory, "docs/accel/index.html");
+for (let path of docsPages) {
+  let sources = pageScripts(path);
+  if (sources.includes("inline")) failures.push(`${relative(distDirectory, path)} ships inline JS`);
+  let allowed = new Set(["/snippet-copy.js"]);
+  if (path === accelPage && liveBenchmarkFile) allowed.add(liveBenchmarkFile);
+  let unexpected = sources.filter((source) => !allowed.has(source));
+  if (unexpected.length > 0) failures.push(`${relative(distDirectory, path)} ships unexpected JS: ${unexpected.join(", ")}`);
+}
+if (liveBenchmarkFile && existsSync(accelPage) && !pageScripts(accelPage).includes(liveBenchmarkFile)) {
+  failures.push("/docs/accel/ is missing the live benchmark script");
+}
+let docsSharedScripts = [...new Set(docsPages.flatMap((path) => pageScripts(path).filter((source) => source === "/snippet-copy.js")))];
+let docsJsBytes = docsSharedScripts.reduce((sum, source) => sum + gzipSize(join(distDirectory, source.replace(/^\//, ""))), 0);
+measure(`unique shared docs JS (${docsSharedScripts.length || "none"} file) across ${docsPages.length} pages`, docsJsBytes, budgets.docsJs);
+if (liveBenchmarkFile) {
+  let liveBenchmarkPath = join(distDirectory, liveBenchmarkFile.replace(/^\//, ""));
+  measure(`live benchmark JS (gzip)`, gzipSize(liveBenchmarkPath), budgets.liveBenchmarkJs);
+  let liveBenchmarkSource = readFileSync(liveBenchmarkPath, "utf8");
+  if (liveBenchmarkSource.includes("node:fs") || liveBenchmarkSource.includes("node:path") || liveBenchmarkSource.includes("node:url")) {
+    failures.push("live benchmark bundle leaks a node: builtin");
+  }
+}
 
 measure("CSS total (gzip)", files.filter((path) => path.endsWith(".css")).reduce((sum, path) => sum + gzipSize(path), 0), budgets.cssTotal);
 
@@ -158,7 +185,7 @@ if (!existsSync(modulesPath)) {
       if (buildOnly.some((pattern) => pattern.test(id.replaceAll("\\", "/")))) failures.push(`${chunk} ships build-only module ${id}`);
     }
   }
-  report.push(`build-only deps (effect, marked, mermaid, playwright): 0 bytes in ${Object.keys(modules).length} chunk(s)`);
+  report.push(`build-only deps (effect, marked, mermaid, playwright, shiki): 0 bytes in ${Object.keys(modules).length} chunk(s)`);
   let fireChunk = Object.keys(modules).find((chunk) => modules[chunk].some((id) => id.endsWith("/hero-fire-gl.ts")));
   if (!fireChunk) failures.push("the hero WebGL code is not in its own chunk");
   else {

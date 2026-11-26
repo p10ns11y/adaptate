@@ -6,7 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 3.0.0 — 2026-11-26 — makeFeed hook, runtime verify, optional acceleration
+
 ### Added
+- `fromAsyncIterableSteps` and `parseStream` accept an optional `makeFeed` factory. The default tracked feed is unchanged, and `openPath` / `tailOpen` stay on the step.
+- `@adaptate/core/verify`: fail-closed in-memory `hashBuffer`, `verifyBuffer`, and `verifyStream` hooks for issue 84. This is a new subpath of zero-dependency `@adaptate/core`.
+- Optional Advanced packages `@adaptate/accel`, `@adaptate/wasm`, and `@adaptate/native`, plus the Rust `adaptate-accel` core they wrap. They are not part of the default install.
+- Site docs: build-time Shiki highlighting, v3 guides, an Advanced nav group for acceleration and runtime verification, and a browser live benchmark of `@adaptate/core/verify` against `@adaptate/wasm`.
 - `fromAsyncIterableSteps` and `parseStream` steps carry `openPath` (keys from the root to the deepest open value) and `tailOpen` (that value is a cut-off string, number or keyword). A value off `openPath` is final unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win). A complete document has `openPath: []` and `tailOpen: false`.
 - `isSettled(step, path)` from `@adaptate/core/stream-incremental` and `@adaptate/core/result`, and the `JsonPath` type. It is `true` for any present path on a complete (or `done` and ok) step, and `false` for a path that has not arrived. Array steps take integer index keys only, so `isSettled(step, ["tags", "length"])` is `false`. A partial step whose partial schema fails has no `result.value`, so no path on it is settled.
 - `isResult(value)` from `@adaptate/core/result`. `ok` and `err` carry a non-enumerable `Symbol.for("adaptate.result")` brand, so a plain `{ ok: true, value }` is not a `Result`.

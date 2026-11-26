@@ -1,6 +1,6 @@
 {
   "name": "@adaptate/native",
-  "version": "2.4.2",
+  "version": "3.0.0",
   "description": "Optional Node-API wrapper for non-blocking hashing, batch manifest checks, and streaming UTF-8 JSON",
   "author": {
     "name": "Peramanathan Sathyamoorthy",

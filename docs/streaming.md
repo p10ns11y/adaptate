@@ -15,16 +15,34 @@ faq:
 
 `@adaptate/core/stream` checks a partial document against each named config while text is still arriving. `zod` is the only peer.
 
-`parsePartialJson(text)` closes open strings, objects, and arrays, then `JSON.parse`s the longest prefix that parses. It returns `undefined` when nothing parses.
+```mermaid
+flowchart LR
+  Chunk["chunk"] --> PartialJson["parsePartialJson"]
+  PartialJson --> Partial["partial(value)"]
+  Value["complete value"] --> Final["final(value)"]
+  Final --> Report["valid and errors per config"]
+```
 
-`createStreamValidator(schema, configs)` builds the schemas it can at creation:
+`parsePartialJson(text)` closes open strings, objects, and arrays, then parses the longest prefix. It returns `undefined` when nothing parses.
 
-- `partial(value)` checks the value with one lenient schema cached on the base schema object (`WeakMap`). The cache is filled on the first partial check, not when the validator is constructed, so a strict schema built from the same fields is left alone. Building that lenient schema does not parse the source object or array. Absent fields stay optional. Present fields are still type-checked. Every named config receives that same check. Editing a config does not change `partial`, because a missing field stays optional for every config.
-- `final(value)` runs `transformSchema(schema, config).safeParse(value)` for every named config and returns `{ valid, errors }` per name. This `final` takes a value, not text. Those transformed schemas are built when the validator is created and then reused. The lenient partial schema is cached on the base schema object with a `WeakMap`, so it is collected with that schema. Config objects are read at creation: editing one afterward leaves the schema that was already built. A config that cannot be transformed fails inside `final`, not while the validator is constructed. `transformSchema` itself still builds a schema on every direct call.
+`createStreamValidator(schema, configs)`:
 
-`validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
+| Method | What it checks | Cache |
+| --- | --- | --- |
+| `partial(value)` | Present fields only. Absent fields stay optional. Every named config gets the same check. | Lenient schema on a `WeakMap` of the base schema, filled on first call. |
+| `final(value)` | `transformSchema(schema, config).safeParse(value)` per name, returns `{ valid, errors }`. Takes a value, not text. | Transformed schemas built at creation. Later config edits do not change them. A config that cannot be transformed fails inside `final`. |
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
+`validateStructuredOutput({ partial, final }, schema, configs)` runs those methods when the field is not `null`.
+
+`createAgUiPartialValidator(schema, configs)` returns a push function:
+
+| Event | Buffer key | Action |
+| --- | --- | --- |
+| `TOOL_CALL_ARGS` | `toolCallId` | Append `delta`, parse, then `partial`. |
+| `TEXT_MESSAGE_CONTENT` | `messageId` | Same. |
+| `TOOL_CALL_END`, `TEXT_MESSAGE_END`, or `push.close(id)` | that id | Drop the buffer. |
+
+A chunk that does not parse returns `undefined`. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
 
 ```ts
 import { z } from "zod";
@@ -44,4 +62,6 @@ push({
 });
 ```
 
-Streams partial JSON without re-reading what it already saw. The run metadata and the per-chunk numbers are in [Performance](performance.md#measured).
+Streams partial JSON without re-reading what it already saw. Numbers: [Performance](performance.md#measured).
+
+In v3, pass `makeFeed` to `fromAsyncIterableSteps` or `parseStream`. Runnable example: [v3 feeds](v3.md).
