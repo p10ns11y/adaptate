@@ -12,6 +12,7 @@ let types = {
   ".txt": "text/plain; charset=utf-8",
   ".xml": "application/xml; charset=utf-8",
   ".json": "application/json",
+  ".wasm": "application/wasm",
 };
 
 let vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));

@@ -316,6 +316,14 @@ Bad or truncated JSON fails with `AdaptateParseError`. A value that fails the ba
 
 </details>
 
+## A custom feed, and in-memory checks
+
+v3 adds `makeFeed` to `fromAsyncIterableSteps` and `parseStream`, so a stream can use a custom tracked feed without rewriting the parser. `@adaptate/core/verify` adds fail-closed in-memory hash and manifest checks (issue 84). Both stay in zero-dependency `@adaptate/core`. [v3 feeds](docs/v3.md) · [Runtime verification](docs/verification.md)
+
+## Advanced: optional acceleration
+
+Most work should stay on `@adaptate/core`. Add `@adaptate/accel`, `@adaptate/wasm`, or `@adaptate/native` only for large buffers, multi-MB verification, or a Rust/WASM host embed. Small streaming chunks (~3 µs) are already faster in pure JS, with no extra install. [Acceleration](docs/accel.md)
+
 ## Types, TypeScript 7, and Zod 3 or 4
 
 - Types ship in both packages, inferred from the Zod schema you pass in. [TypeScript](docs/typescript.md)
@@ -348,6 +356,8 @@ Full tables, including where adaptate is slower than raw Zod: [Performance](docs
 | --- | --- |
 | Every guide | [Docs](docs/index.md) |
 | Where to put a Result | [Find your choke points](docs/choke-points.md) |
+| A custom stream feed or in-memory check | [v3 feeds](docs/v3.md) · [Runtime verification](docs/verification.md) |
+| Large-buffer acceleration | [Acceleration](docs/accel.md) |
 | Each claim on this page and its test | [Proof](docs/proof.md) |
 | The generated API reference | [API](docs/api/index.md) |
 | Runnable apps | [React view](examples/react-view) · [Streaming tool call](examples/streaming-tool-call) · [Live load](examples/live-load) |

@@ -48,11 +48,17 @@ function sitePages(): Plugin {
     },
     generateBundle(_options, bundle) {
       let modules: Record<string, string[]> = {};
+      let liveBenchmark = "";
       for (let [fileName, output] of Object.entries(bundle)) {
-        if (output.type === "chunk") modules[fileName] = Object.keys(output.modules);
+        if (output.type === "chunk") {
+          modules[fileName] = Object.keys(output.modules);
+          if (output.name === "live-benchmark" && output.isEntry) liveBenchmark = fileName;
+        }
       }
       mkdirSync(metaDirectory, { recursive: true });
       writeFileSync(join(metaDirectory, "modules.json"), `${JSON.stringify(modules, null, 2)}\n`);
+      if (!liveBenchmark) throw new Error("live-benchmark entry was not emitted");
+      writeFileSync(join(metaDirectory, "live-benchmark.json"), `${JSON.stringify({ fileName: liveBenchmark }, null, 2)}\n`);
     },
   };
 }
@@ -67,7 +73,14 @@ export default defineConfig({
       input: {
         main: join(siteDirectory, "index.html"),
         load: join(siteDirectory, "load/index.html"),
+        "live-benchmark": join(siteDirectory, "src/bench/live-benchmark.ts"),
       },
+    },
+  },
+  resolve: {
+    alias: {
+      "@adaptate/wasm/runtime": resolve(repositoryRoot, "packages/wasm/src/runtime.ts"),
+      "@adaptate/core/verify": resolve(repositoryRoot, "packages/core/src/verify.ts"),
     },
   },
 });

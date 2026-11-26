@@ -45,3 +45,5 @@ push({
 ```
 
 Streams partial JSON without re-reading what it already saw. The run metadata and the per-chunk numbers are in [Performance](performance.md#measured).
+
+In v3, `fromAsyncIterableSteps` and `parseStream` accept an optional `makeFeed` hook. [v3 feeds](v3.md).

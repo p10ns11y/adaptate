@@ -1,7 +1,7 @@
 ---
 title: "Optional peers"
-description: "effect, js-yaml, and the ref parser load only when that code is imported."
-answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers. Each loads only when the code that needs it is imported or called. zod is the only required peer."
+description: "effect, js-yaml, and the ref parser load only when that code is imported. Acceleration packages are separate optional installs."
+answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers and load only when that code is imported. zod is the only required peer. @adaptate/accel, @adaptate/wasm, and @adaptate/native are separate optional packages, not core peers, and they leave the default install zero-dep."
 faq:
   - question: "Do I need js-yaml for JSON specs?"
     answer: "No. js-yaml loads only while parsing YAML."
