@@ -1631,6 +1631,7 @@ description: "Exported from @adaptate/core."
 - [standard](standard/index.md)
 - [stream](stream/index.md)
 - [stream-incremental](stream-incremental/index.md)
+- [verify](verify/index.md)
 
 
 # Function: makeConditionalSchemaTransformer()
@@ -2090,7 +2091,7 @@ description: "Exported from @adaptate/core/result."
 
 # Function: parseStream()
 
-> **parseStream**\<`T`, `P`\>(`source`, `schema`, `partialSchema?`): `AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
+> **parseStream**\<`T`, `P`\>(`source`, `schema`, `partialSchema?`, `makeFeed?`): `AsyncGenerator`\<[`StreamStep`](../type-aliases/StreamStep.md)\<`T`, `P`\>\>
 
 ## Type Parameters
 
@@ -2115,6 +2116,10 @@ description: "Exported from @adaptate/core/result."
 ### partialSchema?
 
 [`StandardSchemaV1`](../../standard/interfaces/StandardSchemaV1.md)\<`unknown`, `P`\>
+
+### makeFeed?
+
+() => [`TrackedFeed`](../../stream-incremental/type-aliases/TrackedFeed.md)
 
 ## Returns
 
@@ -2164,6 +2169,12 @@ Re-exports [isSettled](../stream-incremental/functions/isSettled.md)
 ### JsonPath
 
 Re-exports [JsonPath](../stream-incremental/type-aliases/JsonPath.md)
+
+***
+
+### TrackedFeed
+
+Re-exports [TrackedFeed](../stream-incremental/type-aliases/TrackedFeed.md)
 
 
 # Interface: Err\<E, T\>
@@ -3034,6 +3045,24 @@ description: "Exported from @adaptate/core/stream-incremental."
 [`PartialJsonFeed`](../type-aliases/PartialJsonFeed.md)
 
 
+# Function: createTrackedFeed()
+
+Source: docs/api/core/stream-incremental/functions/createTrackedFeed.md
+
+---
+title: "Function: createTrackedFeed()"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Function: createTrackedFeed()
+
+> **createTrackedFeed**(): [`TrackedFeed`](../type-aliases/TrackedFeed.md)
+
+## Returns
+
+[`TrackedFeed`](../type-aliases/TrackedFeed.md)
+
+
 # Function: fromAsyncIterable()
 
 Source: docs/api/core/stream-incremental/functions/fromAsyncIterable.md
@@ -3069,13 +3098,17 @@ description: "Exported from @adaptate/core/stream-incremental."
 
 # Function: fromAsyncIterableSteps()
 
-> **fromAsyncIterableSteps**(`source`): `AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
+> **fromAsyncIterableSteps**(`source`, `makeFeed?`): `AsyncGenerator`\<[`TrackedStep`](../type-aliases/TrackedStep.md)\>
 
 ## Parameters
 
 ### source
 
 `AsyncIterable`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
+
+### makeFeed?
+
+() => [`TrackedFeed`](../type-aliases/TrackedFeed.md)
 
 ## Returns
 
@@ -3133,12 +3166,14 @@ description: "Exported from @adaptate/core/stream-incremental."
 - [JsonPath](type-aliases/JsonPath.md)
 - [JsonStreamStep](type-aliases/JsonStreamStep.md)
 - [PartialJsonFeed](type-aliases/PartialJsonFeed.md)
+- [TrackedFeed](type-aliases/TrackedFeed.md)
 - [TrackedStep](type-aliases/TrackedStep.md)
 
 ## Functions
 
 - [createAgUiPartialValidator](functions/createAgUiPartialValidator.md)
 - [createPartialJsonFeed](functions/createPartialJsonFeed.md)
+- [createTrackedFeed](functions/createTrackedFeed.md)
 - [fromAsyncIterable](functions/fromAsyncIterable.md)
 - [fromAsyncIterableSteps](functions/fromAsyncIterableSteps.md)
 - [isSettled](functions/isSettled.md)
@@ -3223,6 +3258,66 @@ description: "Exported from @adaptate/core/stream-incremental."
 ## Returns
 
 `unknown`
+
+
+# Type Alias: TrackedFeed
+
+Source: docs/api/core/stream-incremental/type-aliases/TrackedFeed.md
+
+---
+title: "Type Alias: TrackedFeed"
+description: "Exported from @adaptate/core/stream-incremental."
+---
+
+# Type Alias: TrackedFeed
+
+> **TrackedFeed** = `object`
+
+## Properties
+
+### complete
+
+> `readonly` **complete**: () => `boolean`
+
+#### Returns
+
+`boolean`
+
+***
+
+### ended
+
+> `readonly` **ended**: () => `boolean`
+
+#### Returns
+
+`boolean`
+
+***
+
+### openPath
+
+> `readonly` **openPath**: () => [`JsonPath`](JsonPath.md)
+
+#### Returns
+
+[`JsonPath`](JsonPath.md)
+
+***
+
+### push
+
+> `readonly` **push**: [`PartialJsonFeed`](PartialJsonFeed.md)
+
+***
+
+### tailOpen
+
+> `readonly` **tailOpen**: () => `boolean`
+
+#### Returns
+
+`boolean`
 
 
 # Type Alias: TrackedStep
@@ -3633,6 +3728,408 @@ description: "Exported from @adaptate/core/stream."
 `unknown`
 
 
+# Function: hashBuffer()
+
+Source: docs/api/core/verify/functions/hashBuffer.md
+
+---
+title: "Function: hashBuffer()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: hashBuffer()
+
+> **hashBuffer**(`bytes`, `algorithm?`): `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`string`\>\>
+
+## Parameters
+
+### bytes
+
+`Uint8Array`
+
+### algorithm?
+
+[`HashAlgorithm`](../type-aliases/HashAlgorithm.md)
+
+## Returns
+
+`Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`string`\>\>
+
+
+# Function: hexFromBytes()
+
+Source: docs/api/core/verify/functions/hexFromBytes.md
+
+---
+title: "Function: hexFromBytes()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: hexFromBytes()
+
+> **hexFromBytes**(`bytes`): `string`
+
+## Parameters
+
+### bytes
+
+`Uint8Array`
+
+## Returns
+
+`string`
+
+
+# Function: normalizeHex()
+
+Source: docs/api/core/verify/functions/normalizeHex.md
+
+---
+title: "Function: normalizeHex()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: normalizeHex()
+
+> **normalizeHex**(`value`): `string`
+
+## Parameters
+
+### value
+
+`string`
+
+## Returns
+
+`string`
+
+
+# Function: verifiersFrom()
+
+Source: docs/api/core/verify/functions/verifiersFrom.md
+
+---
+title: "Function: verifiersFrom()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: verifiersFrom()
+
+> **verifiersFrom**(`manifest`): [`Verifier`](../interfaces/Verifier.md)[]
+
+## Parameters
+
+### manifest
+
+[`VerifyManifest`](../interfaces/VerifyManifest.md)
+
+## Returns
+
+[`Verifier`](../interfaces/Verifier.md)[]
+
+
+# Function: verifyBuffer()
+
+Source: docs/api/core/verify/functions/verifyBuffer.md
+
+---
+title: "Function: verifyBuffer()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: verifyBuffer()
+
+> **verifyBuffer**(`bytes`, `manifestOrVerifiers`, `context?`): `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+## Parameters
+
+### bytes
+
+`Uint8Array`
+
+### manifestOrVerifiers
+
+[`VerifyManifest`](../interfaces/VerifyManifest.md) \| readonly [`Verifier`](../interfaces/Verifier.md)[]
+
+### context?
+
+`Omit`\<[`VerifyContext`](../interfaces/VerifyContext.md), `"bytes"`\>
+
+## Returns
+
+`Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+
+# Function: verifyStream()
+
+Source: docs/api/core/verify/functions/verifyStream.md
+
+---
+title: "Function: verifyStream()"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Function: verifyStream()
+
+> **verifyStream**(`source`, `manifestOrVerifiers`, `context?`): `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+## Parameters
+
+### source
+
+`AsyncIterable`\<`Uint8Array`\<`ArrayBufferLike`\>\>
+
+### manifestOrVerifiers
+
+[`VerifyManifest`](../interfaces/VerifyManifest.md) \| readonly [`Verifier`](../interfaces/Verifier.md)[]
+
+### context?
+
+`Omit`\<[`VerifyContext`](../interfaces/VerifyContext.md), `"bytes"`\>
+
+## Returns
+
+`Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+
+# verify
+
+Source: docs/api/core/verify/index.md
+
+---
+title: "verify"
+description: "Exported from @adaptate/core/verify."
+---
+
+# verify
+
+## Interfaces
+
+- [Verifier](interfaces/Verifier.md)
+- [VerifyContext](interfaces/VerifyContext.md)
+- [VerifyFailure](interfaces/VerifyFailure.md)
+- [VerifyManifest](interfaces/VerifyManifest.md)
+
+## Type Aliases
+
+- [HashAlgorithm](type-aliases/HashAlgorithm.md)
+- [VerifyCheck](type-aliases/VerifyCheck.md)
+- [VerifyResult](type-aliases/VerifyResult.md)
+
+## Functions
+
+- [hashBuffer](functions/hashBuffer.md)
+- [hexFromBytes](functions/hexFromBytes.md)
+- [normalizeHex](functions/normalizeHex.md)
+- [verifiersFrom](functions/verifiersFrom.md)
+- [verifyBuffer](functions/verifyBuffer.md)
+- [verifyStream](functions/verifyStream.md)
+
+
+# Interface: Verifier
+
+Source: docs/api/core/verify/interfaces/Verifier.md
+
+---
+title: "Interface: Verifier"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Interface: Verifier
+
+## Properties
+
+### check
+
+> `readonly` **check**: [`VerifyCheck`](../type-aliases/VerifyCheck.md)
+
+## Methods
+
+### verify()
+
+> **verify**(`context`): [`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\> \| `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+#### Parameters
+
+##### context
+
+[`VerifyContext`](VerifyContext.md)
+
+#### Returns
+
+[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\> \| `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>
+
+
+# Interface: VerifyContext
+
+Source: docs/api/core/verify/interfaces/VerifyContext.md
+
+---
+title: "Interface: VerifyContext"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Interface: VerifyContext
+
+## Properties
+
+### bytes
+
+> `readonly` **bytes**: `Uint8Array`
+
+***
+
+### mime?
+
+> `readonly` `optional` **mime?**: `string`
+
+***
+
+### name?
+
+> `readonly` `optional` **name?**: `string`
+
+
+# Interface: VerifyFailure
+
+Source: docs/api/core/verify/interfaces/VerifyFailure.md
+
+---
+title: "Interface: VerifyFailure"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Interface: VerifyFailure
+
+## Properties
+
+### actual?
+
+> `readonly` `optional` **actual?**: `unknown`
+
+***
+
+### check
+
+> `readonly` **check**: [`VerifyCheck`](../type-aliases/VerifyCheck.md)
+
+***
+
+### expected?
+
+> `readonly` `optional` **expected?**: `unknown`
+
+***
+
+### message
+
+> `readonly` **message**: `string`
+
+
+# Interface: VerifyManifest
+
+Source: docs/api/core/verify/interfaces/VerifyManifest.md
+
+---
+title: "Interface: VerifyManifest"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Interface: VerifyManifest
+
+## Properties
+
+### custom?
+
+> `readonly` `optional` **custom?**: readonly [`Verifier`](Verifier.md)[]
+
+***
+
+### formal?
+
+> `readonly` `optional` **formal?**: [`Verifier`](Verifier.md) \| ((`context`) => [`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\> \| `Promise`\<[`VerifyResult`](../type-aliases/VerifyResult.md)\<`Uint8Array`\<`ArrayBufferLike`\>\>\>)
+
+***
+
+### hash?
+
+> `readonly` `optional` **hash?**: `object`
+
+#### algorithm?
+
+> `readonly` `optional` **algorithm?**: [`HashAlgorithm`](../type-aliases/HashAlgorithm.md)
+
+#### value
+
+> `readonly` **value**: `string`
+
+***
+
+### mime?
+
+> `readonly` `optional` **mime?**: `string`
+
+***
+
+### name?
+
+> `readonly` `optional` **name?**: `string`
+
+***
+
+### size?
+
+> `readonly` `optional` **size?**: `number`
+
+
+# Type Alias: HashAlgorithm
+
+Source: docs/api/core/verify/type-aliases/HashAlgorithm.md
+
+---
+title: "Type Alias: HashAlgorithm"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Type Alias: HashAlgorithm
+
+> **HashAlgorithm** = `"SHA-256"` \| `"SHA-384"` \| `"SHA-512"`
+
+
+# Type Alias: VerifyCheck
+
+Source: docs/api/core/verify/type-aliases/VerifyCheck.md
+
+---
+title: "Type Alias: VerifyCheck"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Type Alias: VerifyCheck
+
+> **VerifyCheck** = `"hash"` \| `"size"` \| `"mime"` \| `"name"` \| `"formal"` \| `"custom"`
+
+
+# Type Alias: VerifyResult\<T\>
+
+Source: docs/api/core/verify/type-aliases/VerifyResult.md
+
+---
+title: "Type Alias: VerifyResult\\<T\\>"
+description: "Exported from @adaptate/core/verify."
+---
+
+# Type Alias: VerifyResult\<T\>
+
+> **VerifyResult**\<`T`\> = \{ `ok`: `true`; `value`: `T`; \} \| \{ `failures`: readonly [`VerifyFailure`](../interfaces/VerifyFailure.md)[]; `ok`: `false`; \}
+
+## Type Parameters
+
+### T
+
+`T` = `Uint8Array`
+
+
 # API
 
 Source: docs/api/index.md
@@ -3684,12 +4181,14 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createTrackedFeed()](core/stream-incremental/functions/createTrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
 - [Function: isSettled()](core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
 - [Type Alias: JsonPath](core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: TrackedFeed](core/stream-incremental/type-aliases/TrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: TrackedStep](core/stream-incremental/type-aliases/TrackedStep.md): A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
 - [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
@@ -3700,6 +4199,19 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: validateStructuredOutput()](core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
 - [Type Alias: PartialJsonFeed](core/stream/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream.
+- [Function: hashBuffer()](core/verify/functions/hashBuffer.md): Exported from @adaptate/core/verify.
+- [Function: hexFromBytes()](core/verify/functions/hexFromBytes.md): Exported from @adaptate/core/verify.
+- [Function: normalizeHex()](core/verify/functions/normalizeHex.md): Exported from @adaptate/core/verify.
+- [Function: verifiersFrom()](core/verify/functions/verifiersFrom.md): Exported from @adaptate/core/verify.
+- [Function: verifyBuffer()](core/verify/functions/verifyBuffer.md): Exported from @adaptate/core/verify.
+- [Function: verifyStream()](core/verify/functions/verifyStream.md): Exported from @adaptate/core/verify.
+- [Interface: Verifier](core/verify/interfaces/Verifier.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyContext](core/verify/interfaces/VerifyContext.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyFailure](core/verify/interfaces/VerifyFailure.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyManifest](core/verify/interfaces/VerifyManifest.md): Exported from @adaptate/core/verify.
+- [Type Alias: HashAlgorithm](core/verify/type-aliases/HashAlgorithm.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyCheck](core/verify/type-aliases/VerifyCheck.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyResult\<T\>](core/verify/type-aliases/VerifyResult.md): Exported from @adaptate/core/verify.
 
 ## @adaptate/utils
 

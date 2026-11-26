@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { agree } from "./agree.js";
 import { measureBrowser } from "./browser.js";
 import { measureBundles } from "./bundle.js";
+import { measureCrossover } from "./crossover.js";
 import { renderSummary } from "./summarize.js";
 
 const benchDir = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,11 @@ function runRuntime(command) {
 }
 
 mkdirSync(outDir, { recursive: true });
+if (!flags.has("--no-crossover")) {
+  console.error("crossover");
+  const crossover = await measureCrossover();
+  writeFileSync(resolve(outDir, "crossover.json"), `${JSON.stringify(crossover, null, 2)}\n`);
+}
 console.error("agree");
 const agreement = await agree();
 console.error(`agree ok (${agreement.chunks} chunks, ${agreement.bytes} bytes)`);
