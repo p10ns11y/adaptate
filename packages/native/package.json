@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
+    "build:native": "node ./scripts/build-native.mjs",
     "check-types": "tsc --noEmit -p tsconfig.json",
     "lint": "oxlint --type-aware -c ../../.oxlintrc.json ./src"
   },
