@@ -21,6 +21,7 @@ let packagesToDocument = [
       join(repositoryRoot, "packages/core/build/standard.d.ts"),
       join(repositoryRoot, "packages/core/build/effect.d.ts"),
       join(repositoryRoot, "packages/core/build/result.d.ts"),
+      join(repositoryRoot, "packages/core/build/verify.d.ts"),
     ],
   },
   {

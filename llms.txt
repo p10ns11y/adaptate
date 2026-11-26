@@ -65,6 +65,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: StandardValidationResult\<Output\>](docs/api/core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonFeed()](docs/api/core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createTrackedFeed()](docs/api/core/stream-incremental/functions/createTrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](docs/api/core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](docs/api/core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
 - [Function: isSettled()](docs/api/core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
@@ -72,6 +73,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Type Alias: JsonPath](docs/api/core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](docs/api/core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](docs/api/core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: TrackedFeed](docs/api/core/stream-incremental/type-aliases/TrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: TrackedStep](docs/api/core/stream-incremental/type-aliases/TrackedStep.md): A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
 - [Function: agUiValidatorWith()](docs/api/core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](docs/api/core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
@@ -83,6 +85,20 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [stream](docs/api/core/stream/index.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](docs/api/core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
 - [Type Alias: PartialJsonFeed](docs/api/core/stream/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream.
+- [Function: hashBuffer()](docs/api/core/verify/functions/hashBuffer.md): Exported from @adaptate/core/verify.
+- [Function: hexFromBytes()](docs/api/core/verify/functions/hexFromBytes.md): Exported from @adaptate/core/verify.
+- [Function: normalizeHex()](docs/api/core/verify/functions/normalizeHex.md): Exported from @adaptate/core/verify.
+- [Function: verifiersFrom()](docs/api/core/verify/functions/verifiersFrom.md): Exported from @adaptate/core/verify.
+- [Function: verifyBuffer()](docs/api/core/verify/functions/verifyBuffer.md): Exported from @adaptate/core/verify.
+- [Function: verifyStream()](docs/api/core/verify/functions/verifyStream.md): Exported from @adaptate/core/verify.
+- [verify](docs/api/core/verify/index.md): Exported from @adaptate/core/verify.
+- [Interface: Verifier](docs/api/core/verify/interfaces/Verifier.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyContext](docs/api/core/verify/interfaces/VerifyContext.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyFailure](docs/api/core/verify/interfaces/VerifyFailure.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyManifest](docs/api/core/verify/interfaces/VerifyManifest.md): Exported from @adaptate/core/verify.
+- [Type Alias: HashAlgorithm](docs/api/core/verify/type-aliases/HashAlgorithm.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyCheck](docs/api/core/verify/type-aliases/VerifyCheck.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyResult\<T\>](docs/api/core/verify/type-aliases/VerifyResult.md): Exported from @adaptate/core/verify.
 - [API](docs/api/index.md): API reference generated from the published declaration files.
 - [@adaptate/utils](docs/api/utils/index.md): Exported from @adaptate/utils.
 - [index](docs/api/utils/index/index.md): Exported from @adaptate/utils.

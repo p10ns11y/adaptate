@@ -13,3 +13,4 @@ description: "Exported from @adaptate/core."
 - [standard](standard/index.md)
 - [stream](stream/index.md)
 - [stream-incremental](stream-incremental/index.md)
+- [verify](verify/index.md)

@@ -45,12 +45,14 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Type Alias: StandardValidationResult\<Output\>](core/standard/type-aliases/StandardValidationResult.md): Exported from @adaptate/core/standard.
 - [Function: createAgUiPartialValidator()](core/stream-incremental/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream-incremental.
 - [Function: createPartialJsonFeed()](core/stream-incremental/functions/createPartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Function: createTrackedFeed()](core/stream-incremental/functions/createTrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterable()](core/stream-incremental/functions/fromAsyncIterable.md): Exported from @adaptate/core/stream-incremental.
 - [Function: fromAsyncIterableSteps()](core/stream-incremental/functions/fromAsyncIterableSteps.md): Exported from @adaptate/core/stream-incremental.
 - [Function: isSettled()](core/stream-incremental/functions/isSettled.md): True when `path` holds a value that later steps will not change, unless the document repeats a key on that path.
 - [Type Alias: JsonPath](core/stream-incremental/type-aliases/JsonPath.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: JsonStreamStep](core/stream-incremental/type-aliases/JsonStreamStep.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: PartialJsonFeed](core/stream-incremental/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream-incremental.
+- [Type Alias: TrackedFeed](core/stream-incremental/type-aliases/TrackedFeed.md): Exported from @adaptate/core/stream-incremental.
 - [Type Alias: TrackedStep](core/stream-incremental/type-aliases/TrackedStep.md): A `fromAsyncIterableSteps` step: a `JsonStreamStep` that always carries `openPath` and `tailOpen`.
 - [Function: agUiValidatorWith()](core/stream/functions/agUiValidatorWith.md): Exported from @adaptate/core/stream.
 - [Function: createAgUiPartialValidator()](core/stream/functions/createAgUiPartialValidator.md): Exported from @adaptate/core/stream.
@@ -61,6 +63,19 @@ Generated from the `.d.ts` files that ship in `@adaptate/core` and `@adaptate/ut
 - [Function: validateStructuredOutput()](core/stream/functions/validateStructuredOutput.md): Exported from @adaptate/core/stream.
 - [Type Alias: AgUiDeltaEvent](core/stream/type-aliases/AgUiDeltaEvent.md): Exported from @adaptate/core/stream.
 - [Type Alias: PartialJsonFeed](core/stream/type-aliases/PartialJsonFeed.md): Exported from @adaptate/core/stream.
+- [Function: hashBuffer()](core/verify/functions/hashBuffer.md): Exported from @adaptate/core/verify.
+- [Function: hexFromBytes()](core/verify/functions/hexFromBytes.md): Exported from @adaptate/core/verify.
+- [Function: normalizeHex()](core/verify/functions/normalizeHex.md): Exported from @adaptate/core/verify.
+- [Function: verifiersFrom()](core/verify/functions/verifiersFrom.md): Exported from @adaptate/core/verify.
+- [Function: verifyBuffer()](core/verify/functions/verifyBuffer.md): Exported from @adaptate/core/verify.
+- [Function: verifyStream()](core/verify/functions/verifyStream.md): Exported from @adaptate/core/verify.
+- [Interface: Verifier](core/verify/interfaces/Verifier.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyContext](core/verify/interfaces/VerifyContext.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyFailure](core/verify/interfaces/VerifyFailure.md): Exported from @adaptate/core/verify.
+- [Interface: VerifyManifest](core/verify/interfaces/VerifyManifest.md): Exported from @adaptate/core/verify.
+- [Type Alias: HashAlgorithm](core/verify/type-aliases/HashAlgorithm.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyCheck](core/verify/type-aliases/VerifyCheck.md): Exported from @adaptate/core/verify.
+- [Type Alias: VerifyResult\<T\>](core/verify/type-aliases/VerifyResult.md): Exported from @adaptate/core/verify.
 
 ## @adaptate/utils
 
