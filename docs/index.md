@@ -63,6 +63,7 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
+- [Migration 3.0](migration-3.0.md): existing stream callers stay the same; makeFeed, verify, and optional accel are opt-in.
 - [Development](development.md): install, test, and build this repository.
 
 ## API

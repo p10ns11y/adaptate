@@ -4,14 +4,19 @@ All notable changes to this project will be documented in this file.
 
 > **Note**: This project has been in development for approximately **2 years**. The changelog below summarizes major phases.
 
-## Unreleased
+## 3.0.0 — 2026-11-26 — makeFeed hook, runtime verify, optional acceleration
 
 ### Added
+- `fromAsyncIterableSteps` and `parseStream` take an optional `makeFeed` factory, matching `agUiValidatorWith` and `createEffectStreamValidator`. Existing callers are unchanged. `openPath` and `tailOpen` stay on each step.
+- `@adaptate/core/verify`: zero-dependency, fail-closed in-memory checks for [#84](https://github.com/p10ns11y/adaptate/issues/84) (`verifyBuffer`, `verifyStream`, manifest and custom verifiers).
+- `bench/ab/crossover.js`: crossover baselines at about 1 KiB, 32 KiB+, and 2 MiB.
+- Optional `@adaptate/accel`, `@adaptate/wasm`, and `@adaptate/native`, backed by `crates/adaptate-accel`. The size router stays on JavaScript below about 32 KiB, then native, then wasm, then JavaScript; GPU only for multi-MB hash or batch work. These workspace packages are not published by the release workflow.
 - `fromAsyncIterableSteps` and `parseStream` steps carry `openPath` (keys from the root to the deepest open value) and `tailOpen` (that value is a cut-off string, number or keyword). A value off `openPath` is final unless the document repeats a key on that path later (`JSON.parse` lets the last duplicate win). A complete document has `openPath: []` and `tailOpen: false`.
 - `isSettled(step, path)` from `@adaptate/core/stream-incremental` and `@adaptate/core/result`, and the `JsonPath` type. It is `true` for any present path on a complete (or `done` and ok) step, and `false` for a path that has not arrived. Array steps take integer index keys only, so `isSettled(step, ["tags", "length"])` is `false`. A partial step whose partial schema fails has no `result.value`, so no path on it is settled.
 - `isResult(value)` from `@adaptate/core/result`. `ok` and `err` carry a non-enumerable `Symbol.for("adaptate.result")` brand, so a plain `{ ok: true, value }` is not a `Result`.
 
 ### Compatibility
+- Existing `fromAsyncIterableSteps` and `parseStream` callers need no code change. Pass `makeFeed` only to swap the feed.
 - `openPath` and `tailOpen` are additive. They are optional (`readonly openPath?`, `readonly tailOpen?`) on `JsonStreamStep` and `StreamStep`, so hand-built steps still typecheck. At runtime they are non-enumerable own properties, so `toEqual({ value, complete })`, `toEqual({ done, result })`, spreads, and `JSON.stringify` of a step are unchanged. A spread copy drops them; `isSettled` then answers `false` until the step is complete.
 - Malformed input: a string with a raw control character or a bad escape is never committed. It stays the open tail (`tailOpen: true`) on a step that never completes, so a cut or bad string never reads as settled. Numbers and `true`, `false`, `null` share one rule: a scalar commits only once whitespace, `,`, `}` or `]` follows it, or the stream ends on it. Until then it is the open tail. A scalar glued to any other character (`{"a":1.x}`, `{"a":12-3}`, `{"a":truex}`, `[true1]`) is never committed and never settled.
 - A keyword that ends a chunk (`{"a":true`) is now held as the open tail (`tailOpen: true`) until the next character arrives, as numbers already were. A root `true` completes when the stream ends.

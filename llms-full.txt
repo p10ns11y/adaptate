@@ -71,6 +71,7 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
+- [Migration 3.0](migration-3.0.md): existing stream callers stay the same; makeFeed, verify, and optional accel are opt-in.
 - [Development](development.md): install, test, and build this repository.
 
 ## API
@@ -1022,7 +1023,7 @@ Source: docs/subpaths.md
 ---
 title: "Subpaths"
 description: "The published entry points, and which peers each one loads."
-answer: "@adaptate/core publishes six entry points: the root, /stream, /stream-incremental, /standard, /effect, and /result. zod is the only required peer, and effect loads only from /effect."
+answer: "@adaptate/core publishes seven entry points: the root, /stream, /stream-incremental, /standard, /effect, /result, and /verify. zod is the only required peer, and effect loads only from /effect."
 faq:
   - question: "Which entry point should a chat UI use?"
     answer: "@adaptate/core/stream-incremental for long streams, or @adaptate/core/stream for the re-parse path and createFrameThrottle."
@@ -1032,7 +1033,7 @@ faq:
 
 # Subpaths
 
-`@adaptate/core` publishes six entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
+`@adaptate/core` publishes seven entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
 
 ```mermaid
 flowchart LR
@@ -1042,6 +1043,7 @@ flowchart LR
   zod --> standard["@adaptate/core/standard"]
   zod --> effect["@adaptate/core/effect"]
   zod --> result["@adaptate/core/result"]
+  zod --> verify["@adaptate/core/verify"]
   effectPeer["effect optional peer"] -.-> effect
 ```
 
@@ -1053,6 +1055,7 @@ flowchart LR
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
 | `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `isResult`, `isSettled`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep`, `JsonPath` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
+| `@adaptate/core/verify` | `verifyBuffer`, `verifyStream`, `verifiersFrom`, `hashBuffer`, `VerifyManifest`, `Verifier`, `VerifyResult` |
 
 `@adaptate/utils` has no required runtime dependencies. Its peers are in [Optional peers](optional-peers.md). Published paths:
 
@@ -1137,6 +1140,34 @@ Published 2.3.0 of `@adaptate/utils` depended on `@apidevtools/json-schema-ref-p
 `@adaptate/core/standard` validates a Standard Schema (`~standard.validate`) and adds no dependency. The test uses a transformed Zod schema and a hand-written schema ([`standard.test.ts`](../packages/core/src/__tests__/standard.test.ts)).
 
 `@adaptate/core/effect` is new. Install `effect@^4.0.0` only if you import it. `final(text)` and `final(text, configName)` are in [Effect](effect.md).
+
+
+# Migration 3.0
+
+Source: docs/migration-3.0.md
+
+---
+title: "Migration 3.0"
+description: "Existing stream callers keep working in 3.0. makeFeed, @adaptate/core/verify, and optional acceleration are opt-in."
+answer: "Version 3.0 of @adaptate/core keeps existing fromAsyncIterableSteps and parseStream callers working. Pass an optional makeFeed factory only when you need a custom feed. @adaptate/core/verify adds fail-closed in-memory checks, and optional @adaptate/accel can size-route large buffers."
+faq:
+  - question: "Do I need to change code to upgrade?"
+    answer: "No. Existing fromAsyncIterableSteps and parseStream callers keep working. makeFeed is an optional argument with the same default feed."
+  - question: "What is new in @adaptate/core?"
+    answer: "An optional makeFeed factory, the @adaptate/core/verify subpath for in-memory checks, and openPath and tailOpen on stream steps."
+---
+
+# Migration 2.4 → 3.0
+
+3.0 is backward compatible for existing stream callers.
+
+`fromAsyncIterableSteps` and `parseStream` accept an optional `makeFeed` factory as their last argument, the same shape already used by `agUiValidatorWith` and `createEffectStreamValidator`. Omit it and the default tracked feed is used. `openPath` and `tailOpen` stay on each step.
+
+`@adaptate/core/verify` is new and has no runtime dependencies. Use `verifyBuffer` or `verifyStream` with a manifest (hash, size, mime, name) or custom verifiers. A failed check returns failures and does not write the bytes.
+
+Optional `@adaptate/accel`, `@adaptate/wasm`, and `@adaptate/native` packages can size-route large buffers (JavaScript below about 32 KiB, then native, then wasm, then JavaScript). They are workspace packages in this repository and are not published with the 3.0.0 npm release of `adaptate`, `@adaptate/core`, and `@adaptate/utils`. `@adaptate/core` stays the default path.
+
+[#90](https://github.com/p10ns11y/adaptate/pull/90) added the hook and verifier. [#92](https://github.com/p10ns11y/adaptate/pull/92) added the optional acceleration packages. The architecture is in [#89](https://github.com/p10ns11y/adaptate/issues/89).
 
 
 # Development

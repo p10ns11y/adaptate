@@ -20,6 +20,7 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Subpaths](docs/subpaths.md): The published entry points, and which peers each one loads.
 - [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
 - [Migration 2.4](docs/migration-2.4.md): YAML and the ref parser became optional peers between 2.3 and 2.4.
+- [Migration 3.0](docs/migration-3.0.md): Existing stream callers keep working in 3.0. makeFeed, @adaptate/core/verify, and optional acceleration are opt-in.
 - [Development](docs/development.md): Install, test, and build this repository with pnpm.
 
 ## API
