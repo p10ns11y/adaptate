@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 3.0.0 — 2026-11-26 — makeFeed hook, runtime verify, optional acceleration
+
 ### Added
 - `fromAsyncIterableSteps` and `parseStream` accept an optional `makeFeed` factory. The default tracked feed is unchanged, and `openPath` / `tailOpen` stay on the step.
 - `@adaptate/core/verify`: fail-closed in-memory `hashBuffer`, `verifyBuffer`, and `verifyStream` hooks for issue 84. This is a new subpath of zero-dependency `@adaptate/core`.
