@@ -10,7 +10,8 @@ export type NavLink = { label: string; path: string };
 let navGroups = [
   { title: "Start", paths: ["/docs/", "/docs/choke-points/", "/docs/transform/", "/docs/openapi/", "/docs/zod/"] },
   { title: "Streams", paths: ["/docs/streaming/", "/docs/v3/", "/docs/ag-ui/", "/docs/web-streams/", "/docs/effect/"] },
-  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/accel/", "/docs/verification/", "/docs/migration-2-4/", "/docs/development/"] },
+  { title: "Advanced", paths: ["/docs/accel/", "/docs/verification/"] },
+  { title: "Reference", paths: ["/docs/typescript/", "/docs/subpaths/", "/docs/optional-peers/", "/docs/migration-2-4/", "/docs/migration-3-0/", "/docs/development/"] },
 ];
 
 export function groupNav(links: NavLink[]): Array<{ title: string; links: NavLink[] }> {
@@ -156,7 +157,7 @@ export function apiRoute(input: ApiPageInput): SiteRoute {
       answer,
       faq: [
         { question: "How is the API reference generated?", answer: "pnpm docs:api runs TypeDoc on the built .d.ts files and writes docs/api." },
-        { question: "Which packages does it cover?", answer: "@adaptate/core with its six entry points, and @adaptate/utils with its OpenAPI entry." },
+        { question: "Which packages does it cover?", answer: "@adaptate/core with its seven entry points, and @adaptate/utils with its OpenAPI entry." },
       ],
     };
   }

@@ -19,10 +19,11 @@ Paths are relative to the repository root. There is no deployed documentation si
 - [Find your choke points](docs/choke-points.md): Guard the few places where bad or partial data breaks an app, with a Result that keeps an ok track and an error track.
 - [TypeScript](docs/typescript.md): Types ship in the npm package. CI checks them on TypeScript 7 and 6.
 - [Subpaths](docs/subpaths.md): The published entry points, and which peers each one loads.
-- [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
-- [Accel](docs/accel.md): Optional native, WASM, and GPU packages that speed up large buffers without changing the core install.
+- [Optional peers](docs/optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported. Acceleration packages are separate optional installs.
+- [Acceleration](docs/accel.md): Optional native, WASM, and GPU packages for large buffers, kept off the default zero-dep install.
 - [Runtime verification](docs/verification.md): Fail-closed in-memory hooks that verify a buffer before any bytes are written to disk.
 - [Migration 2.4](docs/migration-2.4.md): YAML and the ref parser became optional peers between 2.3 and 2.4.
+- [Migration 3.0](docs/migration-3.0.md): v3 is additive: makeFeed, @adaptate/core/verify, and optional acceleration packages, with the default install still zero-dep.
 - [Development](docs/development.md): Install, test, and build this repository with pnpm.
 
 ## API

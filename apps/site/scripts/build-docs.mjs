@@ -23,6 +23,7 @@ import { escapeHtml, renderHead } from "../src/site/head.ts";
 import { renderFooter, renderHeader } from "../src/site/header.ts";
 import { createSnippetHighlighter, withSnippetCopy } from "../src/site/highlight.ts";
 import { renderRailFigure } from "../src/site/rail.ts";
+import { renderLiveBenchmark } from "../src/site/live-benchmark.ts";
 import { journeyRoute, staticRoutes } from "../src/site/routes.ts";
 
 let require = createRequire(import.meta.url);
@@ -184,6 +185,7 @@ for (let page of pages) {
     `<p class="answer">${escapeHtml(page.route.answer)}</p>`,
     lead,
     marked.parser(tokens),
+    page.sourcePath === "docs/accel.md" ? renderLiveBenchmark() : "",
     renderFaq(page.route),
   ].join("\n");
 }
@@ -272,6 +274,10 @@ function withDiagrams(html) {
   });
 }
 
+let liveBenchmarkMeta = JSON.parse(readFileSync(join(metaDirectory, "live-benchmark.json"), "utf8"));
+let liveBenchmarkSrc = `/${liveBenchmarkMeta.fileName.replace(/^\//, "")}`;
+let liveBenchmarkScript = `<script type="module" src="${liveBenchmarkSrc}"></script>`;
+
 for (let page of pages) {
   let document = [
     "<!doctype html>",
@@ -285,6 +291,7 @@ for (let page of pages) {
     withDiagrams(page.html),
     "</article></div></main>",
     `    ${withSnippetCopy(page.html)}`,
+    page.sourcePath === "docs/accel.md" ? liveBenchmarkScript : "",
     `    ${renderFooter()}`,
     "  </body>",
     "</html>",

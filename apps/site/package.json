@@ -19,6 +19,7 @@
   "dependencies": {
     "@adaptate/core": "workspace:*",
     "@adaptate/utils": "workspace:*",
+    "@adaptate/wasm": "workspace:*",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "zod": "4.6.7"

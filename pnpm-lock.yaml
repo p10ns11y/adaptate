@@ -41,6 +41,9 @@ importers:
       '@adaptate/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@adaptate/wasm':
+        specifier: workspace:*
+        version: link:../../packages/wasm
       react:
         specifier: 19.1.1
         version: 19.1.1

@@ -37,3 +37,19 @@ Each sentence on the front page maps to something in the repo.
 `transformSchema` is checked at 1,000 levels in [`walks a schema one thousand levels deep`](../packages/core/src/__tests__/deep-nesting.test.ts). That walk is still recursive. A deeper value overflows inside Zod's own `safeParse`. The 100,000-level rows above do not call it.
 
 Peers, subpaths, and the Effect method names are in [Optional peers](optional-peers.md), [Subpaths](subpaths.md), and [Effect](effect.md).
+
+## Measured acceleration
+
+The optional Advanced packages were timed with the real C ABI WASM module and the real Node-API addon, not with mocked timings. JS in this table is the `@adaptate/core/verify` / Web Crypto path. Digests matched across JS, WASM, and native. The 4 MiB GPU probe ran on a host with only a software renderer, so GPU stayed unavailable and the work fell back to native.
+
+| Work | Size | JS median | Cached WASM median | Native median |
+| --- | --- | --- | --- | --- |
+| SHA-256 | 1 KiB | 0.003 ms | 0.034 ms | 0.037 ms |
+| SHA-256 | 32 KiB | 0.020 ms | 0.101 ms | 0.057 ms |
+| SHA-256 | 2 MiB | 1.181 ms | 6.251 ms | 1.688 ms |
+| 4 MiB in-memory verify (3 runs) | 4 MiB | 2.391 ms | — | 3.274 ms (CPU fallback; no hardware GPU) |
+
+WASM bindings: cold hash 6.394 ms, later hash on the cached bindings 0.104 ms. UTF-8 scanning agreed on `café — こんにちは` and on 1 KiB, 32 KiB, and 2 MiB buffers filled with `ä`.
+
+These numbers are why small streaming chunks (~3 µs) stay on zero-dep JS, and why acceleration is documented under [Acceleration](accel.md) as an Advanced option for large or batched work, not a default.
+

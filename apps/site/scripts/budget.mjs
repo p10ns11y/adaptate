@@ -12,6 +12,7 @@ let budgets = {
   workerJs: 70 * kilobyte,
   fireJs: 6 * kilobyte,
   docsJs: 2 * kilobyte,
+  liveBenchmarkJs: 30 * kilobyte,
   cssTotal: 12 * kilobyte,
   ogImage: 120 * kilobyte,
   clip: 2 * kilobyte * kilobyte,
@@ -136,14 +137,34 @@ for (let worker of files.filter((path) => /worker[^/]*\.js$/.test(path))) {
 }
 
 let docsPages = files.filter((path) => path.startsWith(join(distDirectory, "docs")) && path.endsWith(".html"));
-let docsScriptSources = [...new Set(docsPages.flatMap((path) => pageScripts(path)))];
-if (docsScriptSources.includes("inline")) failures.push("docs pages ship inline JS");
-let unexpectedDocsScripts = docsScriptSources.filter((source) => source !== "/snippet-copy.js");
-if (unexpectedDocsScripts.length > 0) failures.push(`docs pages ship unexpected JS: ${unexpectedDocsScripts.join(", ")}`);
-let docsJsBytes = docsScriptSources
-  .filter((source) => source !== "inline")
-  .reduce((sum, source) => sum + gzipSize(join(distDirectory, source.replace(/^\//, ""))), 0);
-measure(`unique docs JS (${docsScriptSources.length || "none"} file) across ${docsPages.length} pages`, docsJsBytes, budgets.docsJs);
+let liveBenchmarkMetaPath = join(siteDirectory, ".site-meta/live-benchmark.json");
+let liveBenchmarkFile = existsSync(liveBenchmarkMetaPath)
+  ? `/${JSON.parse(readFileSync(liveBenchmarkMetaPath, "utf8")).fileName.replace(/^\//, "")}`
+  : "";
+if (!liveBenchmarkFile) failures.push(".site-meta/live-benchmark.json is missing; run the site build");
+let accelPage = join(distDirectory, "docs/accel/index.html");
+for (let path of docsPages) {
+  let sources = pageScripts(path);
+  if (sources.includes("inline")) failures.push(`${relative(distDirectory, path)} ships inline JS`);
+  let allowed = new Set(["/snippet-copy.js"]);
+  if (path === accelPage && liveBenchmarkFile) allowed.add(liveBenchmarkFile);
+  let unexpected = sources.filter((source) => !allowed.has(source));
+  if (unexpected.length > 0) failures.push(`${relative(distDirectory, path)} ships unexpected JS: ${unexpected.join(", ")}`);
+}
+if (liveBenchmarkFile && existsSync(accelPage) && !pageScripts(accelPage).includes(liveBenchmarkFile)) {
+  failures.push("/docs/accel/ is missing the live benchmark script");
+}
+let docsSharedScripts = [...new Set(docsPages.flatMap((path) => pageScripts(path).filter((source) => source === "/snippet-copy.js")))];
+let docsJsBytes = docsSharedScripts.reduce((sum, source) => sum + gzipSize(join(distDirectory, source.replace(/^\//, ""))), 0);
+measure(`unique shared docs JS (${docsSharedScripts.length || "none"} file) across ${docsPages.length} pages`, docsJsBytes, budgets.docsJs);
+if (liveBenchmarkFile) {
+  let liveBenchmarkPath = join(distDirectory, liveBenchmarkFile.replace(/^\//, ""));
+  measure(`live benchmark JS (gzip)`, gzipSize(liveBenchmarkPath), budgets.liveBenchmarkJs);
+  let liveBenchmarkSource = readFileSync(liveBenchmarkPath, "utf8");
+  if (liveBenchmarkSource.includes("node:fs") || liveBenchmarkSource.includes("node:path") || liveBenchmarkSource.includes("node:url")) {
+    failures.push("live benchmark bundle leaks a node: builtin");
+  }
+}
 
 measure("CSS total (gzip)", files.filter((path) => path.endsWith(".css")).reduce((sum, path) => sum + gzipSize(path), 0), budgets.cssTotal);
 

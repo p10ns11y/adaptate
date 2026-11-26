@@ -15,6 +15,11 @@ export type ExtractedPage = {
   h1Count: number;
 };
 
+export function allowedDocsScript(path: string, src: string): boolean {
+  if (src === "/snippet-copy.js") return true;
+  return path === "/docs/accel/" && /^\/assets\/live-benchmark-[^/]+\.js$/.test(src);
+}
+
 export function extractPage(): ExtractedPage {
   let metas: Record<string, string> = {};
   for (let meta of Array.from(document.querySelectorAll("meta[name], meta[property]"))) {
@@ -123,9 +128,8 @@ export function checkPage(page: ExtractedPage, route: SiteRoute, siteUrl: string
     let faq = typed("FAQPage");
     if (faq.length !== 1) issues.push("docs pages need exactly one FAQPage");
     for (let item of faq) issues.push(...issuesOf("FAQPage", faqSchema.safeParse(item)));
-    let docsScriptsOk =
-      page.scriptSrcs.length === 0 || (page.scriptSrcs.length === 1 && page.scriptSrcs[0] === "/snippet-copy.js");
-    if (!docsScriptsOk) {
+    let unexpectedDocsScripts = page.scriptSrcs.filter((src) => !allowedDocsScript(route.path, src));
+    if (unexpectedDocsScripts.length > 0) {
       issues.push(`docs pages may only ship /snippet-copy.js, found ${page.scriptSrcs.join(", ") || "no script src"}`);
     }
   }

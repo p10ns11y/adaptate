@@ -10,7 +10,7 @@
       "outputs": ["dist/**"]
     },
     "adaptate-site#build": {
-      "dependsOn": ["@adaptate/core#build", "@adaptate/utils#build"],
+      "dependsOn": ["@adaptate/core#build", "@adaptate/utils#build", "@adaptate/wasm#build"],
       "env": ["SITE_URL"],
       "outputs": ["dist/**", ".site-meta/**"]
     },

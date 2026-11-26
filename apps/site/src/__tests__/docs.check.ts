@@ -31,7 +31,7 @@ describe("docs", () => {
       .map((match) => ({ label: match[1] ?? "", path: routeForDoc(`docs/${match[2]}`) }))
       .filter((link) => !link.path.startsWith("/docs/api/"));
     let groups = groupNav([{ label: "Overview", path: "/docs/" }, ...guides]);
-    expect(groups.map((group) => group.title)).toEqual(["Start", "Streams", "Reference"]);
+    expect(groups.map((group) => group.title)).toEqual(["Start", "Streams", "Advanced", "Reference"]);
     expect(groups[0]?.links.slice(0, 2).map((link) => link.path)).toEqual(["/docs/", "/docs/choke-points/"]);
     expect(groups.flatMap((group) => group.links)).toHaveLength(guides.length + 1);
     for (let path of railDocs) expect(existsSync(new URL(path, repositoryRoot)), path).toBe(true);
@@ -41,6 +41,7 @@ describe("docs", () => {
     expect(routeForDoc("docs/index.md")).toBe("/docs/");
     expect(routeForDoc("docs/zod.md")).toBe("/docs/zod/");
     expect(routeForDoc("docs/migration-2.4.md")).toBe("/docs/migration-2-4/");
+    expect(routeForDoc("docs/migration-3.0.md")).toBe("/docs/migration-3-0/");
     expect(rewriteHref("migration-2.4.md#peers", "docs/index.md")).toBe("/docs/migration-2-4/#peers");
     expect(routeForDoc("docs/api/core/index.md")).toBe("/docs/api/core/");
     expect(routeForDoc("docs/api/core/stream/functions/createFrameThrottle.md")).toBe(
@@ -138,7 +139,7 @@ describe("docs", () => {
   });
 
   it("keeps SI wording and omits banned words in the new v3 guides", () => {
-    for (let name of ["v3.md", "accel.md", "verification.md", "index.md", "streaming.md"]) {
+    for (let name of ["v3.md", "accel.md", "verification.md", "index.md", "streaming.md", "migration-3.0.md", "subpaths.md", "optional-peers.md", "proof.md"]) {
       let markdown = readFileSync(new URL(`docs/${name}`, repositoryRoot), "utf8");
       expect(markdown, name).not.toMatch(/\b(demo|gate)\b/i);
       expect(markdown, name).not.toMatch(/(?<![A-Za-z])AI(?![A-Za-z])/);

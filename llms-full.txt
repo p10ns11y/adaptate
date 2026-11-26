@@ -12,7 +12,7 @@ description: "Typed, validated data from OpenAPI, JSON Schema, or Zod, including
 answer: "Install adaptate, turn an OpenAPI or JSON Schema into Zod, and check data against it, including a tool call that is still streaming. Each view can require only its own fields."
 faq:
   - question: "Which package do I install?"
-    answer: "adaptate for transformSchema, @adaptate/utils for OpenAPI, and @adaptate/core when you need the /stream, /standard, or /effect subpaths. zod is a peer."
+    answer: "adaptate for transformSchema, @adaptate/utils for OpenAPI, and @adaptate/core when you need the /stream, /verify, /standard, or /effect subpaths. zod is a peer. @adaptate/accel, @adaptate/wasm, and @adaptate/native are optional Advanced packages, not part of the default zero-dep install."
   - question: "Is the API reference generated?"
     answer: "Yes. pnpm docs:api writes docs/api from the .d.ts files that ship in @adaptate/core and @adaptate/utils."
 ---
@@ -25,7 +25,7 @@ faq:
 npm i adaptate @adaptate/utils zod
 ```
 
-`adaptate` ships the root entry of `@adaptate/core`. Install `@adaptate/core` instead when you import a subpath such as `@adaptate/core/stream`.
+`adaptate` ships the root entry of `@adaptate/core`. Install `@adaptate/core` instead when you import a subpath such as `@adaptate/core/stream` or `@adaptate/core/verify`. The default install stays zero-dependency aside from the `zod` peer.
 
 ## Quick start
 
@@ -74,9 +74,10 @@ Agents can read [llms.txt](../llms.txt) for an index, or [llms-full.txt](../llms
 - [TypeScript](typescript.md): types ship in the package and are checked on TypeScript 7 and 6.
 - [Subpaths](subpaths.md): the published entry points, and which peers each one loads.
 - [Optional peers](optional-peers.md): effect, js-yaml, and the ref parser load only when that code is imported.
-- [Accel](accel.md): optional native, WASM, and GPU packages for large buffers.
+- [Acceleration](accel.md): optional native, WASM, and GPU packages for large buffers, plus a live JS vs WASM benchmark.
 - [Runtime verification](verification.md): fail-closed in-memory hooks before any write to disk.
 - [Migration 2.4](migration-2.4.md): YAML and the ref parser became optional peers.
+- [Migration 3.0](migration-3.0.md): additive `makeFeed`, `@adaptate/core/verify`, and optional acceleration packages.
 - [Development](development.md): install, test, and build this repository.
 
 ## API
@@ -301,7 +302,7 @@ Source: docs/v3.md
 ---
 title: "v3 feeds"
 description: "A makeFeed hook on stream steps, so you can swap in a custom feed without rewriting the parser."
-answer: "v3 adds a makeFeed hook to fromAsyncIterableSteps and parseStream. You keep openPath and tailOpen, and you can plug in the same kind of feed factory already used by agUiValidatorWith and createEffectStreamValidator."
+answer: "v3 adds a makeFeed hook to fromAsyncIterableSteps and parseStream. You keep openPath and tailOpen, and you can plug in the same kind of tracked feed already used by the default parser. The default feed is unchanged when you omit makeFeed."
 faq:
   - question: "Do I have to write a feed?"
     answer: "No. The default feed is unchanged. Pass makeFeed only when you need a different source or a hooked verifier."
@@ -311,39 +312,44 @@ faq:
 
 # v3 feeds
 
-If you already check a tool call while it streams, v3 does not ask you to rewrite that path. It adds one hook, `makeFeed`, so a stream can use a custom feed — including the [in-memory verification hooks](verification.md) and the optional [acceleration packages](accel.md) — without forking the parser.
+If you already check a tool call while it streams, v3 does not ask you to rewrite that path. It adds one hook, `makeFeed`, so a stream can use a custom tracked feed — including one that runs [in-memory verification](verification.md) — without forking the parser.
 
 What that buys you:
 
 | Need | Result |
 | --- | --- |
 | Same stream, a different feed | Pass `makeFeed`. `openPath` and `tailOpen` stay on the step. |
-| Verify bytes before they settle | The feed can run a fail-closed hook on the in-memory buffer. |
-| Large buffers | `@adaptate/accel` can size-route the feed work. See [Accel](accel.md). |
+| Verify bytes before they settle | The feed, or a `verifyBuffer` / `verifyStream` hook around it, can run a fail-closed check on the in-memory buffer. |
+| Large buffers | Optional `@adaptate/accel` can size-route hash or scan work. See [Acceleration](accel.md). |
 
-`makeFeed` matches the factory already used by `agUiValidatorWith` and `createEffectStreamValidator`.
+`makeFeed` is a zero-argument factory that returns a `TrackedFeed`. Leave it off and `createTrackedFeed` is used.
 
 ```ts
 import {
+  createTrackedFeed,
   fromAsyncIterableSteps,
 } from "@adaptate/core/stream-incremental";
 import { parseStream } from "@adaptate/core/result";
 
-const steps = fromAsyncIterableSteps(chunks, {
-  makeFeed: (options) => createPartialJsonFeed(options),
-});
+const steps = fromAsyncIterableSteps(
+  chunks,
+  () => createTrackedFeed(),
+);
 
 for await (const step of steps) {
   step.openPath;
   step.tailOpen;
 }
 
-const result = parseStream(chunks, schema, {
-  makeFeed: (options) => createPartialJsonFeed(options),
-});
+const result = parseStream(
+  chunks,
+  schema,
+  undefined,
+  () => createTrackedFeed(),
+);
 ```
 
-Leave `makeFeed` off and the default feed is used. [Streaming](streaming.md) covers the path that is already on npm.
+`fromAsyncIterableSteps` and `parseStream` stay on their current subpaths. [Streaming](streaming.md) covers the path that is already on npm. The optional [live benchmark](accel.md#live-benchmark) shows when WASM is worth adding and when it is not.
 
 
 # AG-UI
@@ -1082,7 +1088,7 @@ Source: docs/subpaths.md
 ---
 title: "Subpaths"
 description: "The published entry points, and which peers each one loads."
-answer: "@adaptate/core publishes six entry points: the root, /stream, /stream-incremental, /standard, /effect, and /result. zod is the only required peer, and effect loads only from /effect."
+answer: "@adaptate/core publishes seven entry points: the root, /stream, /stream-incremental, /standard, /effect, /result, and /verify. zod is the only required peer, and effect loads only from /effect. Optional acceleration lives in separate packages, not in core."
 faq:
   - question: "Which entry point should a chat UI use?"
     answer: "@adaptate/core/stream-incremental for long streams, or @adaptate/core/stream for the re-parse path and createFrameThrottle."
@@ -1092,7 +1098,7 @@ faq:
 
 # Subpaths
 
-`@adaptate/core` publishes six entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
+`@adaptate/core` publishes seven entries and has no `dependencies`. `zod@^3.25.0 || ^4.0.0` is the required peer. `effect@^4.0.0` is an optional peer and is imported only by `@adaptate/core/effect`.
 
 ```mermaid
 flowchart LR
@@ -1102,6 +1108,7 @@ flowchart LR
   zod --> standard["@adaptate/core/standard"]
   zod --> effect["@adaptate/core/effect"]
   zod --> result["@adaptate/core/result"]
+  zod --> verify["@adaptate/core/verify"]
   effectPeer["effect optional peer"] -.-> effect
 ```
 
@@ -1113,6 +1120,17 @@ flowchart LR
 | `@adaptate/core/standard` | `isStandardSchema`, `validateStandard`, `validateAgainstStandardSchemas`, `StandardSchemaV1`, `StandardIssue`, `StandardResult`, `StandardValidationResult` |
 | `@adaptate/core/result` | `parse`, `parseAsync`, `parseStream`, `ok`, `err`, `isResult`, `isSettled`, `Result`, `Ok`, `Err`, `Track`, `Issues`, `StreamStep`, `JsonPath` |
 | `@adaptate/core/effect` | `validate`, `validatePartial`, `createEffectStreamValidator`, `AdaptateValidationError`, `AdaptateParseError`, `ConfigReport`, `FinalReport` |
+| `@adaptate/core/verify` | `hashBuffer`, `hexFromBytes`, `normalizeHex`, `verifiersFrom`, `verifyBuffer`, `verifyStream`, `Verifier`, `VerifyContext`, `VerifyFailure`, `VerifyManifest`, `HashAlgorithm`, `VerifyCheck`, `VerifyResult` |
+
+`@adaptate/core/stream-incremental` also exports `createTrackedFeed` and `TrackedFeed`, which `makeFeed` returns.
+
+Optional Advanced packages are not core subpaths and are not pulled in by `@adaptate/core`:
+
+| Package | What it is for |
+| --- | --- |
+| `@adaptate/accel` | Probe and size-route large-buffer or batched in-memory work |
+| `@adaptate/wasm` | Portable C ABI WASM. Browsers should import `@adaptate/wasm/runtime` so `node:fs` does not enter the bundle. |
+| `@adaptate/native` | Node-API bindings, including an optional hardware GPU path above 4 MiB |
 
 `@adaptate/utils` has no required runtime dependencies. Its peers are in [Optional peers](optional-peers.md). Published paths:
 
@@ -1131,8 +1149,8 @@ Source: docs/optional-peers.md
 
 ---
 title: "Optional peers"
-description: "effect, js-yaml, and the ref parser load only when that code is imported."
-answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers. Each loads only when the code that needs it is imported or called. zod is the only required peer."
+description: "effect, js-yaml, and the ref parser load only when that code is imported. Acceleration packages are separate optional installs."
+answer: "effect, js-yaml, and the JSON Schema ref parser are optional peers and load only when that code is imported. zod is the only required peer. @adaptate/accel, @adaptate/wasm, and @adaptate/native are separate optional packages, not core peers, and they leave the default install zero-dep."
 faq:
   - question: "Do I need js-yaml for JSON specs?"
     answer: "No. js-yaml loads only while parsing YAML."
@@ -1167,47 +1185,80 @@ Optional peer dependency "@apidevtools/json-schema-ref-parser" is required to re
 js-yaml 5 ships its own types. `@types/js-yaml` is not a dependency.
 
 
-# Accel
+# Acceleration
 
 Source: docs/accel.md
 
 ---
-title: "Accel"
-description: "Optional native, WASM, and GPU packages that speed up large buffers without changing the core install."
-answer: "Optional @adaptate/accel packages speed up large buffers. @adaptate/core stays zero-dependency and handles JS objects and buffers under about 32 KiB. Larger work is size-routed to native, then WASM, then JavaScript; GPU is only for multi-MB hash or batch jobs."
+title: "Acceleration"
+description: "Optional native, WASM, and GPU packages for large buffers, kept off the default zero-dep install."
+answer: "Optional @adaptate/accel, @adaptate/wasm, and @adaptate/native packages help with large buffers or batched in-memory verification. adaptate and @adaptate/core stay zero-dependency. Skip them for small ~3 µs streaming chunks, where pure JS is already faster."
 faq:
   - question: "Do I need to install accel to use adaptate?"
-    answer: "No. adaptate and @adaptate/core work without it. Add @adaptate/accel only when buffers are large enough to benefit."
+    answer: "No. adaptate and @adaptate/core work without it. Add an acceleration package only when buffers are large enough to benefit, or when you embed the Rust/WASM core in a host."
+  - question: "When does acceleration actually help?"
+    answer: "On large buffers, multi-MB in-memory verification, batched checks, or a Rust/WASM host embed. Measured SHA-256 at 1 KiB, 32 KiB, and 2 MiB was faster in JS than WASM or native. Small streaming chunks should stay on zero-dep JS."
   - question: "When does GPU run?"
-    answer: "Only above a multi-MB threshold, and only for hash or batch work such as the in-memory verification hooks. Smaller work never loads a GPU path."
+    answer: "Only above a 4 MiB threshold, and only when a hardware GPU is present. A software renderer is ignored, and the work falls back to native, then WASM, then JavaScript."
 ---
 
-# Accel
+# Acceleration
 
-Most callers never need this. `@adaptate/core` stays zero-dependency and is the right path for ordinary JS objects and buffers under about 32 KiB.
+Most callers never need this. `@adaptate/core` stays zero-dependency and is the right path for ordinary JS objects, buffers under about 32 KiB, and streaming chunks around 3 µs, where measured JS is already faster.
 
-`@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` ship with v3 as optional add-ons alongside `@adaptate/core`.
+`@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` are optional Advanced add-ons. They do not change the default install.
 
-When a buffer is large, optional packages take over without changing how you call the core APIs. `@adaptate/accel` probes what the runtime can do and size-routes the work.
+## When it makes sense
 
-| Input | Runtime |
-| --- | --- |
-| JS objects, or buffers under ~32 KiB | Pure JavaScript in `@adaptate/core` |
-| Large buffers | `@adaptate/native` (Node-API, CPU SIMD, worker threads), then `@adaptate/wasm` (streaming UTF-8, `wasm32-simd128`), then JavaScript |
-| Multi-MB hash or batch work | Optional GPU (WebGPU / wgpu), only above that threshold |
+Use an acceleration package when you have at least one of these:
+
+- Large buffers, especially multi-MB in-memory [runtime verification](verification.md) (#84)
+- Batched hash or manifest checks
+- A Rust or WASM host embed that wants the C ABI core
+
+Leave them out when you are parsing small streaming chunks. The incremental JS parser already sits around 3 µs per chunk, with no extra install.
+
+## Native, WASM, and GPU
+
+`@adaptate/accel` probes what the runtime can do and size-routes the work. JavaScript remains the fallback at every step.
+
+| Path | Package | When it is considered |
+| --- | --- | --- |
+| JavaScript | `@adaptate/core` / the JS fallback in `@adaptate/accel` | Default. JS objects, buffers under ~32 KiB, and any runtime that has no optional backend. |
+| Native | `@adaptate/native` | Node-API (CPU SIMD, worker threads) for large buffers on Node. |
+| WASM | `@adaptate/wasm` | A portable C ABI module (`wasm32-simd128`) for browsers or hosts that can instantiate `/adaptate_accel.wasm`. Import `@adaptate/wasm/runtime` in a browser so `node:fs` never enters the bundle. |
+| GPU | `@adaptate/native` (`gpu` feature) | Only for hash or batch work at or above 4 MiB, and only when a hardware GPU is present. A software renderer is ignored. |
 
 ```ts
-import { accelerate } from "@adaptate/accel";
+import { verifyInMemory } from "@adaptate/accel";
 
-const feed = await accelerate({
-  native: () => import("@adaptate/native"),
-  wasm: () => import("@adaptate/wasm"),
-});
+const checked = await verifyInMemory(bytes, { sha256: expectedDigest });
 ```
 
-Install only what you need. A browser can ship `@adaptate/wasm` without the Node-API package. A Node service can use `@adaptate/native` and skip WASM. `@adaptate/core` remains the fallback at every step.
+`verifyInMemory` probes `@adaptate/native` and `@adaptate/wasm` when they are installed, then falls back to JavaScript. A browser can ship `@adaptate/wasm` without the Node-API package. A Node service can use `@adaptate/native` and skip WASM.
 
-The same router can carry the [#84](https://github.com/p10ns11y/adaptate/issues/84) in-memory hash and verify work. See [Runtime verification](verification.md) and the [v3 feed hook](v3.md).
+## Measured numbers
+
+These medians come from a real-binary end-to-end run of the Track 2 fixes (SHA-256, 7 runs unless noted). JS here is the `@adaptate/core/verify` / Web Crypto path. No number in this table is mocked.
+
+| Work | Size | JS median | Cached WASM median | Native median |
+| --- | --- | --- | --- | --- |
+| SHA-256 | 1 KiB | 0.003 ms | 0.034 ms | 0.037 ms |
+| SHA-256 | 32 KiB | 0.020 ms | 0.101 ms | 0.057 ms |
+| SHA-256 | 2 MiB | 1.181 ms | 6.251 ms | 1.688 ms |
+| verify | 1 KiB | 0.006 ms | 0.047 ms | 0.039 ms |
+| verify | 32 KiB | 0.020 ms | 0.103 ms | 0.057 ms |
+| verify | 2 MiB | 1.166 ms | 6.242 ms | 1.740 ms |
+
+WASM bindings themselves have a cold cost: a first hash took 6.394 ms, and a later hash on the cached bindings took 0.104 ms. Digests matched JS on every size above.
+
+A 4 MiB in-memory verify was probed for GPU. The host exposed only a software renderer, so the hardware-only probe left GPU unavailable and the work fell back to native (3.274 ms median over 3 runs; JS was 2.391 ms). A native batch of the same payload was 3.080 ms median.
+
+UTF-8 scanning was checked on `café — こんにちは` and on 1 KiB, 32 KiB, and 2 MiB buffers filled with `ä`. JS, WASM, and native all agreed.
+
+The tables above are one host. The [live benchmark](#live-benchmark) on this page runs the same JS vs WASM hash in your browser, with a digest check, so you can see the difference on the machine in front of you.
+
+Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [runtime verification](verification.md) when a buffer must be checked before anything is stored. Full citation for the front-page claims stays in [Proof](proof.md).
 
 
 # Runtime verification
@@ -1217,38 +1268,46 @@ Source: docs/verification.md
 ---
 title: "Runtime verification"
 description: "Fail-closed in-memory hooks that verify a buffer before any bytes are written to disk."
-answer: "v3 adds fail-closed in-memory verification hooks (issue 84). A hook can hash a buffer, check size, type, name, or provenance, and run a formal check — all before anything is written. If a check fails, the bytes stay in memory and are discarded."
+answer: "v3 adds @adaptate/core/verify for fail-closed in-memory checks (issue 84). hashBuffer, verifyBuffer, and verifyStream can hash a buffer, check size, type, or name, and run a formal or custom verifier — all before anything is written. If a check fails, the bytes stay in memory and are discarded."
 faq:
   - question: "What happens when a check fails?"
     answer: "The hook fails closed. Nothing is stored. You get a typed error for the check that failed, and the buffer is discarded."
   - question: "Can I add my own check?"
-    answer: "Yes. Built-in hooks cover hash and metadata. Pass your own verifier for a formal spec or an extra property. Antivirus engines are out of scope."
+    answer: "Yes. Built-in hooks cover hash and metadata. Pass formal or custom verifiers for a spec or an extra property. Antivirus engines are out of scope."
 ---
 
 # Runtime verification
 
-A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) adds runtime hooks for that: hash, size, media type, name, signature or provenance, and a slot for a formal spec.
+A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) is covered by `@adaptate/core/verify`: hash, size, media type, name, and a slot for a formal or custom verifier.
 
 The hook runs on a buffer or a stream in memory. If any check fails, nothing is stored.
 
 | Check | When it runs | On failure |
 | --- | --- | --- |
-| SHA-256 (or another digest) | Over the in-memory bytes | Typed hash error, bytes discarded |
+| SHA-256 (or SHA-384 / SHA-512) | Over the in-memory bytes | Typed hash error, bytes discarded |
 | Size, media type, name | Against an expected manifest | Typed metadata error, bytes discarded |
-| Signature or provenance | When the manifest includes it | Typed provenance error, bytes discarded |
 | Formal spec or custom verifier | After the built-in checks, still in memory | Typed verifier error, bytes discarded |
 
 ```ts
-import { parseStream } from "@adaptate/core/result";
+import { verifyBuffer, verifyStream } from "@adaptate/core/verify";
 
-const result = parseStream(source, schema, {
-  verify: (buffer) => verifyBuffer(buffer, manifest),
+const checked = await verifyBuffer(bytes, {
+  hash: { value: expectedSha256 },
+  size: bytes.byteLength,
+});
+
+if (!checked.ok) {
+  checked.failures;
+}
+
+const streamed = await verifyStream(chunks, {
+  hash: { algorithm: "SHA-256", value: expectedSha256 },
 });
 ```
 
-`manifest` holds the expected digest, size, media type, name, and any provenance. `verifyBuffer` is the hook you pass; `@adaptate/accel` can run the hash on large buffers.
+`@adaptate/core/verify` is part of zero-dependency `@adaptate/core`. For a large or batched buffer, `@adaptate/accel` can size-route the same kind of check; see [Acceleration](accel.md). Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream.
 
-Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [`@adaptate/accel`](accel.md) when the hash or batch is large. Fail closed, always: a hook that cannot decide does not write.
+This page lives under Advanced because the hooks are for in-memory verification of untrusted buffers, not for ordinary field checks on a small tool-call chunk. Fail closed, always: a hook that cannot decide does not write.
 
 
 # Migration 2.4
@@ -1281,6 +1340,40 @@ Published 2.3.0 of `@adaptate/utils` depended on `@apidevtools/json-schema-ref-p
 `@adaptate/core/standard` validates a Standard Schema (`~standard.validate`) and adds no dependency. The test uses a transformed Zod schema and a hand-written schema ([`standard.test.ts`](../packages/core/src/__tests__/standard.test.ts)).
 
 `@adaptate/core/effect` is new. Install `effect@^4.0.0` only if you import it. `final(text)` and `final(text, configName)` are in [Effect](effect.md).
+
+
+# Migration 3.0
+
+Source: docs/migration-3.0.md
+
+---
+title: "Migration 3.0"
+description: "v3 is additive: makeFeed, @adaptate/core/verify, and optional acceleration packages, with the default install still zero-dep."
+answer: "v3 is additive for 2.4 callers. makeFeed is optional on fromAsyncIterableSteps and parseStream, @adaptate/core/verify is a new subpath, and the acceleration packages are optional Advanced installs. adaptate and @adaptate/core stay zero-dependency aside from the zod peer."
+faq:
+  - question: "Do I need to change code to upgrade?"
+    answer: "No. Existing imports and the default feed stay the same. Adopt makeFeed, @adaptate/core/verify, or an acceleration package only when you need them."
+  - question: "Does the default install gain dependencies?"
+    answer: "No. adaptate and @adaptate/core still have no runtime dependencies. Acceleration packages are separate optional installs."
+---
+
+# Migration 2.4 → 3.0
+
+v3 is backward compatible for 2.4 callers. Published package versions stay on the 2.4 line until the v3 release; the APIs below are already in this repository as additive entries.
+
+What is new, all optional:
+
+- `makeFeed` on `fromAsyncIterableSteps` and `parseStream`. Omit it and the default tracked feed is used. `openPath` and `tailOpen` stay on the step. See [v3 feeds](v3.md).
+- `@adaptate/core/verify` for fail-closed in-memory checks (issue 84): `hashBuffer`, `verifyBuffer`, `verifyStream`. This is a new subpath of zero-dependency `@adaptate/core`. See [Runtime verification](verification.md).
+- Optional Advanced packages `@adaptate/accel`, `@adaptate/wasm`, and `@adaptate/native`, plus the Rust core they wrap. Install them only for large buffers, multi-MB verification, or a host embed. They are not peers of `@adaptate/core` and they do not load from the default install. See [Acceleration](accel.md).
+
+What does not change:
+
+- The default install remains `adaptate` / `@adaptate/core` plus the `zod` peer, with `effect`, `js-yaml`, and the ref parser still optional as in [Migration 2.4](migration-2.4.md).
+- Existing subpaths (`/stream`, `/stream-incremental`, `/standard`, `/effect`, `/result`) keep their current imports.
+- Small streaming chunks should stay on the JS parser. Measured SHA-256 at 1 KiB, 32 KiB, and 2 MiB was faster in JS than WASM or native on the Track 2 real-binary run.
+
+If you already consume 2.4, upgrade when the v3 npm release ships, then add only the new imports you want. No rewrite is required.
 
 
 # Development
