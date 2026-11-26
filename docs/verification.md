@@ -11,9 +11,17 @@ faq:
 
 # Runtime verification
 
-A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) is covered by `@adaptate/core/verify`: hash, size, media type, name, and a slot for a formal or custom verifier.
+A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) is covered by `@adaptate/core/verify`.
 
-The hook runs on a buffer or a stream in memory. If any check fails, nothing is stored.
+```mermaid
+flowchart LR
+  Bytes["buffer"] --> VerifyBuf["verifyBuffer"]
+  Chunks["chunks"] --> VerifyStream["verifyStream"]
+  VerifyBuf -->|"ok"| Keep["checked bytes"]
+  VerifyBuf -->|"fail"| Drop["discard, typed error"]
+  VerifyStream -->|"ok"| Keep
+  VerifyStream -->|"fail"| Drop
+```
 
 | Check | When it runs | On failure |
 | --- | --- | --- |
@@ -40,4 +48,4 @@ const streamed = await verifyStream(chunks, {
 
 `@adaptate/core/verify` is part of zero-dependency `@adaptate/core`. For a large or batched buffer, `@adaptate/accel` can size-route the same kind of check; see [Acceleration](accel.md). Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream.
 
-This page lives under Advanced because the hooks are for in-memory verification of untrusted buffers, not for ordinary field checks on a small tool-call chunk. Fail closed, always: a hook that cannot decide does not write.
+This page is under Advanced because the hooks check untrusted buffers in memory, not ordinary fields on a small tool-call chunk. If a hook cannot decide, it does not write.

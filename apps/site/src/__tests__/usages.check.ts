@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Readable } from "node:stream";
@@ -18,6 +19,7 @@ import { checkWithStandardSchema, readyViews } from "../usages/zod";
 import { cardOrFallback, finalReport } from "../usages/effect";
 import { checkInvoice, readToolCall } from "../usages/choke-points";
 import { ship } from "../usages/result-rail";
+import { collectRecipeSteps } from "../usages/make-feed";
 
 describe("usage snippets", () => {
   it("renders the React card from the title", () => {
@@ -145,6 +147,48 @@ describe("usage snippets", () => {
     expect(good.previews.at(-1)).toBe("Malmo");
     let bad = await readToolCall(chunks('{"city":"Malmo","days":0}'));
     expect(bad.issues?.length).toBe(1);
+  });
+
+  it("runs the makeFeed walkthrough against @adaptate/core", async () => {
+    let steps = await collectRecipeSteps();
+    let expected = [
+      {
+        done: false,
+        openPath: ["title"],
+        tailOpen: true,
+        ok: true,
+        value: { title: "Pas" },
+      },
+      {
+        done: false,
+        openPath: ["tags", 1],
+        tailOpen: true,
+        ok: true,
+        value: { title: "Pasta", tags: ["c1", "c"] },
+      },
+      {
+        done: false,
+        openPath: [],
+        tailOpen: false,
+        ok: true,
+        value: { title: "Pasta", tags: ["c1", "c2"] },
+      },
+      {
+        done: true,
+        openPath: [],
+        tailOpen: false,
+        ok: true,
+        value: { title: "Pasta", tags: ["c1", "c2"] },
+      },
+    ];
+    expect(steps).toEqual(expected);
+    let docs = readFileSync(new URL("../../../../docs/v3.md", import.meta.url), "utf8");
+    expect(docs).toContain("<!-- snippet: usages/make-feed.ts -->");
+    expect(docs).toContain('`["title"]`');
+    expect(docs).toContain('`["tags", 1]`');
+    expect(docs).toContain('{ title: "Pas" }');
+    expect(docs).toContain('{ title: "Pasta", tags: ["c1", "c"] }');
+    expect(docs).toContain('{ title: "Pasta", tags: ["c1", "c2"] }');
   });
 
   it("ships, holds a sold-out line, and holds bad input on the railway", () => {

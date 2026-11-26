@@ -261,16 +261,34 @@ faq:
 
 `@adaptate/core/stream` checks a partial document against each named config while text is still arriving. `zod` is the only peer.
 
-`parsePartialJson(text)` closes open strings, objects, and arrays, then `JSON.parse`s the longest prefix that parses. It returns `undefined` when nothing parses.
+```mermaid
+flowchart LR
+  Chunk["chunk"] --> PartialJson["parsePartialJson"]
+  PartialJson --> Partial["partial(value)"]
+  Value["complete value"] --> Final["final(value)"]
+  Final --> Report["valid and errors per config"]
+```
 
-`createStreamValidator(schema, configs)` builds the schemas it can at creation:
+`parsePartialJson(text)` closes open strings, objects, and arrays, then parses the longest prefix. It returns `undefined` when nothing parses.
 
-- `partial(value)` checks the value with one lenient schema cached on the base schema object (`WeakMap`). The cache is filled on the first partial check, not when the validator is constructed, so a strict schema built from the same fields is left alone. Building that lenient schema does not parse the source object or array. Absent fields stay optional. Present fields are still type-checked. Every named config receives that same check. Editing a config does not change `partial`, because a missing field stays optional for every config.
-- `final(value)` runs `transformSchema(schema, config).safeParse(value)` for every named config and returns `{ valid, errors }` per name. This `final` takes a value, not text. Those transformed schemas are built when the validator is created and then reused. The lenient partial schema is cached on the base schema object with a `WeakMap`, so it is collected with that schema. Config objects are read at creation: editing one afterward leaves the schema that was already built. A config that cannot be transformed fails inside `final`, not while the validator is constructed. `transformSchema` itself still builds a schema on every direct call.
+`createStreamValidator(schema, configs)`:
 
-`validateStructuredOutput({ partial, final }, schema, configs)` runs those two methods when the corresponding field is not `null`.
+| Method | What it checks | Cache |
+| --- | --- | --- |
+| `partial(value)` | Present fields only. Absent fields stay optional. Every named config gets the same check. | Lenient schema on a `WeakMap` of the base schema, filled on first call. |
+| `final(value)` | `transformSchema(schema, config).safeParse(value)` per name, returns `{ valid, errors }`. Takes a value, not text. | Transformed schemas built at creation. Later config edits do not change them. A config that cannot be transformed fails inside `final`. |
 
-`createAgUiPartialValidator(schema, configs)` returns a push function. It appends `delta` to a buffer keyed by `toolCallId` for `TOOL_CALL_ARGS` and by `messageId` for `TEXT_MESSAGE_CONTENT`, then calls `parsePartialJson` on that buffer. A parsed value is checked with `partial`. A chunk that does not parse returns `undefined`. `TOOL_CALL_END` and `TEXT_MESSAGE_END` drop that id. `push.close(id)` drops it too. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
+`validateStructuredOutput({ partial, final }, schema, configs)` runs those methods when the field is not `null`.
+
+`createAgUiPartialValidator(schema, configs)` returns a push function:
+
+| Event | Buffer key | Action |
+| --- | --- | --- |
+| `TOOL_CALL_ARGS` | `toolCallId` | Append `delta`, parse, then `partial`. |
+| `TEXT_MESSAGE_CONTENT` | `messageId` | Same. |
+| `TOOL_CALL_END`, `TEXT_MESSAGE_END`, or `push.close(id)` | that id | Drop the buffer. |
+
+A chunk that does not parse returns `undefined`. The same name on `@adaptate/core/stream-incremental` tokenizes each chunk once through `createPartialJsonFeed`.
 
 ```ts
 import { z } from "zod";
@@ -290,9 +308,9 @@ push({
 });
 ```
 
-Streams partial JSON without re-reading what it already saw. The run metadata and the per-chunk numbers are in [Performance](performance.md#measured).
+Streams partial JSON without re-reading what it already saw. Numbers: [Performance](performance.md#measured).
 
-In v3, `fromAsyncIterableSteps` and `parseStream` accept an optional `makeFeed` hook. [v3 feeds](v3.md).
+In v3, pass `makeFeed` to `fromAsyncIterableSteps` or `parseStream`. Runnable example: [v3 feeds](v3.md).
 
 
 # v3 feeds
@@ -312,44 +330,88 @@ faq:
 
 # v3 feeds
 
-If you already check a tool call while it streams, v3 does not ask you to rewrite that path. It adds one hook, `makeFeed`, so a stream can use a custom tracked feed — including one that runs [in-memory verification](verification.md) — without forking the parser.
+A wrapping `makeFeed` around `createTrackedFeed`, passed to `parseStream` with a Zod schema and three JSON chunks.
 
-What that buys you:
-
-| Need | Result |
-| --- | --- |
-| Same stream, a different feed | Pass `makeFeed`. `openPath` and `tailOpen` stay on the step. |
-| Verify bytes before they settle | The feed, or a `verifyBuffer` / `verifyStream` hook around it, can run a fail-closed check on the in-memory buffer. |
-| Large buffers | Optional `@adaptate/accel` can size-route hash or scan work. See [Acceleration](accel.md). |
-
-`makeFeed` is a zero-argument factory that returns a `TrackedFeed`. Leave it off and `createTrackedFeed` is used.
-
-```ts
-import {
-  createTrackedFeed,
-  fromAsyncIterableSteps,
-} from "@adaptate/core/stream-incremental";
-import { parseStream } from "@adaptate/core/result";
-
-const steps = fromAsyncIterableSteps(
-  chunks,
-  () => createTrackedFeed(),
-);
-
-for await (const step of steps) {
-  step.openPath;
-  step.tailOpen;
-}
-
-const result = parseStream(
-  chunks,
-  schema,
-  undefined,
-  () => createTrackedFeed(),
-);
+```mermaid
+flowchart LR
+  Chunks["chunk iterable"] --> Parse["parseStream"]
+  Schema["Zod schema"] --> Parse
+  Feed["makeFeed"] --> Parse
+  Parse --> Steps["steps with openPath and tailOpen"]
 ```
 
-`fromAsyncIterableSteps` and `parseStream` stay on their current subpaths. [Streaming](streaming.md) covers the path that is already on npm. The optional [live benchmark](accel.md#live-benchmark) shows when WASM is worth adding and when it is not.
+<!-- snippet: usages/make-feed.ts -->
+```ts
+import { parseStream } from "@adaptate/core/result";
+import {
+  createTrackedFeed,
+  type TrackedFeed,
+} from "@adaptate/core/stream-incremental";
+import { z } from "zod";
+
+export let recipe = z.object({
+  title: z.string(),
+  tags: z.array(z.string()),
+});
+
+export async function* chunks() {
+  yield '{"title":"Pas';
+  yield 'ta","tags":["c1","c';
+  yield '2"]}';
+}
+
+export function makeFeed(): TrackedFeed {
+  let inner = createTrackedFeed();
+  return {
+    push: (chunk) => inner.push(chunk),
+    complete: () => inner.complete(),
+    ended: () => inner.ended(),
+    openPath: () => inner.openPath(),
+    tailOpen: () => inner.tailOpen(),
+  };
+}
+
+export async function collectRecipeSteps() {
+  let steps = [];
+  for await (let step of parseStream(
+    chunks(),
+    recipe,
+    recipe.partial(),
+    makeFeed,
+  )) {
+    steps.push({
+      done: step.done,
+      openPath: step.openPath,
+      tailOpen: step.tailOpen,
+      ok: step.result.ok,
+      value: step.result.ok
+        ? step.result.value
+        : step.result.error,
+    });
+  }
+  return steps;
+}
+```
+<!-- /snippet -->
+
+That stream yields:
+
+| Step | done | openPath | tailOpen | result.value |
+| --- | --- | --- | --- | --- |
+| 1 | false | `["title"]` | true | `{ title: "Pas" }` |
+| 2 | false | `["tags", 1]` | true | `{ title: "Pasta", tags: ["c1", "c"] }` |
+| 3 | false | `[]` | false | `{ title: "Pasta", tags: ["c1", "c2"] }` |
+| 4 | true | `[]` | false | `{ title: "Pasta", tags: ["c1", "c2"] }` |
+
+Steps 1–3 are incremental. Step 4 is the final schema check.
+
+| Need | Hook |
+| --- | --- |
+| Same stream, a different feed | Pass `makeFeed`. `openPath` and `tailOpen` stay on the step. |
+| Verify bytes before they settle | Wrap the feed, or run `verifyBuffer` / `verifyStream`. See [Runtime verification](verification.md). |
+| Large buffers | Optional `@adaptate/accel`. See [Acceleration](accel.md). |
+
+`fromAsyncIterableSteps` takes the same `makeFeed` and yields `{ value, complete, openPath, tailOpen }`. [Streaming](streaming.md) covers the path already on npm. The [live benchmark](accel.md#live-benchmark) shows when WASM is worth adding.
 
 
 # AG-UI
@@ -1204,23 +1266,19 @@ faq:
 
 # Acceleration
 
-Most callers never need this. `@adaptate/core` stays zero-dependency and is the right path for ordinary JS objects, buffers under about 32 KiB, and streaming chunks around 3 µs, where measured JS is already faster.
-
-`@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` are optional Advanced add-ons. They do not change the default install.
+Skip this for ordinary JS objects, buffers under ~32 KiB, and ~3 µs streaming chunks. `@adaptate/core` stays zero-dependency. `@adaptate/accel`, `@adaptate/native`, and `@adaptate/wasm` are optional Advanced add-ons.
 
 ## When it makes sense
 
-Use an acceleration package when you have at least one of these:
-
-- Large buffers, especially multi-MB in-memory [runtime verification](verification.md) (#84)
-- Batched hash or manifest checks
-- A Rust or WASM host embed that wants the C ABI core
-
-Leave them out when you are parsing small streaming chunks. The incremental JS parser already sits around 3 µs per chunk, with no extra install.
+| Use it | Leave it out |
+| --- | --- |
+| Multi-MB in-memory [runtime verification](verification.md) (#84) | Small streaming chunks (~3 µs JS parser) |
+| Batched hash or manifest checks | Buffers under ~32 KiB |
+| A Rust or WASM host embed of the C ABI core | The default zero-dep install |
 
 ## Native, WASM, and GPU
 
-`@adaptate/accel` probes what the runtime can do and size-routes the work. JavaScript remains the fallback at every step.
+`@adaptate/accel` probes the runtime and size-routes the work. JavaScript is the fallback at every step.
 
 | Path | Package | When it is considered |
 | --- | --- | --- |
@@ -1232,14 +1290,16 @@ Leave them out when you are parsing small streaming chunks. The incremental JS p
 ```ts
 import { verifyInMemory } from "@adaptate/accel";
 
-const checked = await verifyInMemory(bytes, { sha256: expectedDigest });
+const checked = await verifyInMemory(bytes, {
+  sha256: expectedDigest,
+});
 ```
 
 `verifyInMemory` probes `@adaptate/native` and `@adaptate/wasm` when they are installed, then falls back to JavaScript. A browser can ship `@adaptate/wasm` without the Node-API package. A Node service can use `@adaptate/native` and skip WASM.
 
 ## Measured numbers
 
-These medians come from a real-binary end-to-end run of the Track 2 fixes (SHA-256, 7 runs unless noted). JS here is the `@adaptate/core/verify` / Web Crypto path. No number in this table is mocked.
+Medians from a real-binary Track 2 run (SHA-256, 7 runs unless noted). JS is `@adaptate/core/verify` / Web Crypto. No number is mocked.
 
 | Work | Size | JS median | Cached WASM median | Native median |
 | --- | --- | --- | --- | --- |
@@ -1250,15 +1310,17 @@ These medians come from a real-binary end-to-end run of the Track 2 fixes (SHA-2
 | verify | 32 KiB | 0.020 ms | 0.103 ms | 0.057 ms |
 | verify | 2 MiB | 1.166 ms | 6.242 ms | 1.740 ms |
 
-WASM bindings themselves have a cold cost: a first hash took 6.394 ms, and a later hash on the cached bindings took 0.104 ms. Digests matched JS on every size above.
+| Note | Result |
+| --- | --- |
+| WASM bindings, cold first hash | 6.394 ms |
+| WASM bindings, later cached hash | 0.104 ms |
+| Digests | Matched JS on every size above |
+| 4 MiB GPU probe | Software renderer only, so GPU stayed unavailable. Native 3.274 ms (3 runs), JS 2.391 ms. Native batch of the same payload: 3.080 ms. |
+| UTF-8 scan | `café — こんにちは` and `ä` buffers at 1 KiB, 32 KiB, and 2 MiB: JS, WASM, and native agreed. |
 
-A 4 MiB in-memory verify was probed for GPU. The host exposed only a software renderer, so the hardware-only probe left GPU unavailable and the work fell back to native (3.274 ms median over 3 runs; JS was 2.391 ms). A native batch of the same payload was 3.080 ms median.
+These tables are one host. The [live benchmark](#live-benchmark) on this page runs the same JS vs WASM hash in your browser, with a digest check.
 
-UTF-8 scanning was checked on `café — こんにちは` and on 1 KiB, 32 KiB, and 2 MiB buffers filled with `ä`. JS, WASM, and native all agreed.
-
-The tables above are one host. The [live benchmark](#live-benchmark) on this page runs the same JS vs WASM hash in your browser, with a digest check, so you can see the difference on the machine in front of you.
-
-Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [runtime verification](verification.md) when a buffer must be checked before anything is stored. Full citation for the front-page claims stays in [Proof](proof.md).
+Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream, and with [runtime verification](verification.md) when a buffer must be checked before anything is stored. Citations: [Proof](proof.md).
 
 
 # Runtime verification
@@ -1278,9 +1340,17 @@ faq:
 
 # Runtime verification
 
-A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) is covered by `@adaptate/core/verify`: hash, size, media type, name, and a slot for a formal or custom verifier.
+A download or a stream should not touch the disk until it has been checked. [Issue 84](https://github.com/p10ns11y/adaptate/issues/84) is covered by `@adaptate/core/verify`.
 
-The hook runs on a buffer or a stream in memory. If any check fails, nothing is stored.
+```mermaid
+flowchart LR
+  Bytes["buffer"] --> VerifyBuf["verifyBuffer"]
+  Chunks["chunks"] --> VerifyStream["verifyStream"]
+  VerifyBuf -->|"ok"| Keep["checked bytes"]
+  VerifyBuf -->|"fail"| Drop["discard, typed error"]
+  VerifyStream -->|"ok"| Keep
+  VerifyStream -->|"fail"| Drop
+```
 
 | Check | When it runs | On failure |
 | --- | --- | --- |
@@ -1307,7 +1377,7 @@ const streamed = await verifyStream(chunks, {
 
 `@adaptate/core/verify` is part of zero-dependency `@adaptate/core`. For a large or batched buffer, `@adaptate/accel` can size-route the same kind of check; see [Acceleration](accel.md). Pair this with [`makeFeed`](v3.md) when the bytes arrive as a stream.
 
-This page lives under Advanced because the hooks are for in-memory verification of untrusted buffers, not for ordinary field checks on a small tool-call chunk. Fail closed, always: a hook that cannot decide does not write.
+This page is under Advanced because the hooks check untrusted buffers in memory, not ordinary fields on a small tool-call chunk. If a hook cannot decide, it does not write.
 
 
 # Migration 2.4
