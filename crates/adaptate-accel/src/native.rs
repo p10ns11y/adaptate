@@ -1,10 +1,13 @@
 #[cfg(feature = "native")]
 mod addon {
     use crate::ffi::{snapshot_to_json, verify_many_json, verify_payload_json};
+    #[cfg(not(test))]
     use crate::gpu::adapter_present;
     use crate::json_scan::StreamScanner;
     use crate::sha256::sha256_hex;
-    use napi::bindgen_prelude::{AsyncTask, Buffer};
+    #[cfg(not(test))]
+    use napi::bindgen_prelude::AsyncTask;
+    use napi::bindgen_prelude::Buffer;
     use napi::{Env, Result, Task};
     use napi_derive::napi;
 
@@ -72,11 +75,13 @@ mod addon {
         }
     }
 
+    #[cfg(not(test))]
     #[napi]
     pub fn gpu_available() -> bool {
         adapter_present()
     }
 
+    #[cfg(not(test))]
     #[napi]
     pub fn hash_large_buffer(payload: Buffer) -> AsyncTask<HashTask> {
         AsyncTask::new(HashTask {
@@ -84,6 +89,7 @@ mod addon {
         })
     }
 
+    #[cfg(not(test))]
     #[napi]
     pub fn verify_payload(
         payload: Buffer,
@@ -97,6 +103,7 @@ mod addon {
         })
     }
 
+    #[cfg(not(test))]
     #[napi]
     pub fn verify_batch(
         payloads: Vec<Buffer>,
@@ -135,6 +142,42 @@ mod addon {
         #[napi]
         pub fn finish(&mut self) -> String {
             snapshot_to_json(&self.inner.finish())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::{BatchTask, HashTask, VerifyTask};
+        use crate::sha256::sha256_hex;
+        use napi::Task;
+
+        #[test]
+        fn native_tasks_hash_and_verify_without_node() {
+            let payload = b"synthetic-payload".to_vec();
+            let digest = sha256_hex(&payload);
+            let mut hash_task = HashTask {
+                payload: payload.clone(),
+            };
+            assert_eq!(hash_task.compute().expect("hash task"), digest);
+
+            let manifest_json = format!("{{\"sha256\":\"{digest}\"}}");
+            let mut verify_task = VerifyTask {
+                payload: payload.clone(),
+                manifest_json: manifest_json.clone(),
+                observed_json: String::new(),
+            };
+            let verified = verify_task.compute().expect("verify task");
+            assert!(verified.contains("\"ok\":true"));
+            assert!(verified.contains(&digest));
+
+            let mut batch_task = BatchTask {
+                payloads: vec![payload],
+                manifest_json: vec![manifest_json],
+                observed_json: vec![String::new()],
+            };
+            let batched = batch_task.compute().expect("batch task");
+            assert!(batched.starts_with('['));
+            assert!(batched.contains("\"ok\":true"));
         }
     }
 }

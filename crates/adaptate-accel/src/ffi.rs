@@ -1,8 +1,9 @@
 use crate::json_scan::{JsonValue, ScanError, ScanSnapshot, ScanStatus, StreamScanner};
 use crate::sha256::sha256_hex;
+#[cfg(any(feature = "native", test))]
+use crate::verify::{verify_batch, BatchItem};
 use crate::verify::{
-    verify_batch, verify_in_memory, BatchItem, PayloadObservation, VerifyFailure, VerifyManifest,
-    VerifySuccess,
+    verify_in_memory, PayloadObservation, VerifyFailure, VerifyManifest, VerifySuccess,
 };
 
 pub(crate) fn snapshot_to_json(snapshot: &ScanSnapshot) -> String {
@@ -47,7 +48,7 @@ pub(crate) fn verify_payload_json(
     result_json(&verify_in_memory(payload, &manifest, &observed))
 }
 
-#[cfg_attr(not(feature = "native"), allow(dead_code))]
+#[cfg(any(feature = "native", test))]
 pub(crate) fn verify_many_json(
     payloads: &[&[u8]],
     manifest_json: &[String],
@@ -524,7 +525,7 @@ mod tests {
     use super::{
         adaptate_alloc, adaptate_dealloc, adaptate_scanner_finish, adaptate_scanner_free,
         adaptate_scanner_new, adaptate_scanner_push, adaptate_sha256, adaptate_verify,
-        verify_payload_json,
+        verify_many_json, verify_payload_json,
     };
     use crate::sha256::sha256_hex;
 
@@ -599,6 +600,39 @@ mod tests {
         assert!(!allocated.is_null());
         adaptate_dealloc(allocated, 8);
         adaptate_dealloc(std::ptr::null_mut(), 0);
+    }
+
+    #[test]
+    fn verify_many_json_checks_each_payload() {
+        assert_eq!(verify_many_json(&[], &[], &[]), "[]");
+
+        let payload = b"synthetic-payload";
+        let digest = sha256_hex(payload);
+        let manifest = format!("{{\"sha256\":\"{digest}\"}}");
+        let encoded = verify_many_json(&[payload], &[manifest.clone()], &[String::new()]);
+        assert_eq!(
+            encoded,
+            format!(
+                "[{{\"ok\":true,\"sha256\":\"{digest}\",\"byteLength\":{}}}]",
+                payload.len()
+            )
+        );
+
+        let mismatched = verify_many_json(&[payload], &[], &[]);
+        assert_eq!(
+            mismatched,
+            "[{\"ok\":false,\"reason\":\"invalid-manifest\"}]"
+        );
+
+        let invalid_digest = verify_many_json(
+            &[payload, payload],
+            &[manifest, "{\"sha256\":1}".to_string()],
+            &[String::new(), String::new()],
+        );
+        assert_eq!(
+            invalid_digest,
+            "[{\"ok\":false,\"reason\":\"invalid-digest\"}]"
+        );
     }
 
     #[test]

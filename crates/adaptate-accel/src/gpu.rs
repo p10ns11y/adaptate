@@ -1,9 +1,10 @@
+#[cfg(any(feature = "gpu", test))]
 use crate::sha256::sha256_padded_blocks;
 use crate::GPU_THRESHOLD_BYTES;
 
 const GPU_PAYLOAD_CAP: usize = 32 * 1024 * 1024;
 
-#[cfg_attr(not(feature = "native"), allow(dead_code))]
+#[cfg(any(feature = "native", test))]
 pub fn adapter_present() -> bool {
     #[cfg(feature = "gpu")]
     {
@@ -325,13 +326,13 @@ fn main(@builtin(global_invocation_id) invocation: vec3<u32>) {
 "#;
 }
 
-#[cfg_attr(not(feature = "gpu"), allow(dead_code))]
+#[cfg(any(feature = "gpu", test))]
 struct PackedMessages {
     meta_bytes: Vec<u8>,
     word_bytes: Vec<u8>,
 }
 
-#[cfg_attr(not(feature = "gpu"), allow(dead_code))]
+#[cfg(any(feature = "gpu", test))]
 fn pack_messages(payloads: &[&[u8]]) -> PackedMessages {
     let mut raw = Vec::new();
     let mut meta_words = Vec::new();
@@ -377,6 +378,40 @@ mod tests {
     fn oversized_single_payload_skips_the_gpu_path() {
         let huge = vec![0u8; super::GPU_PAYLOAD_CAP + 1];
         assert!(sha256_batch_accelerated(&[&huge]).is_none());
+    }
+
+    #[test]
+    fn adapter_present_reports_host_gpu_support() {
+        let present = super::adapter_present();
+        #[cfg(not(feature = "gpu"))]
+        assert!(!present);
+        #[cfg(feature = "gpu")]
+        let _ = present;
+    }
+
+    #[test]
+    fn pack_messages_records_block_offset_and_padded_words() {
+        let packed = super::pack_messages(&[b"abc"]);
+        let mut expected_meta = Vec::new();
+        expected_meta.extend_from_slice(&0u32.to_le_bytes());
+        expected_meta.extend_from_slice(&64u32.to_le_bytes());
+        expected_meta.extend_from_slice(&0u32.to_le_bytes());
+        expected_meta.extend_from_slice(&0u32.to_le_bytes());
+        assert_eq!(packed.meta_bytes, expected_meta);
+        assert_eq!(packed.word_bytes.len(), 64);
+        assert_eq!(&packed.word_bytes[..4], b"abc\x80");
+        assert_eq!(packed.word_bytes[63], 24);
+
+        let pair = super::pack_messages(&[b"abc", b""]);
+        assert_eq!(&pair.meta_bytes[..4], &0u32.to_le_bytes());
+        assert_eq!(&pair.meta_bytes[4..8], &64u32.to_le_bytes());
+        assert_eq!(&pair.meta_bytes[16..20], &64u32.to_le_bytes());
+        assert_eq!(&pair.meta_bytes[20..24], &64u32.to_le_bytes());
+        assert_eq!(pair.word_bytes.len(), 128);
+
+        let empty = super::pack_messages(&[]);
+        assert!(empty.meta_bytes.is_empty());
+        assert!(empty.word_bytes.is_empty());
     }
 }
 
