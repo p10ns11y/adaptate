@@ -40,9 +40,16 @@ export async function verifyInMemory(
 ): Promise<VerifyResult> {
   const capabilities = options.capabilities ?? (await probeCapabilities());
   const selected = routePayload(payload, { ...options, capabilities, workload: "verify" });
+  const item: VerifyBatchItem = { payload, manifest, observed };
   for (const backend of fallbackOrder(selected)) {
     if (backend === "js") continue;
-    const accelerated = await invokeVerify(await loadSafely(backend, options), payload, manifest, observed);
+    const loaded = await loadSafely(backend, options);
+    if (backend === "gpu") {
+      const accelerated = await invokeBatch(loaded, [item]);
+      if (accelerated?.[0]) return accelerated[0];
+      continue;
+    }
+    const accelerated = await invokeVerify(loaded, payload, manifest, observed);
     if (accelerated) return accelerated;
   }
   return verifyWithJavaScript(payload, manifest, observed, options.hashSource);
@@ -57,8 +64,11 @@ export async function verifyBatch(
   for (const item of items) totalBytes += item.payload.byteLength;
   const capabilities = options.capabilities ?? (await probeCapabilities());
   const selected = routeByteLength(totalBytes, { ...options, capabilities, workload: "verify" });
-  const accelerated = selected === "js" ? null : await invokeBatch(await loadSafely(selected, options), items);
-  if (accelerated) return accelerated;
+  for (const backend of fallbackOrder(selected)) {
+    if (backend === "js") continue;
+    const accelerated = await invokeBatch(await loadSafely(backend, options), items);
+    if (accelerated) return accelerated;
+  }
   const results: VerifyResult[] = [];
   for (const item of items) {
     results.push(await verifyWithJavaScript(item.payload, item.manifest, item.observed ?? {}, options.hashSource));

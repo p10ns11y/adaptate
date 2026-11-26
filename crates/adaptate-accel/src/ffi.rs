@@ -307,16 +307,37 @@ fn push_json_value(output: &mut String, value: &JsonValue) {
     }
 }
 
+/// Largest snapshot or verify payload the C ABI will emit. Larger results return -1.
+pub const MAX_OUTPUT_BYTES: usize = 64 * 1024 * 1024;
+
+fn required_output_len(len: usize) -> i32 {
+    if len > MAX_OUTPUT_BYTES || len > i32::MAX as usize {
+        -1
+    } else {
+        len as i32
+    }
+}
+
+/// Writes UTF-8 `text` into `out_ptr`.
+///
+/// On success, returns the number of bytes written (`<= out_cap`).
+/// If `out_ptr` is null or `out_cap` is too small, returns the required length
+/// without writing, so the caller can allocate and retry.
+/// Returns -1 if the text exceeds [`MAX_OUTPUT_BYTES`] or `i32::MAX`.
 fn write_text(text: &str, out_ptr: *mut u8, out_cap: usize) -> i32 {
     let bytes = text.as_bytes();
-    if bytes.len() > i32::MAX as usize || out_ptr.is_null() || out_cap < bytes.len() {
+    let needed = required_output_len(bytes.len());
+    if needed < 0 {
         return -1;
+    }
+    if out_ptr.is_null() || out_cap < bytes.len() {
+        return needed;
     }
     // SAFETY: `out_ptr` is non-null and `out_cap` covers `bytes.len()` bytes.
     unsafe {
         std::ptr::copy_nonoverlapping(bytes.as_ptr(), out_ptr, bytes.len());
     }
-    bytes.len() as i32
+    needed
 }
 
 fn read_bytes<'a>(ptr: *const u8, len: usize) -> Option<&'a [u8]> {
@@ -396,13 +417,67 @@ pub extern "C" fn adaptate_verify(
     write_text(&encoded, out_ptr, out_cap)
 }
 
-#[no_mangle]
-pub extern "C" fn adaptate_scanner_new() -> *mut StreamScanner {
-    Box::into_raw(Box::new(StreamScanner::new()))
+/// Opaque C-ABI scanner. Holds a pending snapshot so a short output buffer
+/// can be retried without pushing the same chunk (or finishing) twice.
+pub(crate) struct FfiScanner {
+    inner: StreamScanner,
+    pending_output: Option<String>,
+}
+
+impl FfiScanner {
+    fn new() -> Self {
+        Self {
+            inner: StreamScanner::new(),
+            pending_output: None,
+        }
+    }
+}
+
+fn write_held_text(
+    pending: &mut Option<String>,
+    text: String,
+    out_ptr: *mut u8,
+    out_cap: usize,
+) -> i32 {
+    let needed = required_output_len(text.len());
+    if needed < 0 {
+        *pending = None;
+        return -1;
+    }
+    if out_ptr.is_null() || out_cap < text.len() {
+        *pending = Some(text);
+        return needed;
+    }
+    let written = write_text(&text, out_ptr, out_cap);
+    *pending = None;
+    written
+}
+
+fn write_scanner_output(
+    scanner: *mut FfiScanner,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    produce: impl FnOnce(&mut StreamScanner) -> String,
+) -> i32 {
+    if scanner.is_null() {
+        return -1;
+    }
+    // SAFETY: `scanner` is a live pointer from `adaptate_scanner_new`.
+    let scanner = unsafe { &mut *scanner };
+    let text = match scanner.pending_output.take() {
+        Some(text) => text,
+        None => produce(&mut scanner.inner),
+    };
+    write_held_text(&mut scanner.pending_output, text, out_ptr, out_cap)
 }
 
 #[no_mangle]
-pub extern "C" fn adaptate_scanner_free(scanner: *mut StreamScanner) {
+pub extern "C" fn adaptate_scanner_new() -> *mut FfiScanner {
+    Box::into_raw(Box::new(FfiScanner::new()))
+}
+
+#[no_mangle]
+pub extern "C" fn adaptate_scanner_free(scanner: *mut FfiScanner) {
     if scanner.is_null() {
         return;
     }
@@ -414,7 +489,7 @@ pub extern "C" fn adaptate_scanner_free(scanner: *mut StreamScanner) {
 
 #[no_mangle]
 pub extern "C" fn adaptate_scanner_push(
-    scanner: *mut StreamScanner,
+    scanner: *mut FfiScanner,
     chunk_ptr: *const u8,
     chunk_len: usize,
     out_ptr: *mut u8,
@@ -423,26 +498,20 @@ pub extern "C" fn adaptate_scanner_push(
     let Some(chunk) = read_bytes(chunk_ptr, chunk_len) else {
         return -1;
     };
-    if scanner.is_null() {
-        return -1;
-    }
-    // SAFETY: `scanner` is a live pointer from `adaptate_scanner_new`.
-    let snapshot = unsafe { (*scanner).push(chunk) };
-    write_text(&snapshot_to_json(&snapshot), out_ptr, out_cap)
+    write_scanner_output(scanner, out_ptr, out_cap, |inner| {
+        snapshot_to_json(&inner.push(chunk))
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn adaptate_scanner_finish(
-    scanner: *mut StreamScanner,
+    scanner: *mut FfiScanner,
     out_ptr: *mut u8,
     out_cap: usize,
 ) -> i32 {
-    if scanner.is_null() {
-        return -1;
-    }
-    // SAFETY: `scanner` is a live pointer from `adaptate_scanner_new`.
-    let snapshot = unsafe { (*scanner).finish() };
-    write_text(&snapshot_to_json(&snapshot), out_ptr, out_cap)
+    write_scanner_output(scanner, out_ptr, out_cap, |inner| {
+        snapshot_to_json(&inner.finish())
+    })
 }
 
 #[no_mangle]
@@ -506,8 +575,10 @@ mod tests {
         );
         let pending = std::str::from_utf8(&scan_out[..pending_len as usize]).unwrap();
         assert!(pending.contains("\"pending\""));
+        let needed = adaptate_scanner_finish(scanner, std::ptr::null_mut(), 0);
+        assert!(needed > 1);
         let tiny = adaptate_scanner_finish(scanner, scan_out.as_mut_ptr(), 1);
-        assert_eq!(tiny, -1);
+        assert_eq!(tiny, needed);
         let finished_len = adaptate_scanner_finish(scanner, scan_out.as_mut_ptr(), scan_out.len());
         let finished = std::str::from_utf8(&scan_out[..finished_len as usize]).unwrap();
         assert!(finished.contains("truncated-json"));
@@ -528,5 +599,63 @@ mod tests {
         assert!(!allocated.is_null());
         adaptate_dealloc(allocated, 8);
         adaptate_dealloc(std::ptr::null_mut(), 0);
+    }
+
+    #[test]
+    fn scanner_push_retries_a_short_buffer_without_replaying_the_chunk() {
+        let scanner = adaptate_scanner_new();
+        let body = "ä".repeat(4096);
+        let document = format!("{{\"k\":\"{body}\"}}");
+        let chunk = document.as_bytes();
+        let needed = adaptate_scanner_push(
+            scanner,
+            chunk.as_ptr(),
+            chunk.len(),
+            std::ptr::null_mut(),
+            0,
+        );
+        assert!(needed > 16, "needed={needed}");
+        let mut tiny = vec![0u8; 16];
+        let again = adaptate_scanner_push(
+            scanner,
+            chunk.as_ptr(),
+            chunk.len(),
+            tiny.as_mut_ptr(),
+            tiny.len(),
+        );
+        assert_eq!(again, needed);
+        let mut output = vec![0u8; needed as usize];
+        let written = adaptate_scanner_push(
+            scanner,
+            chunk.as_ptr(),
+            chunk.len(),
+            output.as_mut_ptr(),
+            output.len(),
+        );
+        assert_eq!(written, needed);
+        let text = std::str::from_utf8(&output[..written as usize]).unwrap();
+        assert!(text.contains("\"status\":\"ready\""));
+        let value_count = text.matches("\"k\":").count();
+        assert_eq!(
+            value_count, 1,
+            "replayed chunk would emit two values: {text}"
+        );
+        adaptate_scanner_free(scanner);
+    }
+
+    #[test]
+    fn write_text_reports_required_length_when_the_buffer_is_short() {
+        let text = "hello";
+        assert_eq!(super::write_text(text, std::ptr::null_mut(), 0), 5);
+        let mut tiny = [0u8; 2];
+        assert_eq!(super::write_text(text, tiny.as_mut_ptr(), 2), 5);
+        let mut ok = [0u8; 5];
+        assert_eq!(super::write_text(text, ok.as_mut_ptr(), 5), 5);
+        assert_eq!(&ok, b"hello");
+        assert_eq!(
+            super::required_output_len(super::MAX_OUTPUT_BYTES),
+            super::MAX_OUTPUT_BYTES as i32
+        );
+        assert_eq!(super::required_output_len(super::MAX_OUTPUT_BYTES + 1), -1);
     }
 }

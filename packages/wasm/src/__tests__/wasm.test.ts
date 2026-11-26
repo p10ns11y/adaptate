@@ -4,25 +4,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  INITIAL_OUTPUT_CAPACITY,
+  MAX_OUTPUT_BYTES,
   bindingsFromInstance,
+  createWasmBindings,
   finishScanner,
   hashWithBindings,
-  isAvailable,
-  loadWasmModule,
   openScanner,
   pushScanner,
   verifyWithBindings,
-  wasmBinaryPath,
   type WasmBindings,
 } from "../bindings.ts";
 import {
   createStreamParser,
+  createWasmBindings as exportedCreate,
   hashPayload,
   isAvailable as packageAvailable,
   openStream,
   verifyBatch,
   verifyPayload,
 } from "../index.ts";
+import { clearWasmBindingsCache, isAvailable, loadWasmModule, wasmBinaryPath } from "../node-load.ts";
 import { parseScanText, parseVerifyListText, parseVerifyText, parseVerifyValue } from "../parse.ts";
 
 const EMPTY_MODULE = Uint8Array.of(0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00);
@@ -119,6 +121,10 @@ describe("wasm availability", () => {
     });
     expect(loaded.status).toBe("available");
     expect(loaded.bindings).not.toBeNull();
+    const fromDisk = await loadWasmModule(modulePath, {
+      mapExports: () => bindings(),
+    });
+    expect(fromDisk.status).toBe("available");
   });
 
   it("checks export shape", () => {
@@ -274,6 +280,138 @@ describe("wasm calls", () => {
     parser.close();
     expect(await createStreamParser({ readBytes: () => null })).toMatchObject({ status: "wasm-binary-missing" });
     expect(await hashPayload(new Uint8Array())).toMatchObject({ available: false });
+  });
+});
+
+
+describe("wasm UTF-8, output growth, and cached instantiation", () => {
+  it("treats empty wasm bytes as missing", async () => {
+    expect(await createWasmBindings(new Uint8Array())).toEqual({
+      status: "wasm-binary-missing",
+      bindings: null,
+    });
+  });
+
+  it("decodes multi-byte UTF-8 snapshots", () => {
+    const live = bindings();
+    const snapshot = '{"status":"ready","values":["café — こんにちは"]}';
+    live.scannerFinish = (_handle, output) => writeText(live.memory, output, snapshot);
+    expect(finishScanner(live, 4)).toEqual({ status: "ready", values: ["café — こんにちは"] });
+    const umlaut = '{"status":"ready","values":[{"k":"ä"}]}';
+    live.scannerPush = (_handle, _pointer, _length, output) => writeText(live.memory, output, umlaut);
+    expect(pushScanner(live, 4, Uint8Array.of(1))).toEqual({ status: "ready", values: [{ k: "ä" }] });
+  });
+
+  it("grows the output buffer when the required length exceeds the first capacity", () => {
+    const body = "ä".repeat(3000);
+    const snapshot = `{"status":"ready","values":["${body}"]}`;
+    const encodedLength = new TextEncoder().encode(snapshot).length;
+    expect(encodedLength).toBeGreaterThan(INITIAL_OUTPUT_CAPACITY);
+    const live = bindings();
+    const caps: number[] = [];
+    live.scannerFinish = (_handle, output, cap) => {
+      caps.push(cap);
+      if (cap < encodedLength) return encodedLength;
+      return writeText(live.memory, output, snapshot);
+    };
+    expect(finishScanner(live, 4)).toEqual({ status: "ready", values: [body] });
+    expect(caps).toEqual([INITIAL_OUTPUT_CAPACITY, encodedLength]);
+  });
+
+  it("rejects snapshots above the safety ceiling and failed reallocations", () => {
+    expect(finishScanner(bindings({ scannerFinish: () => MAX_OUTPUT_BYTES + 1 }), 4)).toBeNull();
+    expect(finishScanner(bindings({ alloc: countedAlloc(1) }), 4)).toBeNull();
+    let allocs = 0;
+    const growThenFail = bindings({
+      alloc() {
+        allocs += 1;
+        return allocs === 1 ? 64 : 0;
+      },
+      scannerFinish: (_handle, _output, cap) => (cap < 8000 ? 8000 : 4),
+    });
+    expect(finishScanner(growThenFail, 4)).toBeNull();
+    expect(allocs).toBe(2);
+  });
+
+  it("caches default createWasmBindings instantiation for the same bytes", async () => {
+    const memory = new WebAssembly.Memory({ initial: 1 });
+    const exports: Record<string, unknown> = { memory };
+    for (const name of [
+      "adaptate_alloc",
+      "adaptate_dealloc",
+      "adaptate_sha256",
+      "adaptate_verify",
+      "adaptate_scanner_new",
+      "adaptate_scanner_free",
+      "adaptate_scanner_push",
+      "adaptate_scanner_finish",
+    ]) {
+      exports[name] = () => 1;
+    }
+    exports.adaptate_alloc = () => 8;
+    exports.adaptate_dealloc = () => undefined;
+    let instantiations = 0;
+    const original = WebAssembly.instantiate;
+    WebAssembly.instantiate = (async () => {
+      instantiations += 1;
+      return { instance: { exports }, module: {} };
+    }) as unknown as typeof WebAssembly.instantiate;
+    try {
+      const bytes = Uint8Array.of(0, 1, 2, 3);
+      clearWasmBindingsCache();
+      const first = await createWasmBindings(bytes);
+      const second = await createWasmBindings(bytes);
+      expect(first.status).toBe("available");
+      expect(second.bindings).toBe(first.bindings);
+      expect(instantiations).toBe(1);
+      expect(exportedCreate).toBe(createWasmBindings);
+      clearWasmBindingsCache();
+      const third = await createWasmBindings(bytes);
+      expect(third.status).toBe("available");
+      expect(third.bindings).not.toBe(first.bindings);
+      expect(instantiations).toBe(2);
+    } finally {
+      WebAssembly.instantiate = original;
+    }
+  });
+
+  it("caches successful default loadWasmModule results by path", async () => {
+    const memory = new WebAssembly.Memory({ initial: 1 });
+    const exports: Record<string, unknown> = { memory };
+    for (const name of [
+      "adaptate_alloc",
+      "adaptate_dealloc",
+      "adaptate_sha256",
+      "adaptate_verify",
+      "adaptate_scanner_new",
+      "adaptate_scanner_free",
+      "adaptate_scanner_push",
+      "adaptate_scanner_finish",
+    ]) {
+      exports[name] = () => 1;
+    }
+    exports.adaptate_alloc = () => 8;
+    exports.adaptate_dealloc = () => undefined;
+    let instantiations = 0;
+    const original = WebAssembly.instantiate;
+    WebAssembly.instantiate = (async () => {
+      instantiations += 1;
+      return { instance: { exports }, module: {} };
+    }) as unknown as typeof WebAssembly.instantiate;
+    try {
+      const directory = mkdtempSync(join(tmpdir(), "adaptate-wasm-default-"));
+      const modulePath = join(directory, "module.wasm");
+      writeFileSync(modulePath, EMPTY_MODULE);
+      clearWasmBindingsCache();
+      const first = await loadWasmModule(modulePath);
+      const second = await loadWasmModule(modulePath);
+      expect(first.status).toBe("available");
+      expect(second).toBe(first);
+      expect(instantiations).toBe(1);
+    } finally {
+      WebAssembly.instantiate = original;
+      clearWasmBindingsCache();
+    }
   });
 });
 

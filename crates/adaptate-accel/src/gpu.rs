@@ -15,6 +15,12 @@ pub fn adapter_present() -> bool {
     }
 }
 
+/// CPU-only adapters (for example llvmpipe) are not treated as a GPU.
+#[cfg(feature = "gpu")]
+pub(crate) fn is_hardware_gpu(device_type: wgpu::DeviceType) -> bool {
+    !matches!(device_type, wgpu::DeviceType::Cpu)
+}
+
 /// GPU hashing is attempted only for batches of at least 4 MiB.
 /// Any probe, shader, or self-check failure returns `None` so the caller uses the CPU.
 pub fn sha256_batch_accelerated(payloads: &[&[u8]]) -> Option<Vec<[u8; 32]>> {
@@ -171,6 +177,9 @@ mod gpu_backend {
             compatible_surface: None,
             force_fallback_adapter: false,
         }))?;
+        if !super::is_hardware_gpu(adapter.get_info().device_type) {
+            return None;
+        }
         pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("adaptate-accel"),
@@ -368,5 +377,17 @@ mod tests {
     fn oversized_single_payload_skips_the_gpu_path() {
         let huge = vec![0u8; super::GPU_PAYLOAD_CAP + 1];
         assert!(sha256_batch_accelerated(&[&huge]).is_none());
+    }
+}
+
+#[cfg(all(test, feature = "gpu"))]
+mod hardware_tests {
+    #[test]
+    fn cpu_adapters_are_rejected() {
+        assert!(!super::is_hardware_gpu(wgpu::DeviceType::Cpu));
+        assert!(super::is_hardware_gpu(wgpu::DeviceType::DiscreteGpu));
+        assert!(super::is_hardware_gpu(wgpu::DeviceType::IntegratedGpu));
+        assert!(super::is_hardware_gpu(wgpu::DeviceType::VirtualGpu));
+        assert!(super::is_hardware_gpu(wgpu::DeviceType::Other));
     }
 }
