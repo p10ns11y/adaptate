@@ -12,11 +12,12 @@ describe("logo", () => {
     expect(readme).toContain('src="assets/logo.svg"');
   });
 
-  it("puts the mark in the README shields badges", () => {
-    let favicon = read("apps/site/public/favicon.svg").trim();
-    let logo = encodeURIComponent(`data:image/svg+xml;base64,${Buffer.from(favicon).toString("base64")}`);
+  it("does not embed a data-URI logo in README shield badges", () => {
     let readme = read("README.md");
-    expect(readme.split(`logo=${logo}`).length - 1).toBeGreaterThanOrEqual(3);
+    expect(readme).not.toMatch(/logo=data(?:%3A|:)/i);
+    expect(readme).toContain("img.shields.io/npm/v/adaptate?");
+    expect(readme).toContain("img.shields.io/npm/v/@adaptate/core?");
+    expect(readme).toContain("img.shields.io/npm/v/@adaptate/utils?");
   });
 
   it("leaves no trace of the old logo geometry", () => {
